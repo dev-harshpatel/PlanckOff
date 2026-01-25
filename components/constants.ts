@@ -1,0 +1,32 @@
+import { CalculationMethod } from '../types';
+
+export const FORMULA_DEFINITIONS: Record<string, { label: string, formula?: string }> = {
+    'Vertical @ 12" OC': { label: 'Vertical Studs (12" OC)' },
+    'Vertical @ 16" OC': { label: 'Vertical Studs (16" OC)' },
+    'Vertical @ 24" OC': { label: 'Vertical Studs (24" OC)' },
+    'Tracks (Top & Bottom)': { label: 'Tracks (Top & Bottom)' },
+    'Coverage (1 Layer)': { label: 'Surface Area (1 Layer)' },
+    'Coverage (2 Layers)': { label: 'Surface Area (2 Layers)' },
+    'Insulation (Cavity)': { label: 'Insulation Area' },
+    'Fastener (per SqFt)': { label: 'Fasteners (Standard)' },
+    'Joint Treatment (per SqFt)': { label: 'Joint Finishing' },
+    'Fixed Qty': { label: 'Fixed Count' },
+    'Suspension - Main Runner (4\' OC)': { label: 'Main Runners' },
+    'Suspension - Cross Tee (4\' OC)': { label: 'Cross Tees (4\')' },
+    'Suspension - Cross Tee (2\' OC)': { label: 'Cross Tees (2\')' },
+    'Suspension - CRC (4\' OC)': { label: 'Cold Rolled Channel' },
+    'Suspension - Furring (16" OC)': { label: 'Furring Channel (16")' },
+    'Suspension - Furring (24" OC)': { label: 'Furring Channel (24")' },
+    'Suspension - Hanger Wire (16sf)': { label: 'Hanger Wire' },
+    'Ceiling - Perimeter (Linear)': { label: 'Perimeter Trim' },
+    'Ceiling - Tile (2x4)': { label: 'Ceiling Tiles (2x4)' },
+    'Ceiling - Tile (2x2)': { label: 'Ceiling Tiles (2x2)' },
+    'Soffit - Vertical Framing': { label: 'Soffit Drops' },
+    'Structural - Steel Joist (Span)': { label: 'Steel Joist (Span Calc)' },
+    'Structural - Deep Leg Track': { label: 'Deep Leg Track' },
+    'Structural - Lateral Bracing': { label: 'Lateral Bracing' },
+    'Ceiling - Baffle (Linear Calc)': { label: 'Linear Baffles' },
+    'Ceiling - CRC (Primary 4\' OC)': { label: 'Primary CRC (4\' OC)' },
+    'Ceiling - Hat Channel (Secondary 24" OC)': { label: 'Secondary Hat (24" OC)' },
+    'Custom Formula': { label: 'Custom Formula' }
+};
