@@ -1,15 +1,17 @@
 
 import React, { useState } from 'react';
-import { Search, Filter, Grid, List as ListIcon, Plus, Calendar, ArrowUpRight, MapPin, Trash2, Edit2, User, Briefcase, Check, Hash, MoreVertical } from 'lucide-react';
+import { ArrowUpRight, Briefcase, Check, Edit2, Grid, Hash, List as ListIcon, MapPin, Plus, Search, Trash2, User, Calendar } from 'lucide-react';
 import { ProjectSummary } from '../types';
-import { SettingsModal } from './SettingsModal';
+import { PROJECT_STATUSES, TEAM_MEMBERS } from '../constants';
+import { getStatusColor } from '../utils/projectUtils';
 import { ProjectModal } from './ProjectModal';
+import { Button, IconButton, SearchInput, StatusBadge, FilterSelect } from './common';
 
 interface DashboardProps {
   onOpenProject: (project?: ProjectSummary) => void;
 }
 
-// --- Inline Editable Card Component ---
+// --- Inline ProjectCard Component (To be extracted to components/project/ProjectCard.tsx) ---
 const ProjectCard: React.FC<{
   project: ProjectSummary;
   onOpen: (p: ProjectSummary) => void;
@@ -19,17 +21,6 @@ const ProjectCard: React.FC<{
 }> = ({ project, onOpen, onEdit, onDelete, onUpdate }) => {
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [isEditingAssignee, setIsEditingAssignee] = useState(false);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Working Project Progress': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'Under Review': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'Submitted': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Hold': return 'bg-slate-100 text-slate-600 border-slate-200';
-      case 'Archive': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
-    }
-  };
 
   return (
     <div
@@ -54,11 +45,9 @@ const ProjectCard: React.FC<{
               }}
               onBlur={() => setIsEditingStatus(false)}
             >
-              <option value="Working Project Progress">Working Project Progress</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Hold">Hold</option>
-              <option value="Archive">Archive</option>
+              {PROJECT_STATUSES.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
             </select>
           </div>
         ) : (
@@ -122,18 +111,18 @@ const ProjectCard: React.FC<{
           Open Project <ArrowUpRight className="w-4 h-4" />
         </button>
         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
+          <IconButton
+            icon={Edit2}
             onClick={onEdit}
-            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Edit Project"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
+            variant="primary"
+            tooltip="Edit Project"
+          />
+          <IconButton
+            icon={Trash2}
             onClick={onDelete}
-            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Project"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+            variant="danger"
+            tooltip="Delete Project"
+          />
         </div>
       </div>
     </div>
@@ -163,12 +152,7 @@ const INITIAL_PROJECTS: ProjectSummary[] = [
   }
 ];
 
-const TEAM_MEMBERS = [
-  { id: 'all', name: 'All Members' },
-  { id: 'u1', name: 'Demo User (Me)' },
-  { id: 'u2', name: 'Sarah Jenkins' },
-  { id: 'u3', name: 'Mike Ross' }
-];
+// TEAM_MEMBERS now imported from constants
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -221,16 +205,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Working Project Progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Under Review': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'Submitted': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'Hold': return 'bg-slate-100 text-slate-600 border-slate-200';
-      case 'Archive': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
-    }
-  };
+  // getStatusColor now imported from utils/projectUtils
 
   return (
     <div className="w-full mx-auto p-6 space-y-8">
@@ -242,12 +217,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
           <p className="text-slate-500 mt-1">Manage your estimates and proposals.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-medium"
+            variant="success"
+            icon={Plus}
           >
-            <Plus className="w-5 h-5" /> New Project
-          </button>
+            New Project
+          </Button>
         </div>
       </div>
 
@@ -289,41 +265,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       {/* Filters & Controls */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
+          <div className="w-full sm:w-64">
+            <SearchInput
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+              onValueChange={setSearchQuery}
+              placeholder="Search projects..."
             />
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <select
+            <FilterSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
-            >
-              <option value="All">All Status</option>
-              <option value="Working Project Progress">Working Project Progress</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Hold">Hold</option>
-              <option value="Archive">Archive</option>
-            </select>
+              options={[
+                { value: 'All', label: 'All Status' },
+                ...PROJECT_STATUSES.map(status => ({ value: status, label: status }))
+              ]}
+            />
 
-            <select
+            <FilterSelect
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
-            >
-              {TEAM_MEMBERS.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
+              options={TEAM_MEMBERS.map(m => ({ value: m.id, label: m.name }))}
+              showIcon={false}
+            />
           </div>
         </div>
 
@@ -435,18 +400,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                   <td className="px-6 py-4 text-slate-600">{project.dueDate}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
+                      <IconButton
+                        icon={Edit2}
                         onClick={(e) => openEditModal(e, project)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
+                        variant="success"
+                        tooltip="Edit Project"
+                      />
+                      <IconButton
+                        icon={Trash2}
                         onClick={(e) => handleDelete(e, project.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        variant="danger"
+                        tooltip="Delete Project"
+                      />
                     </div>
                   </td>
                 </tr>

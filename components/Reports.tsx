@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, ProposalConfig } from '../types';
 import { calculateMaterials } from '../services/geminiService';
-import { Printer, FileText, Settings, Building, MapPin, DollarSign, Percent, Box, Users } from 'lucide-react';
+import { Printer, FileText, Settings } from 'lucide-react';
 import { MarkupsView } from './Markups';
 import { MaterialsView, ExtendedLineItem } from './MaterialsView';
 import { LaborView } from './LaborView';
+import { parsePer } from '../utils';
+import { getCSISection } from '../constants';
 
 interface ReportsProps {
     assemblies: WallAssembly[];
@@ -16,39 +18,6 @@ interface ReportsProps {
     setActiveReportTab?: (tab: 'proposal' | 'bidding' | 'markups' | 'materials' | 'labor') => void;
     onCloseReport?: () => void;
 }
-
-// --- HELPERS ---
-const parsePer = (per: string): number => {
-    if (!per) return 1;
-    const match = per.replace(/,/g, '').match(/(\d+(\.\d+)?)/);
-    return match ? parseFloat(match[0]) : 1;
-};
-
-const detectLengthFt = (str: string): number | null => {
-    if (!str) return null;
-    const match = str.match(/(\d+(\.\d+)?)'/);
-    if (match) return parseFloat(match[0]);
-    const match2 = str.match(/(\d+(\.\d+)?)ft/i);
-    if (match2) return parseFloat(match2[1]);
-    return null;
-};
-
-const getCSISection = (category: string, item: string): string => {
-    const i = (item || '').toLowerCase();
-    const cat = (category || '').toLowerCase();
-
-    if (cat.includes('framing')) {
-        if (i.includes('25ga') || i.includes('20ga')) return '09 22 16 - Non-Structural Metal Framing';
-        if (i.includes('18ga') || i.includes('16ga') || i.includes('structural')) return '05 40 00 - Cold-Formed Metal Framing';
-        return '09 22 00 - Metal Support Assemblies';
-    }
-    if (cat.includes('drywall')) return '09 29 00 - Gypsum Board';
-    if (cat.includes('insulation')) return '07 21 00 - Thermal Insulation';
-    if (cat.includes('ceiling')) return '09 51 00 - Acoustical Ceilings';
-    if (cat.includes('finishing')) return '09 29 00 - Gypsum Board (Finishing)';
-    if (cat.includes('labor')) return '01 00 00 - General Requirements';
-    return '00 00 00 - Miscellaneous';
-};
 
 export const Reports: React.FC<ReportsProps> = ({
     assemblies,

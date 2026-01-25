@@ -1,8 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { X, Check, Calendar, Briefcase, Hash, Building2, User, MapPin } from 'lucide-react';
-import { ProjectSummary } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Briefcase, Building2, Calendar, Check, Hash, MapPin, User, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { ProjectSummary } from '../types';
+import { PROJECT_STATUSES, TEAM_MEMBERS } from '../constants';
+import { getDefaultDueDate } from '../utils/dateUtils';
 
 interface ProjectModalProps {
     isOpen: boolean;
@@ -10,13 +12,6 @@ interface ProjectModalProps {
     onSubmit: (project: ProjectSummary) => void;
     projectToEdit?: ProjectSummary | null;
 }
-
-// Mock Team Members
-const TEAM_MEMBERS = [
-    { id: 'u1', name: 'Demo User (Me)' },
-    { id: 'u2', name: 'Sarah Jenkins' },
-    { id: 'u3', name: 'Mike Ross' }
-];
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSubmit, projectToEdit }) => {
     const [formData, setFormData] = useState({
@@ -65,7 +60,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onS
             name: formData.name,
             company: formData.company,
             projectNumber: formData.projectNumber || `P-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-            dueDate: formData.dueDate || new Date(Date.now() + 12096e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            dueDate: formData.dueDate || getDefaultDueDate(),
             status: formData.status,
             assignedTo: TEAM_MEMBERS.find(t => t.id === formData.assignedTo)?.name || 'Unassigned',
             location: formData.location
@@ -184,7 +179,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onS
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Status</label>
                         <div className="flex bg-slate-100 p-1 rounded-lg">
-                            {(['Working Project Progress', 'Under Review', 'Submitted', 'Hold', 'Archive'] as const).map((s) => (
+                            {PROJECT_STATUSES.map((s) => (
                                 <button
                                     key={s}
                                     type="button"

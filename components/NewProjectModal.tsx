@@ -1,21 +1,16 @@
 
 import React, { useState } from 'react';
-import { X, Check, Calendar, Briefcase, Hash, Building2, User } from 'lucide-react';
-import { ProjectSummary } from '../types';
+import { Briefcase, Building2, Calendar, Check, Hash, User, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { ProjectSummary } from '../types';
+import { TEAM_MEMBERS } from '../constants';
+import { getDefaultDueDate } from '../utils/dateUtils';
 
 interface NewProjectModalProps {
     isOpen: boolean;
     onClose: () => void;
     onCreate: (project: ProjectSummary) => void;
 }
-
-// Mock Team Members
-const TEAM_MEMBERS = [
-    { id: 'u1', name: 'Demo User (Me)' },
-    { id: 'u2', name: 'Sarah Jenkins' },
-    { id: 'u3', name: 'Mike Ross' }
-];
 
 export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClose, onCreate }) => {
     const [formData, setFormData] = useState({
@@ -38,7 +33,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
             name: formData.name,
             company: formData.company,
             projectNumber: formData.projectNumber || `P-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-            dueDate: formData.dueDate || new Date(Date.now() + 12096e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+            dueDate: formData.dueDate || getDefaultDueDate(),
             status: formData.status,
             assignedTo: TEAM_MEMBERS.find(t => t.id === formData.assignedTo)?.name || 'Unassigned'
         };

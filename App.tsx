@@ -1,20 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
-import { UploadSection } from './components/UploadSection';
-import { EstimateResult } from './components/EstimateResult';
-import { AppState, WallAssembly, MaterialDefinition, ProjectSummary, AppSettings, UserRole } from './types';
-import { identifyWallAssemblies } from './services/geminiService';
-import { Trash2, Plus, Save, Upload, Calculator, FileText, ArrowLeftRight, Settings, ChevronRight, Layout, AlertCircle, Percent, Box, Users, LayoutDashboard, Briefcase, Database, LogOut, Info, Users as UsersIcon, LayoutTemplate } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, ArrowLeftRight, Box, Briefcase, Calculator, ChevronRight, Database, FileText, Info, Layout, LayoutDashboard, LayoutTemplate, LogOut, Percent, Plus, Save, Settings, Trash2, Upload, Users, Users as UsersIcon } from 'lucide-react';
+import { AppSettings, AppState, MaterialDefinition, ProjectSummary, UserRole, WallAssembly } from './types';
+import { DEFAULT_CATALOG } from './constants/materials';
+import { DEFAULT_ROLE_PERMISSIONS } from './constants/project';
 import { Dashboard } from './components/Dashboard';
-import { TeamManagement } from './components/TeamManagement';
 import { DatabaseManager } from './components/DatabaseManager';
 import { DefaultAssembliesManager } from './components/DefaultAssembliesManager';
-import { SettingsModal } from './components/SettingsModal';
-import { DEFAULT_TEMPLATES, AssemblyTemplate } from './components/defaultAssemblies';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { EstimateResult } from './components/EstimateResult';
+import { SettingsModal } from './components/SettingsModal';
+import { TeamManagement } from './components/TeamManagement';
+import { AssemblyTemplate, DEFAULT_TEMPLATES } from './components/defaultAssemblies';
+import { identifyWallAssemblies } from './services/geminiService';
 
-// Comprehensive Construction Database matching Master Items List Schema
-const DEFAULT_CATALOG: MaterialDefinition[] = [
+// DEFAULT_CATALOG now imported from constants/materials.ts
+// Keeping this comment for reference - the actual catalog is in constants/materials.ts
+const _DEPRECATED_DEFAULT_CATALOG: MaterialDefinition[] = [
   // ... (keeping all existing DEFAULT_CATALOG entries identically to avoid data loss)
   // --- LABOR ROLES (HOURLY RATES) ---
   { code: 'LAB-GEN-01', section: '01 00 00', matCostCode: 'LABOR', laborCostCode: 'GEN', type: 'Labor', manufacturer: 'Role', description: 'Project Foreman / Superintendent', matCost: 85.00, per: '1 HR', priceUpdated: '1/24/2024', category: 'Labor' },
@@ -42,7 +44,7 @@ const DEFAULT_CATALOG: MaterialDefinition[] = [
   { code: 'ST-158-25', section: '09 22 16', matCostCode: 'METAL FRAMING', laborCostCode: '103', type: 'Division 09', manufacturer: 'ClarkDietrich', description: '1-5/8" Metal Stud 25ga (18mil) 1-1/4" Flange', width: '1-5/8"', gauge: '25ga', flange: '1-1/4"', matCost: 450.00, per: '1,000 LF', priceUpdated: '11/16/2023', category: 'Framing' },
   // ... (Rest of the large array) ...
   { code: 'TOOL-CUT', section: '01 54 00', matCostCode: 'TOOLS', laborCostCode: '', type: 'Division 01', manufacturer: 'Generic', description: '4-1/2" Metal Cut-off Wheels (10 Pack)', matCost: 25.00, per: '1 Pack', priceUpdated: '4/1/2024', category: 'Other' }
-];
+]; // This array is deprecated - use DEFAULT_CATALOG from constants/materials.ts
 
 const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'team' | 'database' | 'project' | 'defaultAssemblies'>('dashboard');
@@ -74,22 +76,12 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('drywallSpec_roles_v1');
       if (!saved) {
-        return {
-          'Administrator': ['All Access'],
-          'Team Lead': ['Create Projects', 'Edit All Projects', 'Manage Team', 'View Reports'],
-          'Senior Estimator': ['Create Projects', 'Edit Own Projects', 'View Reports'],
-          'Estimator': ['View Assigned Projects', 'Edit Own Takeoffs']
-        };
+        return DEFAULT_ROLE_PERMISSIONS;
       }
       return JSON.parse(saved);
     } catch (e) {
       console.warn("Failed to load roles", e);
-      return {
-        'Administrator': ['All Access'],
-        'Team Lead': ['Create Projects', 'Edit All Projects', 'Manage Team', 'View Reports'],
-        'Senior Estimator': ['Create Projects', 'Edit Own Projects', 'View Reports'],
-        'Estimator': ['View Assigned Projects', 'Edit Own Takeoffs']
-      };
+      return DEFAULT_ROLE_PERMISSIONS;
     }
   });
 

@@ -4,7 +4,7 @@ import { WallAssembly, MaterialDefinition, AssemblyComponent, TakeoffInstance } 
 import { Search, Plus, Copy, Trash2, Edit2, LayoutTemplate, Save, X, Database } from 'lucide-react';
 import { AssemblyTemplate } from './defaultAssemblies';
 import { AssemblyEditorModal } from './AssemblyEditorModal';
-import { getRowDetails } from './calculationUtils';
+import { getRowDetails } from '../utils/calculationUtils';
 import { v4 as uuidv4 } from 'uuid';
 
 interface DefaultAssembliesManagerProps {
