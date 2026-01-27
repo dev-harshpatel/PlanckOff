@@ -13,12 +13,19 @@ interface NewProjectModalProps {
 }
 
 export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClose, onCreate }) => {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        name: string;
+        company: string;
+        projectNumber: string;
+        dueDate: string;
+        status: 'Working Project Progress' | 'Under Review' | 'Submitted' | 'Hold' | 'Archive';
+        assignedTo: string;
+    }>({
         name: '',
         company: '',
         projectNumber: '',
         dueDate: '',
-        status: 'Active' as const,
+        status: 'Working Project Progress',
         assignedTo: 'u1'
     });
 
@@ -46,7 +53,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
             company: '',
             projectNumber: '',
             dueDate: '',
-            status: 'Active',
+            status: 'Working Project Progress',
             assignedTo: 'u1'
         });
     };
@@ -143,7 +150,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Initial Status</label>
                         <div className="flex bg-slate-100 p-1 rounded-lg">
-                            {(['Active', 'Pending', 'On Hold'] as const).map((s) => (
+                            {(['Working Project Progress', 'Under Review', 'Hold'] as const).map((s) => (
                                 <button
                                     key={s}
                                     type="button"

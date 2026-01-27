@@ -2,9 +2,9 @@
 export { Button } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
 
-export { Input } from './Input';
+export { Input, FormField } from './Input';
 
-export { Select } from './Select';
+export { Select, SelectField } from './Select';
 
 export { Modal, ModalBody, ModalFooter } from './Modal';
 
@@ -21,3 +21,7 @@ export { ToggleGroup } from './ToggleGroup';
 export { FilterSelect } from './FilterSelect';
 
 export { EmptyState } from './EmptyState';
+
+export { NumberInput } from './NumberInput';
+export { MaterialSearch } from './MaterialSearch';
+export { StatusToggle } from './StatusToggle';

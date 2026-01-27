@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { X } from 'lucide-react';
 
@@ -18,7 +20,7 @@ const sizeStyles: Record<ModalSize, string> = {
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
-    full: 'max-w-4xl',
+    full: 'max-w-[95vw] w-full',
 };
 
 export const Modal: React.FC<ModalProps> = ({
@@ -44,7 +46,7 @@ export const Modal: React.FC<ModalProps> = ({
             onClick={handleOverlayClick}
         >
             <div
-                className={`bg-white rounded-xl shadow-2xl w-full ${sizeStyles[size]} overflow-hidden animate-in fade-in zoom-in duration-200`}
+                className={`bg-white rounded-xl shadow-2xl w-full ${sizeStyles[size]} ${size === 'full' ? 'h-[95vh]' : ''} overflow-hidden animate-in fade-in zoom-in duration-200`}
             >
                 {title && (
                     <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">

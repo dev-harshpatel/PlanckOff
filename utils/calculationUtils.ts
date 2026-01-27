@@ -1,6 +1,6 @@
-import { WallAssembly, TakeoffInstance, AssemblyComponent, CalculationMethod } from '../types';
-import { evaluateMath } from '../services/geminiService';
-import { FORMULA_DEFINITIONS, getWasteFactor } from '../constants';
+import { WallAssembly, TakeoffInstance, AssemblyComponent, CalculationMethod } from '@/types';
+import { evaluateMath } from '@/lib/gemini/client';
+import { FORMULA_DEFINITIONS, getWasteFactor } from '@/constants';
 
 export const parsePer = (per: string): number => {
     if (!per) return 1;

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
@@ -12,6 +14,7 @@ interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>
     options: SelectOption[];
     error?: string;
     helperText?: string;
+    required?: boolean;
 }
 
 export const Select: React.FC<SelectProps> = ({
@@ -20,6 +23,7 @@ export const Select: React.FC<SelectProps> = ({
     options,
     error,
     helperText,
+    required,
     className = '',
     id,
     ...props
@@ -34,11 +38,12 @@ export const Select: React.FC<SelectProps> = ({
                     className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5"
                 >
                     {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
                 </label>
             )}
             <div className="relative">
                 {Icon && (
-                    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none z-10" />
                 )}
                 <select
                     id={selectId}
@@ -68,3 +73,6 @@ export const Select: React.FC<SelectProps> = ({
         </div>
     );
 };
+
+// Alias for backwards compatibility
+export const SelectField = Select;

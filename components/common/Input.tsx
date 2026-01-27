@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
@@ -6,6 +8,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     icon?: LucideIcon;
     error?: string;
     helperText?: string;
+    required?: boolean;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -13,6 +16,7 @@ export const Input: React.FC<InputProps> = ({
     icon: Icon,
     error,
     helperText,
+    required,
     className = '',
     id,
     ...props
@@ -27,6 +31,7 @@ export const Input: React.FC<InputProps> = ({
                     className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5"
                 >
                     {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
                 </label>
             )}
             <div className="relative">
@@ -55,3 +60,6 @@ export const Input: React.FC<InputProps> = ({
         </div>
     );
 };
+
+// Alias for backwards compatibility
+export const FormField = Input;
