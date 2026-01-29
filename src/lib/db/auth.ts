@@ -6,9 +6,17 @@
  * from API routes makes code reusable and testable.
  */
 
-import { supabaseAdmin } from '@/lib/supabase/server';
-import { AdminRow, AuthSessionInsert, SessionWithAdmin } from '@/lib/supabase/types';
-import { DB_TABLES, AUTH_CONFIG, SESSION_WITH_ADMIN_FIELDS } from '@/constants/auth';
+import { supabaseAdmin } from "@/lib/supabase/server";
+import {
+  AdminRow,
+  AuthSessionInsert,
+  SessionWithAdmin,
+} from "@/lib/supabase/types";
+import {
+  DB_TABLES,
+  AUTH_CONFIG,
+  SESSION_WITH_ADMIN_FIELDS,
+} from "@/constants/auth";
 
 /**
  * Find an admin by email
@@ -25,8 +33,8 @@ export async function findAdminByEmail(email: string): Promise<{
 }> {
   const { data, error } = await supabaseAdmin
     .from(DB_TABLES.ADMINS)
-    .select('*')
-    .eq('email', email.toLowerCase())
+    .select("*")
+    .eq("email", email.toLowerCase())
     .single();
 
   return { data, error };
@@ -62,7 +70,7 @@ export async function createSession(params: {
   const { data, error } = await supabaseAdmin
     .from(DB_TABLES.AUTH_SESSIONS)
     .insert(sessionData)
-    .select('token')
+    .select("token")
     .single();
 
   return { data, error };
@@ -92,12 +100,12 @@ export async function findSessionByToken(token: string): Promise<{
   const { data, error } = await supabaseAdmin
     .from(DB_TABLES.AUTH_SESSIONS)
     .select(SESSION_WITH_ADMIN_FIELDS)
-    .eq('token', token)
+    .eq("token", token)
     .single();
 
   return {
     data: data as SessionWithAdmin | null,
-    error
+    error,
   };
 }
 
@@ -114,7 +122,7 @@ export async function deleteSessionByToken(token: string): Promise<{
   const { error } = await supabaseAdmin
     .from(DB_TABLES.AUTH_SESSIONS)
     .delete()
-    .eq('token', token);
+    .eq("token", token);
 
   return { error };
 }
@@ -128,7 +136,7 @@ export async function deleteSessionById(id: string): Promise<{
   const { error } = await supabaseAdmin
     .from(DB_TABLES.AUTH_SESSIONS)
     .delete()
-    .eq('id', id);
+    .eq("id", id);
 
   return { error };
 }
@@ -146,7 +154,7 @@ export async function cleanupExpiredSessions(): Promise<{
   const { error } = await supabaseAdmin
     .from(DB_TABLES.AUTH_SESSIONS)
     .delete()
-    .lt('expires_at', new Date().toISOString());
+    .lt("expires_at", new Date().toISOString());
 
   return { error };
 }

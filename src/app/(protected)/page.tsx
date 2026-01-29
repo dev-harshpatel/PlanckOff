@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
-export default function AppRootPage() {
-  redirect("/dashboard");
-}
+const AppRootPage = () => {
+  redirect("/login");
+};
+
+export default AppRootPage;
