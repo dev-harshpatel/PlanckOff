@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json<SessionResponse>(INVALID_SESSION);
     }
 
-    // 2. Find session with admin data (JOIN query)
+    // 2. Find session with admin/team_member data (JOIN query)
     const { data: session, error } = await findSessionByToken(token);
 
     if (error || !session) {
@@ -34,21 +34,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json<SessionResponse>(INVALID_SESSION);
     }
 
-    // 4. Validate admin data exists
-    if (!session.admin) {
-      return NextResponse.json<SessionResponse>(INVALID_SESSION);
+    // 4. Check for team_member first (new system), then admin (legacy)
+    if (session.team_member) {
+      const user: Admin = {
+        id: session.team_member.id,
+        email: session.team_member.email,
+        name: session.team_member.name,
+        role: session.team_member.role?.name || 'Estimator',
+        initials: session.team_member.initials || session.team_member.name.charAt(0).toUpperCase(),
+      };
+      return NextResponse.json<SessionResponse>({ valid: true, user });
     }
 
-    // 5. Return user data
-    const user: Admin = {
-      id: session.admin.id,
-      email: session.admin.email,
-      name: session.admin.name,
-      role: session.admin.role,
-      initials: session.admin.initials || session.admin.name.charAt(0).toUpperCase(),
-    };
+    // 5. Fallback to admin data (legacy)
+    if (session.admin) {
+      const user: Admin = {
+        id: session.admin.id,
+        email: session.admin.email,
+        name: session.admin.name,
+        role: session.admin.role,
+        initials: session.admin.initials || session.admin.name.charAt(0).toUpperCase(),
+      };
+      return NextResponse.json<SessionResponse>({ valid: true, user });
+    }
 
-    return NextResponse.json<SessionResponse>({ valid: true, user });
+    // No user data found
+    return NextResponse.json<SessionResponse>(INVALID_SESSION);
   } catch (error) {
     console.error('Session validation error:', error);
     return NextResponse.json<SessionResponse>(INVALID_SESSION);

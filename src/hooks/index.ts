@@ -1,1 +1,6 @@
-export * from './useLocalStorage';
+/**
+ * Hooks Exports
+ */
+
+export { useRBAC, usePermission, useMinRole } from './useRBAC';
+export type { RBACHook } from './useRBAC';

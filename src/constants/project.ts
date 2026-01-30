@@ -18,6 +18,5 @@ export const PROJECT_STATUSES: ProjectStatus[] = [
 export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   'Administrator': ['All Access'],
   'Team Lead': ['Create Projects', 'Edit All Projects', 'Manage Team', 'View Reports'],
-  'Senior Estimator': ['Create Projects', 'Edit Own Projects', 'View Reports'],
-  'Estimator': ['View Assigned Projects', 'Edit Own Takeoffs']
+  'Estimator': ['View Assigned Projects', 'Edit Own Takeoffs', 'Create Estimates']
 };

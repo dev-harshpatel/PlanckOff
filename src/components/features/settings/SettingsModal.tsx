@@ -153,7 +153,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                                 <div>
                                                     <h4 className="font-bold text-slate-800 flex items-center gap-2">
                                                         {role}
-                                                        {role !== 'Administrator' && role !== 'Estimator' && role !== 'Team Lead' && role !== 'Senior Estimator' && (
+                                                        {role !== 'Administrator' && role !== 'Estimator' && role !== 'Team Lead' && (
                                                             <IconButton
                                                                 icon={Trash2}
                                                                 variant="danger"
@@ -172,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                                     <p className="text-xs text-slate-500">
                                                         {role === 'Administrator' ? 'Full system access' :
                                                             role === 'Team Lead' ? 'Can manage projects and team members' :
-                                                                role === 'Senior Estimator' ? 'Can create and approve estimates' : 'Standard estimator access'}
+                                                                'Standard estimator access'}
                                                     </p>
                                                 </div>
                                                 <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded">

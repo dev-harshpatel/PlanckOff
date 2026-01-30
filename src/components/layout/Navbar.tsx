@@ -8,35 +8,48 @@ import {
   LayoutTemplate,
   Settings,
   Users,
+  LucideIcon,
 } from "lucide-react";
 import { ProfileDropdown } from "@/components/features/auth";
+import { useRBAC } from "@/hooks/useRBAC";
+import { RoleName } from "@/types/team";
 
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ReactNode;
+  icon: LucideIcon;
+  allowedRoles?: RoleName[]; // If undefined, all authenticated users can access
 }
 
+/**
+ * Navigation Items Configuration
+ *
+ * To add a new route:
+ * 1. Add the nav item here with optional allowedRoles
+ * 2. Add the route permission in src/lib/auth/rbac.ts (ROUTE_PERMISSIONS)
+ * 3. Create the page in src/app/(protected)/[route]/page.tsx
+ */
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
-    icon: <LayoutDashboard className="w-4 h-4" />,
+    icon: LayoutDashboard,
   },
   {
     href: "/team",
     label: "Team Management",
-    icon: <Users className="w-4 h-4" />,
+    icon: Users,
+    allowedRoles: ["Administrator", "Team Lead"],
   },
   {
     href: "/database",
     label: "Database",
-    icon: <Database className="w-4 h-4" />,
+    icon: Database,
   },
   {
     href: "/assemblies",
     label: "Default Assemblies",
-    icon: <LayoutTemplate className="w-4 h-4" />,
+    icon: LayoutTemplate,
   },
 ];
 
@@ -46,6 +59,15 @@ interface NavbarProps {
 
 export function Navbar({ onOpenSettings }: NavbarProps) {
   const pathname = usePathname();
+  const { userRole, hasAnyRole } = useRBAC();
+
+  // Filter nav items based on user's role
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    // If no allowedRoles specified, everyone can see it
+    if (!item.allowedRoles) return true;
+    // Check if user has one of the allowed roles
+    return hasAnyRole(item.allowedRoles);
+  });
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {
@@ -67,21 +89,24 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
           </Link>
 
           <nav className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
-                  ${
-                    isActive(item.href)
-                      ? "text-blue-700 bg-blue-50"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            ))}
+            {visibleNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
+                    ${
+                      isActive(item.href)
+                        ? "text-blue-700 bg-blue-50"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
 
             <div className="h-6 w-px bg-slate-200 mx-2" />
 

@@ -45,7 +45,7 @@ export const AUTH_ERRORS = {
 // Fields to select from admins table (excludes password_hash)
 export const ADMIN_PUBLIC_FIELDS = 'id, email, name, role, initials' as const;
 
-// Fields for session with joined admin
+// Fields for session with joined admin (legacy)
 export const SESSION_WITH_ADMIN_FIELDS = `
   id,
   token,
@@ -56,5 +56,14 @@ export const SESSION_WITH_ADMIN_FIELDS = `
     name,
     role,
     initials
+  ),
+  team_member:team_members (
+    id,
+    email,
+    name,
+    initials,
+    role:roles (
+      name
+    )
   )
 ` as const;

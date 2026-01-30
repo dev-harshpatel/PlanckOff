@@ -211,7 +211,7 @@ export interface GeneralRequirement {
   total: number;
 }
 
-export type UserRole = 'Administrator' | 'Team Lead' | 'Senior Estimator' | 'Estimator';
+export type UserRole = 'Administrator' | 'Team Lead' | 'Estimator';
 
 export interface AppSettings {
   geminiApiKey?: string;

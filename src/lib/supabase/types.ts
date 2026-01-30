@@ -18,6 +18,7 @@ export interface AdminRow {
 export interface AuthSessionRow {
   id: string;
   admin_id: string;
+  team_member_id: string | null; // New field for team_members table
   token: string;
   expires_at: string;
   ip_address: string | null;
@@ -27,7 +28,8 @@ export interface AuthSessionRow {
 
 // Insert types (what we send to Supabase)
 export interface AuthSessionInsert {
-  admin_id: string;
+  admin_id?: string; // Legacy: for admins table
+  team_member_id?: string; // New: for team_members table
   expires_at: string;
   ip_address?: string;
   user_agent?: string;
@@ -44,6 +46,15 @@ export interface SessionWithAdmin {
     name: string;
     role: string;
     initials: string | null;
+  } | null;
+  team_member?: {
+    id: string;
+    email: string;
+    name: string;
+    initials: string | null;
+    role: {
+      name: string;
+    };
   } | null;
 }
 
