@@ -98,3 +98,9 @@ export function getInvitableRoles(userRole: RoleName): RoleName[] {
       return [];
   }
 }
+
+// Check if a role is protected (cannot be deleted or renamed)
+export function isProtectedRole(roleName: string): boolean {
+  const protectedRoles = ['Administrator', 'Team Lead', 'Estimator'];
+  return protectedRoles.includes(roleName);
+}

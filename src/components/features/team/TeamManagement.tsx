@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Mail, Plus, Shield, User, Users, Check, Trash2, Edit2, Loader2, AlertCircle, Send } from 'lucide-react';
+import { Mail, Plus, Shield, User, Users, Check, Trash2, Edit2, Loader2, AlertCircle, Send, Settings } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Modal, ModalBody, ModalFooter, FormField, SelectField, Button } from '@/components/ui';
 import { TeamMemberWithRole, RoleName, InviteFormData } from '@/types/team';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +12,7 @@ type ModalMode = 'invite' | 'edit';
 
 export const TeamManagement: React.FC = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [members, setMembers] = useState<TeamMemberWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -349,11 +351,22 @@ export const TeamManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900">Team Management</h1>
           <p className="text-slate-500 mt-1">Manage roles, permissions, and team members.</p>
         </div>
-        {invitableRoles.length > 0 && (
-          <Button variant="primary" icon={Plus} onClick={() => openInviteModal()}>
-            Add Team Member
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {currentUserRole === 'Administrator' && (
+            <Button 
+              variant="secondary" 
+              icon={Shield} 
+              onClick={() => router.push('/admin/roles')}
+            >
+              Role Management
+            </Button>
+          )}
+          {invitableRoles.length > 0 && (
+            <Button variant="primary" icon={Plus} onClick={() => openInviteModal()}>
+              Add Team Member
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">

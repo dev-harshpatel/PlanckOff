@@ -3,7 +3,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 
 interface ModalProps {
     isOpen: boolean;
@@ -20,6 +20,7 @@ const sizeStyles: Record<ModalSize, string> = {
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
     full: 'max-w-[95vw] w-full',
 };
 

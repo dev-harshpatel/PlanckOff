@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LayoutTemplate,
   Settings,
+  Shield,
   Users,
   LucideIcon,
 } from "lucide-react";
@@ -40,6 +41,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Team Management",
     icon: Users,
     allowedRoles: ["Administrator", "Team Lead"],
+  },
+  {
+    href: "/admin/roles",
+    label: "Role Management",
+    icon: Shield,
+    allowedRoles: ["Administrator"],
   },
   {
     href: "/database",
