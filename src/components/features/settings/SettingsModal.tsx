@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Save, Key, Settings as SettingsIcon, Shield, Plus, Trash2, X } from 'lucide-react';
 import { AppSettings, UserRole } from '@/types';
-import { Modal, ModalBody, ModalFooter, FormField, SelectField, Button, IconButton } from '@/components/ui';
+import { Modal, ModalBody, ModalFooter, FormField, SelectField, Button, IconButton, ConfirmModal, useToast } from '@/components/ui';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -15,8 +15,50 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, rolePermissions, onUpdateRoles: setRolePermissions }) => {
+    const toast = useToast();
     const [activeTab, setActiveTab] = useState<'general' | 'api' | 'roles'>('general');
     const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
+
+    // Input modal state (for adding roles/permissions)
+    const [isInputModalOpen, setIsInputModalOpen] = useState(false);
+    const [inputModalTitle, setInputModalTitle] = useState('');
+    const [inputModalPlaceholder, setInputModalPlaceholder] = useState('');
+    const [inputValue, setInputValue] = useState('');
+    const [inputModalCallback, setInputModalCallback] = useState<((value: string) => void) | null>(null);
+
+    // Delete confirmation modal state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteModalMessage, setDeleteModalMessage] = useState('');
+    const [deleteCallback, setDeleteCallback] = useState<(() => void) | null>(null);
+
+    const openInputModal = (title: string, placeholder: string, callback: (value: string) => void) => {
+        setInputModalTitle(title);
+        setInputModalPlaceholder(placeholder);
+        setInputValue('');
+        setInputModalCallback(() => callback);
+        setIsInputModalOpen(true);
+    };
+
+    const handleInputSubmit = () => {
+        if (inputValue.trim() && inputModalCallback) {
+            inputModalCallback(inputValue.trim());
+        }
+        setIsInputModalOpen(false);
+        setInputValue('');
+    };
+
+    const openDeleteModal = (message: string, callback: () => void) => {
+        setDeleteModalMessage(message);
+        setDeleteCallback(() => callback);
+        setIsDeleteModalOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (deleteCallback) {
+            deleteCallback();
+        }
+        setIsDeleteModalOpen(false);
+    };
 
     const handleSave = () => {
         onSave(localSettings);
@@ -136,10 +178,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                         size="sm"
                                         icon={Plus}
                                         onClick={() => {
-                                            const roleName = prompt('Enter new Role Name:');
-                                            if (roleName && !rolePermissions[roleName as UserRole]) {
-                                                setRolePermissions(prev => ({ ...prev, [roleName]: [] }));
-                                            }
+                                            openInputModal('Add Custom Role', 'Enter role name...', (roleName) => {
+                                                if (!rolePermissions[roleName as UserRole]) {
+                                                    setRolePermissions(prev => ({ ...prev, [roleName]: [] }));
+                                                    toast.success('Role Added', `"${roleName}" role has been created.`);
+                                                } else {
+                                                    toast.error('Role Exists', `A role with the name "${roleName}" already exists.`);
+                                                }
+                                            });
                                         }}
                                     >
                                         Add Custom Role
@@ -159,11 +205,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                                                 variant="danger"
                                                                 size="sm"
                                                                 onClick={() => {
-                                                                    if (confirm(`Delete role "${role}"?`)) {
+                                                                    openDeleteModal(`Delete role "${role}"?`, () => {
                                                                         const newRoles = { ...rolePermissions };
                                                                         delete newRoles[role];
                                                                         setRolePermissions(newRoles);
-                                                                    }
+                                                                        toast.success('Role Deleted', `"${role}" has been removed.`);
+                                                                    });
                                                                 }}
                                                                 tooltip="Delete role"
                                                             />
@@ -203,13 +250,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                                     size="sm"
                                                     icon={Plus}
                                                     onClick={() => {
-                                                        const newPerm = prompt('Enter Permission Name (e.g. "View Reports"):');
-                                                        if (newPerm) {
+                                                        openInputModal('Add Permission', 'Enter permission name (e.g. "View Reports")...', (newPerm) => {
                                                             setRolePermissions(prev => ({
                                                                 ...prev,
                                                                 [role]: [...prev[role], newPerm]
                                                             }));
-                                                        }
+                                                            toast.success('Permission Added', `"${newPerm}" added to ${role}.`);
+                                                        });
                                                     }}
                                                     className="text-xs border border-dashed"
                                                 >
@@ -238,6 +285,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                     Save Settings
                 </Button>
             </ModalFooter>
+
+            {/* Input Modal for Adding Roles/Permissions */}
+            <Modal
+                isOpen={isInputModalOpen}
+                onClose={() => { setIsInputModalOpen(false); setInputValue(''); }}
+                title={inputModalTitle}
+                size="sm"
+            >
+                <ModalBody className="space-y-4">
+                    <FormField
+                        label="Name"
+                        type="text"
+                        placeholder={inputModalPlaceholder}
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        autoFocus
+                    />
+                </ModalBody>
+                <ModalFooter>
+                    <Button
+                        variant="secondary"
+                        onClick={() => { setIsInputModalOpen(false); setInputValue(''); }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleInputSubmit}
+                        disabled={!inputValue.trim()}
+                    >
+                        Add
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleDeleteConfirm}
+                title="Confirm Delete"
+                message={deleteModalMessage}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </Modal>
     );
 };

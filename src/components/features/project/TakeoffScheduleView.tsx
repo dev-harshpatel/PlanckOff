@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { WallAssembly, TakeoffInstance } from '@/types';
 import { Plus, Trash2, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { ConfirmModal } from '@/components/ui';
 
 interface TakeoffScheduleViewProps {
     assemblies: WallAssembly[];
@@ -31,6 +32,23 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
     const [filterType, setFilterType] = useState('All');
     const [filterLevel, setFilterLevel] = useState('All');
     const [filterText, setFilterText] = useState('');
+
+    // Delete confirmation state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{ assemblyId: string; instanceId: string } | null>(null);
+
+    const openDeleteModal = (assemblyId: string, instanceId: string) => {
+        setItemToDelete({ assemblyId, instanceId });
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (itemToDelete && onDeleteInstance) {
+            onDeleteInstance(itemToDelete.assemblyId, itemToDelete.instanceId);
+        }
+        setIsDeleteModalOpen(false);
+        setItemToDelete(null);
+    };
 
     // Sort State
     const [sortCol, setSortCol] = useState<string | null>(null);
@@ -292,11 +310,7 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                             <div className="w-8 flex justify-center">
                                 {onDeleteInstance && (
                                     <button
-                                        onClick={() => {
-                                            if (confirm("Delete this item?")) {
-                                                onDeleteInstance(row.assembly.id, row.instance.id);
-                                            }
-                                        }}
+                                        onClick={() => openDeleteModal(row.assembly.id, row.instance.id)}
                                         className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                         title="Delete Instance"
                                     >
@@ -313,6 +327,18 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => { setIsDeleteModalOpen(false); setItemToDelete(null); }}
+                onConfirm={confirmDelete}
+                title="Delete Item"
+                message="Are you sure you want to delete this takeoff item? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 };

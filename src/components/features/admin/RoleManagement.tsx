@@ -2,17 +2,23 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, ConfirmModal, useToast } from '@/components/ui';
 import { RoleCard } from './RoleCard';
 import { RoleFormModal } from './RoleFormModal';
 import { RoleWithPermissions } from '@/types/permissions';
 
 export const RoleManagement: React.FC = () => {
+  const toast = useToast();
   const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleWithPermissions | null>(null);
+
+  // Delete confirmation state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch roles
   const fetchRoles = useCallback(async () => {
@@ -52,28 +58,43 @@ export const RoleManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Handle delete
-  const handleDelete = async (roleId: string, roleName: string) => {
-    if (!confirm(`Are you sure you want to delete the "${roleName}" role?`)) {
-      return;
-    }
+  // Open delete confirmation
+  const openDeleteModal = (roleId: string, roleName: string) => {
+    setRoleToDelete({ id: roleId, name: roleName });
+    setIsDeleteModalOpen(true);
+  };
 
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!roleToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/admin/roles/${roleId}`, {
+      const response = await fetch(`/api/admin/roles/${roleToDelete.id}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (data.success) {
+        toast.success('Role Deleted', `"${roleToDelete.name}" has been removed.`);
         fetchRoles();
       } else {
-        alert(data.error || 'Failed to delete role');
+        toast.error('Delete Failed', data.error || 'Failed to delete role');
       }
     } catch (err) {
       console.error('Failed to delete role:', err);
-      alert('An unexpected error occurred');
+      toast.error('Error', 'An unexpected error occurred');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setRoleToDelete(null);
     }
+  };
+
+  // Handle delete (called from RoleCard)
+  const handleDelete = (roleId: string, roleName: string) => {
+    openDeleteModal(roleId, roleName);
   };
 
   // Handle modal close and refresh
@@ -149,6 +170,19 @@ export const RoleManagement: React.FC = () => {
         isOpen={isModalOpen}
         onClose={handleModalClose}
         role={editingRole}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setRoleToDelete(null); }}
+        onConfirm={confirmDelete}
+        title="Delete Role"
+        message={`Are you sure you want to delete the "${roleToDelete?.name}" role? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
       />
     </div>
   );

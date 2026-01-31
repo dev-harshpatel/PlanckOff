@@ -6,7 +6,7 @@ import { ProjectSummary } from '@/types';
 import { PROJECT_STATUSES } from '@/constants';
 import { getStatusColor } from '@/lib/utils/projectUtils';
 import { ProjectModal } from '@/components/features/project/ProjectModal';
-import { Button, IconButton, SearchInput, FilterSelect } from '@/components/ui';
+import { Button, IconButton, SearchInput, FilterSelect, ConfirmModal, useToast } from '@/components/ui';
 
 interface DashboardProps {
   onOpenProject: (project?: ProjectSummary) => void;
@@ -137,6 +137,7 @@ const ProjectCard: React.FC<{
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
+  const toast = useToast();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberDropdownItem[]>([]);
@@ -149,6 +150,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   // Modal State
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
+
+  // Delete Confirmation State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<ProjectSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Creating project loading state
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   // Fetch projects from API
   const fetchProjects = useCallback(async () => {
@@ -211,6 +220,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
   // Create or Update project
   const handleCreateOrUpdateProject = async (projectData: ProjectSummary) => {
+    // Close modal first
+    setIsProjectModalOpen(false);
+
     try {
       if (editingProject) {
         // Update existing project
@@ -231,10 +243,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
         if (data.success) {
           setProjects(prev => prev.map(p => p.id === editingProject.id ? data.project : p));
+          toast.success('Project Updated', 'Project has been updated successfully.');
         } else {
-          alert(data.error || 'Failed to update project');
+          toast.error('Update Failed', data.error || 'Failed to update project');
         }
       } else {
+        // Show loading overlay for new project creation
+        setIsCreatingProject(true);
+
         // Create new project
         const response = await fetch('/api/projects', {
           method: 'POST',
@@ -253,18 +269,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
         if (data.success) {
           setProjects(prev => [data.project, ...prev]);
+          // Navigate to the new project (loading overlay stays visible until navigation completes)
           onOpenProject(data.project);
         } else {
-          alert(data.error || 'Failed to create project');
+          setIsCreatingProject(false);
+          toast.error('Creation Failed', data.error || 'Failed to create project');
         }
       }
     } catch (err) {
       console.error('Error saving project:', err);
-      alert('Failed to save project');
+      setIsCreatingProject(false);
+      toast.error('Error', 'Failed to save project. Please try again.');
     }
 
     setEditingProject(null);
-    setIsProjectModalOpen(false);
   };
 
   // Quick update project (for inline status/assignee changes)
@@ -294,24 +312,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     setIsProjectModalOpen(true);
   };
 
-  const handleDelete = async (e: React.MouseEvent, projectId: string) => {
+  // Open delete confirmation modal
+  const openDeleteModal = (e: React.MouseEvent, project: ProjectSummary) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this project?')) return;
+    setProjectToDelete(project);
+    setIsDeleteModalOpen(true);
+  };
 
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!projectToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/projects/${projectId}`, {
+      const response = await fetch(`/api/projects/${projectToDelete.id}`, {
         method: 'DELETE',
       });
       const data = await response.json();
 
       if (data.success) {
-        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
+        toast.success('Project Deleted', `"${projectToDelete.name}" has been deleted.`);
       } else {
-        alert(data.error || 'Failed to delete project');
+        toast.error('Delete Failed', data.error || 'Failed to delete project');
       }
     } catch (err) {
       console.error('Error deleting project:', err);
-      alert('Failed to delete project');
+      toast.error('Error', 'Failed to delete project. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setProjectToDelete(null);
     }
   };
 
@@ -539,7 +570,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                       teamMembers={teamMembers}
                       onOpen={onOpenProject}
                       onEdit={(e) => openEditModal(e, project)}
-                      onDelete={(e) => handleDelete(e, project.id)}
+                      onDelete={(e) => openDeleteModal(e, project)}
                       onUpdate={handleQuickUpdate}
                     />
                   ))}
@@ -611,7 +642,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                       />
                       <IconButton
                         icon={Trash2}
-                        onClick={(e) => handleDelete(e, project.id)}
+                        onClick={(e) => openDeleteModal(e, project)}
                         variant="danger"
                         tooltip="Delete Project"
                       />
@@ -632,6 +663,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         projectToEdit={editingProject}
         teamMembers={teamMembers}
       />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setProjectToDelete(null); }}
+        onConfirm={confirmDelete}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${projectToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
+
+      {/* Creating Project Loading Overlay */}
+      {isCreatingProject && (
+        <div className="fixed inset-0 z-[9999] bg-white/90 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-white shadow-xl border border-slate-200">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">Creating Project</h3>
+              <p className="text-sm text-slate-500">Setting up your new project...</p>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

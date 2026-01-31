@@ -28,3 +28,6 @@ export { StatusToggle } from './StatusToggle';
 
 export { ToastProvider, useToast } from './Toast';
 export type { Toast, ToastType } from './Toast';
+
+export { ConfirmModal } from './ConfirmModal';
+export type { ConfirmModalVariant } from './ConfirmModal';

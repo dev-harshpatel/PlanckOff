@@ -1,10 +1,10 @@
 'use client';
 
-
 import React, { useMemo, useState } from 'react';
 import { WallAssembly, TakeoffInstance, MaterialDefinition } from '@/types';
 import { calculateMaterials } from '@/services/gemini/calculateMaterials';
 import { ChevronRight, ChevronDown, Check, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { ConfirmModal } from '@/components/ui';
 
 interface AssemblySummaryGridProps {
     assemblies: WallAssembly[];
@@ -41,6 +41,23 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
     onDeleteAssembly
 }) => {
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    // Delete confirmation state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [assemblyToDelete, setAssemblyToDelete] = useState<{ id: string; name: string } | null>(null);
+
+    const openDeleteModal = (id: string, name: string) => {
+        setAssemblyToDelete({ id, name });
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (assemblyToDelete && onDeleteAssembly) {
+            onDeleteAssembly(assemblyToDelete.id);
+        }
+        setIsDeleteModalOpen(false);
+        setAssemblyToDelete(null);
+    };
 
     // Calculate Summary Data
     const summaryRows: SummaryRow[] = useMemo(() => {
@@ -194,9 +211,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (confirm("Delete this assembly and all its instances?")) {
-                                                onDeleteAssembly(row.id);
-                                            }
+                                            openDeleteModal(row.id, row.name);
                                         }}
                                         className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-red-100 hover:text-red-600 hidden group-hover:flex
                                             ${selectedAssemblyId === row.id ? 'text-white hover:text-red-200 hover:bg-white/20' : 'text-slate-400'}
@@ -211,6 +226,18 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                     </div>
                 ))}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => { setIsDeleteModalOpen(false); setAssemblyToDelete(null); }}
+                onConfirm={confirmDelete}
+                title="Delete Assembly"
+                message={`Are you sure you want to delete "${assemblyToDelete?.name}" and all its instances? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 };

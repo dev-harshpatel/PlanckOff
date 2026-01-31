@@ -16,7 +16,7 @@ import { TakeoffScheduleView } from '@/components/features/project/TakeoffSchedu
 import { AssemblySummaryGrid } from '@/components/features/project/AssemblySummaryGrid';
 import { FORMULA_DEFINITIONS } from '@/constants/formulas';
 import { detectLengthFt, getFilteredFormulas, getRowDetails, parsePer } from '@/lib/utils/calculationUtils';
-import { Button, IconButton, SearchInput, Modal } from '@/components/ui';
+import { Button, IconButton, SearchInput, Modal, ConfirmModal, useToast } from '@/components/ui';
 
 interface EstimateResultProps {
     assemblies: WallAssembly[];
@@ -72,6 +72,11 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     const [isManageScopesOpen, setIsManageScopesOpen] = useState(false);
     const [newScopeName, setNewScopeName] = useState('');
 
+    // Toast and confirmation modals
+    const toast = useToast();
+    const [isScopeDeleteModalOpen, setIsScopeDeleteModalOpen] = useState(false);
+    const [scopeToDelete, setScopeToDelete] = useState<string | null>(null);
+
     const [rowSearchOpen, setRowSearchOpen] = useState<string | null>(null);
     const [rowSearchQuery, setRowSearchQuery] = useState('');
     const [formulaDropdownOpen, setFormulaDropdownOpen] = useState<string | null>(null);
@@ -123,13 +128,25 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         }
     };
 
-    const handleDeleteScope = (scope: string) => {
+    const openScopeDeleteModal = (scope: string) => {
         if (scope === 'Base Bid') return; // Protect Base Bid
-        if (confirm(`Remove scope "${scope}"? Assemblies in this scope will default to Base Bid.`)) {
-            setPricingScopes(prev => prev.filter(s => s !== scope));
+        setScopeToDelete(scope);
+        setIsScopeDeleteModalOpen(true);
+    };
+
+    const confirmScopeDelete = () => {
+        if (scopeToDelete) {
+            setPricingScopes(prev => prev.filter(s => s !== scopeToDelete));
             // Reset assemblies in deleted scope
-            setAssemblies(prev => prev.map(a => (a as WallAssembly & { scope?: string }).scope === scope ? { ...a, scope: 'Base Bid' } : a));
+            setAssemblies(prev => prev.map(a => (a as WallAssembly & { scope?: string }).scope === scopeToDelete ? { ...a, scope: 'Base Bid' } : a));
+            toast.success('Scope Removed', `"${scopeToDelete}" has been removed. Assemblies moved to Base Bid.`);
         }
+        setIsScopeDeleteModalOpen(false);
+        setScopeToDelete(null);
+    };
+
+    const handleDeleteScope = (scope: string) => {
+        openScopeDeleteModal(scope);
     };
 
     const [sidebarWidth, setSidebarWidth] = useState(40);
@@ -644,8 +661,9 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
             setAssemblies(currentAssemblies);
             setTakeoffs(newTakeoffs);
             e.target.value = '';
+            toast.success('Schedule Imported', 'Schedule data has been loaded successfully.');
         } catch (err) {
-            alert("Error parsing schedule");
+            toast.error('Import Failed', 'Error parsing schedule. Please check the file format.');
         }
     };
 
@@ -1075,6 +1093,18 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                     <div className="fixed inset-0 z-50 cursor-col-resize" />
                 )
             }
+
+            {/* Scope Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isScopeDeleteModalOpen}
+                onClose={() => { setIsScopeDeleteModalOpen(false); setScopeToDelete(null); }}
+                onConfirm={confirmScopeDelete}
+                title="Remove Scope"
+                message={`Remove scope "${scopeToDelete}"? Assemblies in this scope will default to Base Bid.`}
+                confirmText="Remove"
+                cancelText="Cancel"
+                variant="warning"
+            />
         </div >
     );
 };

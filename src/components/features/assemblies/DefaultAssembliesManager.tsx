@@ -7,7 +7,7 @@ import { AssemblyTemplate } from '@/constants/defaultAssemblies';
 import { AssemblyEditorModal } from '@/components/features/project/AssemblyEditorModal';
 import { getRowDetails } from '@/lib/utils/calculationUtils';
 import { v4 as uuidv4 } from 'uuid';
-import { Button, IconButton, SearchInput } from '@/components/ui';
+import { Button, IconButton, SearchInput, ConfirmModal, useToast } from '@/components/ui';
 
 interface DefaultAssembliesManagerProps {
     templates: AssemblyTemplate[];
@@ -16,12 +16,17 @@ interface DefaultAssembliesManagerProps {
 }
 
 export const DefaultAssembliesManager: React.FC<DefaultAssembliesManagerProps> = ({ templates, onUpdateTemplates, materials }) => {
+    const toast = useToast();
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [editingTemplateIndex, setEditingTemplateIndex] = useState<number | null>(null);
 
     const [mockAssembly, setMockAssembly] = useState<WallAssembly | null>(null);
     const [mockInstances, setMockInstances] = useState<TakeoffInstance[]>([]);
+
+    // Delete confirmation state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState<{ index: number; name: string } | null>(null);
 
     const filteredTemplates = templates.filter(t => {
         const matchSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,12 +75,23 @@ export const DefaultAssembliesManager: React.FC<DefaultAssembliesManagerProps> =
         setMockAssembly(null);
     };
 
+    const openDeleteModal = (index: number) => {
+        setTemplateToDelete({ index, name: templates[index].name });
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (templateToDelete === null) return;
+        const newTemplates = [...templates];
+        newTemplates.splice(templateToDelete.index, 1);
+        onUpdateTemplates(newTemplates);
+        toast.success('Template Deleted', `"${templateToDelete.name}" has been removed.`);
+        setIsDeleteModalOpen(false);
+        setTemplateToDelete(null);
+    };
+
     const handleDelete = (index: number) => {
-        if (confirm('Are you sure you want to delete this default assembly template?')) {
-            const newTemplates = [...templates];
-            newTemplates.splice(index, 1);
-            onUpdateTemplates(newTemplates);
-        }
+        openDeleteModal(index);
     };
 
     const handleDuplicate = (index: number) => {
@@ -314,6 +330,18 @@ export const DefaultAssembliesManager: React.FC<DefaultAssembliesManagerProps> =
                     onLoadTemplate={handleLoadMockTemplate}
                 />
             )}
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => { setIsDeleteModalOpen(false); setTemplateToDelete(null); }}
+                onConfirm={confirmDelete}
+                title="Delete Template"
+                message={`Are you sure you want to delete "${templateToDelete?.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 };

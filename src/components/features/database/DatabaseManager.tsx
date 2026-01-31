@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { MaterialDefinition } from '@/types';
 import { Search, Plus, Download, Upload, X, Save, Trash2, Database } from 'lucide-react';
 import { read, utils, writeFile } from 'xlsx';
-import { Button, IconButton, SearchInput } from '@/components/ui';
+import { Button, IconButton, SearchInput, ConfirmModal, useToast } from '@/components/ui';
 
 interface DatabaseManagerProps {
     materials: MaterialDefinition[];
@@ -12,9 +12,17 @@ interface DatabaseManagerProps {
 }
 
 export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onUpdateMaterials }) => {
+    const toast = useToast();
     const [dbCategory, setDbCategory] = useState<string>('All');
     const [dbSearch, setDbSearch] = useState('');
     const [isAddingMat, setIsAddingMat] = useState(false);
+
+    // Delete confirmation state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [materialToDelete, setMaterialToDelete] = useState<{ code: string; name: string } | null>(null);
+
+    // Calc productivity confirmation state
+    const [isCalcProdModalOpen, setIsCalcProdModalOpen] = useState(false);
 
     const [newMaterial, setNewMaterial] = useState<Partial<MaterialDefinition>>({
         category: 'Framing',
@@ -95,10 +103,23 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
         onUpdateMaterials(updated);
     };
 
-    const handleDeleteMaterial = (code: string) => {
-        if (confirm('Delete this material?')) {
-            onUpdateMaterials(materials.filter(m => m.code !== code));
+    const openDeleteModal = (code: string, name: string) => {
+        setMaterialToDelete({ code, name });
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDeleteMaterial = () => {
+        if (materialToDelete) {
+            onUpdateMaterials(materials.filter(m => m.code !== materialToDelete.code));
+            toast.success('Material Deleted', `"${materialToDelete.name}" has been removed.`);
         }
+        setIsDeleteModalOpen(false);
+        setMaterialToDelete(null);
+    };
+
+    const handleDeleteMaterial = (code: string) => {
+        const material = materials.find(m => m.code === code);
+        openDeleteModal(code, material?.description || 'Unknown');
     };
 
     const handleExportDatabase = () => {
@@ -107,9 +128,10 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
             const wb = utils.book_new();
             utils.book_append_sheet(wb, ws, "Materials");
             writeFile(wb, "DrywallSpec_Database.xlsx");
+            toast.success('Export Complete', 'Database exported successfully.');
         } catch (e) {
             console.error("Export failed", e);
-            alert("Failed to export database.");
+            toast.error('Export Failed', 'Failed to export database.');
         }
     };
 
@@ -124,13 +146,25 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
 
             if (jsonData.length > 0) {
                 onUpdateMaterials(jsonData);
-                alert(`Successfully imported ${jsonData.length} items.`);
+                toast.success('Import Complete', `Successfully imported ${jsonData.length} items.`);
             }
         } catch (err) {
             console.error("Import failed", err);
-            alert("Failed to import database. Ensure the file format is correct.");
+            toast.error('Import Failed', 'Failed to import database. Ensure the file format is correct.');
         }
         e.target.value = '';
+    };
+
+    const confirmCalcProductivity = () => {
+        const updated = materials.map(m => {
+            if (m.category === 'Labor' && m.matCost > 0 && !m.productivity) {
+                return { ...m, productivity: parseFloat((65 / m.matCost).toFixed(2)) };
+            }
+            return m;
+        });
+        onUpdateMaterials(updated);
+        toast.success('Calculation Complete', 'Productivity values have been updated.');
+        setIsCalcProdModalOpen(false);
     };
 
     const filteredDbMaterials = materials.filter(m => {
@@ -169,17 +203,7 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
                     <Button
                         variant="secondary"
                         icon={Database}
-                        onClick={() => {
-                            if (confirm('Auto-calculate Productivity from Cost (assuming $65/hr)? This will overwrite existing productivity values for Labor items.')) {
-                                const updated = materials.map(m => {
-                                    if (m.category === 'Labor' && m.matCost > 0 && !m.productivity) {
-                                        return { ...m, productivity: parseFloat((65 / m.matCost).toFixed(2)) };
-                                    }
-                                    return m;
-                                });
-                                onUpdateMaterials(updated);
-                            }
-                        }}
+                        onClick={() => setIsCalcProdModalOpen(true)}
                     >
                         Calc Prod
                     </Button>
@@ -365,6 +389,30 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => { setIsDeleteModalOpen(false); setMaterialToDelete(null); }}
+                onConfirm={confirmDeleteMaterial}
+                title="Delete Material"
+                message={`Are you sure you want to delete "${materialToDelete?.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
+
+            {/* Calc Productivity Confirmation Modal */}
+            <ConfirmModal
+                isOpen={isCalcProdModalOpen}
+                onClose={() => setIsCalcProdModalOpen(false)}
+                onConfirm={confirmCalcProductivity}
+                title="Calculate Productivity"
+                message="Auto-calculate Productivity from Cost (assuming $65/hr)? This will update productivity values for Labor items that don't have one set."
+                confirmText="Calculate"
+                cancelText="Cancel"
+                variant="warning"
+            />
         </div>
     );
 };

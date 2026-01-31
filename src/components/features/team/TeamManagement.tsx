@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Mail, Plus, Shield, User, Users, Check, Trash2, Edit2, Loader2, AlertCircle, Send, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Modal, ModalBody, ModalFooter, FormField, SelectField, Button } from '@/components/ui';
+import { Modal, ModalBody, ModalFooter, FormField, SelectField, Button, ConfirmModal, useToast } from '@/components/ui';
 import { TeamMemberWithRole, RoleName, InviteFormData } from '@/types/team';
 import { useAuth } from '@/context/AuthContext';
 import { ROLE_OPTIONS, getInvitableRoles, ROLE_LEVELS } from '@/constants/roles';
@@ -13,12 +13,18 @@ type ModalMode = 'invite' | 'edit';
 export const TeamManagement: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const [members, setMembers] = useState<TeamMemberWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Delete confirmation state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<TeamMemberWithRole | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('invite');
   const [editingMember, setEditingMember] = useState<TeamMemberWithRole | null>(null);
   const [preSelectedRole, setPreSelectedRole] = useState<RoleName | null>(null);
@@ -171,27 +177,37 @@ export const TeamManagement: React.FC = () => {
     }
   };
 
-  // Handle delete
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this team member?')) {
-      return;
-    }
+  // Open delete confirmation modal
+  const openDeleteModal = (member: TeamMemberWithRole) => {
+    setMemberToDelete(member);
+    setIsDeleteModalOpen(true);
+  };
 
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!memberToDelete) return;
+
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/team/members/${id}`, {
+      const response = await fetch(`/api/team/members/${memberToDelete.id}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (data.success) {
+        toast.success('Member Removed', `${memberToDelete.name} has been removed from the team.`);
         fetchMembers();
       } else {
-        alert(data.error || 'Failed to delete member');
+        toast.error('Delete Failed', data.error || 'Failed to delete member');
       }
     } catch (err) {
       console.error('Failed to delete member:', err);
-      alert('An unexpected error occurred');
+      toast.error('Error', 'An unexpected error occurred');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setMemberToDelete(null);
     }
   };
 
@@ -295,7 +311,7 @@ export const TeamManagement: React.FC = () => {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(member.id)}
+                      onClick={() => openDeleteModal(member)}
                       className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50"
                       title="Remove Member"
                     >
@@ -462,6 +478,19 @@ export const TeamManagement: React.FC = () => {
           </ModalFooter>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setMemberToDelete(null); }}
+        onConfirm={confirmDelete}
+        title="Remove Team Member"
+        message={`Are you sure you want to remove "${memberToDelete?.name}" from the team? This action cannot be undone.`}
+        confirmText="Remove"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 };
