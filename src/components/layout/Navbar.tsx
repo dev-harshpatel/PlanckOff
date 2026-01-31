@@ -52,6 +52,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/database",
     label: "Database",
     icon: Database,
+    allowedRoles: ["Administrator", "Team Lead"],
   },
   {
     href: "/assemblies",

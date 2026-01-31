@@ -25,3 +25,6 @@ export { EmptyState } from './EmptyState';
 export { NumberInput } from './NumberInput';
 export { MaterialSearch } from './MaterialSearch';
 export { StatusToggle } from './StatusToggle';
+
+export { ToastProvider, useToast } from './Toast';
+export type { Toast, ToastType } from './Toast';

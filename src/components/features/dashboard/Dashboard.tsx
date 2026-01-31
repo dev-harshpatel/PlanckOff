@@ -1,25 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ArrowUpRight, Briefcase, Check, Edit2, Grid, Hash, List as ListIcon, MapPin, Plus, Search, Trash2, User, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowUpRight, Briefcase, Check, Edit2, Grid, Hash, List as ListIcon, MapPin, Plus, Search, Trash2, User, Calendar, Loader2 } from 'lucide-react';
 import { ProjectSummary } from '@/types';
-import { PROJECT_STATUSES, TEAM_MEMBERS } from '@/constants';
+import { PROJECT_STATUSES } from '@/constants';
 import { getStatusColor } from '@/lib/utils/projectUtils';
 import { ProjectModal } from '@/components/features/project/ProjectModal';
-import { Button, IconButton, SearchInput, StatusBadge, FilterSelect } from '@/components/ui';
+import { Button, IconButton, SearchInput, FilterSelect } from '@/components/ui';
 
 interface DashboardProps {
   onOpenProject: (project?: ProjectSummary) => void;
 }
 
-// --- Inline ProjectCard Component (To be extracted to components/project/ProjectCard.tsx) ---
+interface TeamMemberDropdownItem {
+  id: string;
+  name: string;
+  role: string;
+}
+
+// --- Inline ProjectCard Component ---
 const ProjectCard: React.FC<{
   project: ProjectSummary;
+  teamMembers: TeamMemberDropdownItem[];
   onOpen: (p: ProjectSummary) => void;
   onEdit: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
   onUpdate: (updated: ProjectSummary) => void;
-}> = ({ project, onOpen, onEdit, onDelete, onUpdate }) => {
+}> = ({ project, teamMembers, onOpen, onEdit, onDelete, onUpdate }) => {
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [isEditingAssignee, setIsEditingAssignee] = useState(false);
 
@@ -41,7 +48,7 @@ const ProjectCard: React.FC<{
               className="text-xs border border-blue-300 rounded px-1 py-0.5 outline-none"
               value={project.status}
               onChange={(e) => {
-                onUpdate({ ...project, status: e.target.value as any });
+                onUpdate({ ...project, status: e.target.value as ProjectSummary['status'] });
                 setIsEditingStatus(false);
               }}
               onBlur={() => setIsEditingStatus(false)}
@@ -65,7 +72,7 @@ const ProjectCard: React.FC<{
       <div className="space-y-3">
         <div className="flex items-center text-sm text-slate-600 gap-2">
           <div className="w-6 flex justify-center"><Calendar className="w-4 h-4 text-emerald-500" /></div>
-          <span className="font-medium">{project.dueDate}</span>
+          <span className="font-medium">{project.dueDate || 'No due date'}</span>
         </div>
 
         <div className="flex items-center text-sm text-slate-600 gap-2">
@@ -75,17 +82,16 @@ const ProjectCard: React.FC<{
               <select
                 autoFocus
                 className="w-full text-xs border border-blue-300 rounded px-1 py-0.5 outline-none"
-                value={TEAM_MEMBERS.find(m => m.name === project.assignedTo)?.id || 'u1'}
+                value={teamMembers.find(m => m.name === project.assignedTo)?.id || ''}
                 onChange={(e) => {
-                  const newMember = TEAM_MEMBERS.find(m => m.id === e.target.value);
-                  if (newMember) {
-                    onUpdate({ ...project, assignedTo: newMember.name });
-                  }
+                  const newMember = teamMembers.find(m => m.id === e.target.value);
+                  onUpdate({ ...project, assignedTo: newMember?.name || 'Unassigned' });
                   setIsEditingAssignee(false);
                 }}
                 onBlur={() => setIsEditingAssignee(false)}
               >
-                {TEAM_MEMBERS.filter(m => m.id !== 'all').map(m => (
+                <option value="">Unassigned</option>
+                {teamMembers.map(m => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
@@ -130,40 +136,63 @@ const ProjectCard: React.FC<{
   );
 };
 
-const INITIAL_PROJECTS: ProjectSummary[] = [
-  {
-    id: 'p1',
-    name: 'Downtown Office Tower',
-    company: 'Major Corp',
-    status: 'Working Project Progress',
-    dueDate: '27 Nov 2025',
-    projectNumber: '2023-001',
-    assignedTo: 'Demo User (Me)',
-    location: 'New York, NY'
-  },
-  {
-    id: 'p2',
-    name: 'Suburban Retail Center',
-    company: 'Retail Giant',
-    status: 'Hold',
-    dueDate: '7 Dec 2025',
-    projectNumber: '2023-002',
-    assignedTo: 'Sarah Jenkins',
-    location: 'Austin, TX'
-  }
-];
-
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [projects, setProjects] = useState<ProjectSummary[]>(INITIAL_PROJECTS);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberDropdownItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Modal State
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
 
+  // Fetch projects from API
+  const fetchProjects = useCallback(async () => {
+    try {
+      const response = await fetch('/api/projects');
+      const data = await response.json();
+
+      if (data.success) {
+        setProjects(data.projects || []);
+        setError(null);
+      } else {
+        setError(data.error || 'Failed to fetch projects');
+      }
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      setError('Failed to fetch projects');
+    }
+  }, []);
+
+  // Fetch team members from API
+  const fetchTeamMembers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/team/dropdown');
+      const data = await response.json();
+
+      if (data.success) {
+        setTeamMembers(data.members || []);
+      }
+    } catch (err) {
+      console.error('Error fetching team members:', err);
+    }
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      await Promise.all([fetchProjects(), fetchTeamMembers()]);
+      setIsLoading(false);
+    };
+    loadData();
+  }, [fetchProjects, fetchTeamMembers]);
+
+  // Filter projects for display
   const filteredProjects = projects.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -171,24 +200,92 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       (p.location && p.location.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
     const matchesAssignee = assigneeFilter === 'all' ||
-      (assigneeFilter === 'u1' && p.assignedTo === 'Demo User (Me)') ||
-      (assigneeFilter === 'u2' && p.assignedTo === 'Sarah Jenkins') ||
-      (assigneeFilter === 'u3' && p.assignedTo === 'Mike Ross') ||
-      (!p.assignedTo && assigneeFilter === 'unassigned');
+      (assigneeFilter === 'unassigned' && !p.assignedTo) ||
+      teamMembers.find(m => m.id === assigneeFilter)?.name === p.assignedTo;
     return matchesSearch && matchesStatus && matchesAssignee;
-  }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  }).sort((a, b) => {
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+  });
 
-  const handleCreateOrUpdateProject = (projectData: ProjectSummary) => {
-    if (editingProject) {
-      // Update existing
-      setProjects(prev => prev.map(p => p.id === editingProject.id ? projectData : p));
-      setEditingProject(null);
-    } else {
-      // Create new
-      setProjects(prev => [projectData, ...prev]);
-      onOpenProject(projectData); // Auto-open new projects? Optional.
+  // Create or Update project
+  const handleCreateOrUpdateProject = async (projectData: ProjectSummary) => {
+    try {
+      if (editingProject) {
+        // Update existing project
+        const response = await fetch(`/api/projects/${editingProject.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: projectData.name,
+            company: projectData.company,
+            status: projectData.status,
+            dueDate: projectData.dueDate,
+            projectNumber: projectData.projectNumber,
+            assignedTo: projectData.assignedTo,
+            location: projectData.location,
+          }),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setProjects(prev => prev.map(p => p.id === editingProject.id ? data.project : p));
+        } else {
+          alert(data.error || 'Failed to update project');
+        }
+      } else {
+        // Create new project
+        const response = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: projectData.name,
+            company: projectData.company,
+            status: projectData.status,
+            dueDate: projectData.dueDate,
+            projectNumber: projectData.projectNumber,
+            assignedTo: projectData.assignedTo,
+            location: projectData.location,
+          }),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setProjects(prev => [data.project, ...prev]);
+          onOpenProject(data.project);
+        } else {
+          alert(data.error || 'Failed to create project');
+        }
+      }
+    } catch (err) {
+      console.error('Error saving project:', err);
+      alert('Failed to save project');
     }
+
+    setEditingProject(null);
     setIsProjectModalOpen(false);
+  };
+
+  // Quick update project (for inline status/assignee changes)
+  const handleQuickUpdate = async (updated: ProjectSummary) => {
+    try {
+      const response = await fetch(`/api/projects/${updated.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: updated.status,
+          assignedTo: updated.assignedTo,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setProjects(prev => prev.map(p => p.id === updated.id ? data.project : p));
+      }
+    } catch (err) {
+      console.error('Error updating project:', err);
+    }
   };
 
   const openEditModal = (e: React.MouseEvent, project: ProjectSummary) => {
@@ -197,12 +294,69 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     setIsProjectModalOpen(true);
   };
 
-  const handleDelete = (e: React.MouseEvent, projectId: string) => {
+  const handleDelete = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this project?')) {
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+    if (!confirm('Are you sure you want to delete this project?')) return;
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+      } else {
+        alert(data.error || 'Failed to delete project');
+      }
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      alert('Failed to delete project');
     }
   };
+
+  // Calculate status counts from ALL projects (not filtered)
+  const statusCounts = {
+    'Working Project Progress': projects.filter(p => p.status === 'Working Project Progress').length,
+    'Under Review': projects.filter(p => p.status === 'Under Review').length,
+    'Submitted': projects.filter(p => p.status === 'Submitted').length,
+    'Hold': projects.filter(p => p.status === 'Hold').length,
+    'Archive': projects.filter(p => p.status === 'Archive').length,
+  };
+
+  // Build assignee dropdown options
+  const assigneeOptions = [
+    { value: 'all', label: 'All Members' },
+    ...teamMembers.map(m => ({ value: m.id, label: m.name })),
+    { value: 'unassigned', label: 'Unassigned' },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="w-full mx-auto p-6 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+          <p className="text-slate-500">Loading projects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => { setError(null); fetchProjects(); }}
+            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mx-auto p-6 space-y-8">
@@ -224,17 +378,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         </div>
       </div>
 
-      {/* Chevron Status Bar */}
+      {/* Chevron Status Bar - Uses ALL projects for counts */}
       <div className="flex w-full overflow-x-auto pb-2 mb-4 scrollbar-thin">
         <div className="flex w-full min-w-max bg-white rounded-lg border border-slate-200 shadow-sm divide-x divide-slate-100">
           {[
-            { label: 'Working Project Progress', icon: Briefcase, color: 'text-emerald-600', count: filteredProjects.filter(p => p.status === 'Working Project Progress').length },
-            { label: 'Under Review', icon: Search, color: 'text-amber-600', count: filteredProjects.filter(p => p.status === 'Under Review').length },
-            { label: 'Submitted', icon: Check, color: 'text-blue-600', count: filteredProjects.filter(p => p.status === 'Submitted').length },
-            { label: 'Hold', icon: Hash, color: 'text-slate-600', count: filteredProjects.filter(p => p.status === 'Hold').length },
-            { label: 'Archive', icon: Trash2, color: 'text-purple-600', count: filteredProjects.filter(p => p.status === 'Archive').length },
+            { label: 'Working Project Progress', icon: Briefcase, color: 'text-emerald-600' },
+            { label: 'Under Review', icon: Search, color: 'text-amber-600' },
+            { label: 'Submitted', icon: Check, color: 'text-blue-600' },
+            { label: 'Hold', icon: Hash, color: 'text-slate-600' },
+            { label: 'Archive', icon: Trash2, color: 'text-purple-600' },
           ].map((item, index, arr) => {
             const isActive = statusFilter === item.label;
+            const count = statusCounts[item.label as keyof typeof statusCounts];
             return (
               <button
                 key={item.label}
@@ -248,7 +403,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                 </div>
                 <div>
                   <div className={`text-xs font-medium uppercase tracking-wide mb-0.5 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`}>{item.label}</div>
-                  <div className={`text-lg font-bold ${isActive ? 'text-emerald-900' : 'text-slate-800'}`}>{item.count}</div>
+                  <div className={`text-lg font-bold ${isActive ? 'text-emerald-900' : 'text-slate-800'}`}>{count}</div>
                 </div>
                 {index !== arr.length - 1 && (
                   <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white rotate-45 border-t border-r border-slate-200 hidden md:block"></div>
@@ -283,7 +438,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
             <FilterSelect
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
-              options={TEAM_MEMBERS.map(m => ({ value: m.id, label: m.name }))}
+              options={assigneeOptions}
               showIcon={false}
             />
           </div>
@@ -305,8 +460,58 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         </div>
       </div>
 
+      {/* Empty State - No projects at all */}
+      {projects.length === 0 && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+            <Briefcase className="w-8 h-8 text-slate-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-700 mb-2">No projects yet</h3>
+          <p className="text-slate-500 mb-6">Get started by creating your first project.</p>
+          <Button
+            onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
+            variant="success"
+            icon={Plus}
+          >
+            Create Project
+          </Button>
+        </div>
+      )}
+
+      {/* Empty State - No projects match current filters */}
+      {projects.length > 0 && filteredProjects.length === 0 && (
+        <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-slate-200">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">
+            <Search className="w-10 h-10 text-amber-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-slate-800 mb-3">No projects found</h3>
+          <p className="text-slate-500 mb-8 max-w-md mx-auto px-4">
+            {statusFilter !== 'All'
+              ? `There are no projects with "${statusFilter}" status.`
+              : searchQuery
+                ? `No projects match your search "${searchQuery}".`
+                : 'No projects match your current filters.'}
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              onClick={() => { setStatusFilter('All'); setSearchQuery(''); setAssigneeFilter('all'); }}
+              variant="secondary"
+            >
+              Clear Filters
+            </Button>
+            <Button
+              onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
+              variant="success"
+              icon={Plus}
+            >
+              New Project
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Projects Grid View (Grouped) */}
-      {viewMode === 'grid' && (
+      {viewMode === 'grid' && filteredProjects.length > 0 && (
         <div className="space-y-10">
           {[
             { title: 'Working Project Progress', statuses: ['Working Project Progress'], icon: <Briefcase className="w-5 h-5 text-blue-600" /> },
@@ -331,10 +536,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                     <ProjectCard
                       key={project.id}
                       project={project}
+                      teamMembers={teamMembers}
                       onOpen={onOpenProject}
                       onEdit={(e) => openEditModal(e, project)}
                       onDelete={(e) => handleDelete(e, project.id)}
-                      onUpdate={(updated) => handleCreateOrUpdateProject(updated)}
+                      onUpdate={handleQuickUpdate}
                     />
                   ))}
                   {sectionProjects.length === 0 && (
@@ -351,7 +557,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       )}
 
       {/* Projects List View */}
-      {viewMode === 'list' && (
+      {viewMode === 'list' && filteredProjects.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -394,7 +600,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
                       {project.assignedTo || 'Unassigned'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-slate-600">{project.dueDate}</td>
+                  <td className="px-6 py-4 text-slate-600">{project.dueDate || '-'}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <IconButton
@@ -424,6 +630,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         onClose={() => { setIsProjectModalOpen(false); setEditingProject(null); }}
         onSubmit={handleCreateOrUpdateProject}
         projectToEdit={editingProject}
+        teamMembers={teamMembers}
       />
 
     </div>

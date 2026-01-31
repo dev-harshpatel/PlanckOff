@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
@@ -33,7 +34,14 @@ export const Modal: React.FC<ModalProps> = ({
     showCloseButton = true,
     closeOnOverlayClick = true,
 }) => {
-    if (!isOpen) return null;
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    if (!isOpen || !mounted) return null;
 
     const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (closeOnOverlayClick && e.target === e.currentTarget) {
@@ -41,9 +49,9 @@ export const Modal: React.FC<ModalProps> = ({
         }
     };
 
-    return (
+    const modalContent = (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            className="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
             onClick={handleOverlayClick}
         >
             <div
@@ -66,6 +74,9 @@ export const Modal: React.FC<ModalProps> = ({
             </div>
         </div>
     );
+
+    // Use portal to render at document body level
+    return createPortal(modalContent, document.body);
 };
 
 // Sub-components for better structure
