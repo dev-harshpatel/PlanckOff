@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -11,6 +11,7 @@ import {
   LogOut,
   Percent,
   Users,
+  Loader2,
 } from "lucide-react";
 import { AppState, ProjectSummary, WallAssembly } from "@/types";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
@@ -35,14 +36,47 @@ function ProjectContent() {
     "imperial"
   );
 
-  const [activeProject] = useState<ProjectSummary>({
+  const [activeProject, setActiveProject] = useState<ProjectSummary>({
     id: projectId || `new-${Date.now()}`,
-    name: "New Project",
-    company: "Client",
+    name: "Loading...",
+    company: "",
     status: "Working Project Progress",
     dueDate: "TBD",
-    projectNumber: "2024-00X",
+    projectNumber: "",
   });
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
+
+  // Fetch project data
+  useEffect(() => {
+    const fetchProject = async () => {
+      if (!projectId) {
+        setIsLoadingProject(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}`);
+        const data = await response.json();
+
+        if (data.success && data.project) {
+          setActiveProject({
+            id: data.project.id,
+            name: data.project.name || "Untitled Project",
+            company: data.project.company || "Client",
+            status: data.project.status || "Working Project Progress",
+            dueDate: data.project.dueDate || "TBD",
+            projectNumber: data.project.projectNumber || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch project:", err);
+      } finally {
+        setIsLoadingProject(false);
+      }
+    };
+
+    fetchProject();
+  }, [projectId]);
 
   const handleAnalyze = async (file: File) => {
     setState(AppState.ANALYZING);
@@ -99,15 +133,28 @@ function ProjectContent() {
             </button>
             <div className="h-6 w-px bg-slate-200" />
             <div>
-              <h1 className="text-base font-bold text-slate-900 leading-none flex items-center gap-2">
-                {activeProject.name}{" "}
-                <span className="text-slate-400 font-normal text-xs">
-                  | {activeProject.projectNumber}
-                </span>
-              </h1>
-              <p className="text-[10px] text-slate-500 font-medium mt-0.5 uppercase tracking-wide">
-                {activeProject.company}
-              </p>
+              {isLoadingProject ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                  <span className="text-sm text-slate-400">Loading project...</span>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-base font-bold text-slate-900 leading-none flex items-center gap-2">
+                    {activeProject.name}
+                    {activeProject.projectNumber && (
+                      <span className="text-slate-400 font-normal text-xs">
+                        | {activeProject.projectNumber}
+                      </span>
+                    )}
+                  </h1>
+                  {activeProject.company && (
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5 uppercase tracking-wide">
+                      {activeProject.company}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           </div>
 

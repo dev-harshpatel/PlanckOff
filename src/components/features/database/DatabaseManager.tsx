@@ -192,10 +192,11 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
                     >
                         Export
                     </Button>
-                    <label className="cursor-pointer">
+                    <label className="cursor-pointer group">
                         <Button
                             variant="secondary"
                             icon={Upload}
+                            className="pointer-events-none group-hover:bg-slate-50 group-hover:text-slate-900"
                         >
                             Import
                         </Button>
