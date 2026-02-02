@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import { WallAssembly } from '@/types';
 import { AssemblyTemplate } from '@/constants/defaultAssemblies';
 import { LayoutTemplate, Ruler } from 'lucide-react';
-import { FormField, SelectField, Button, NumberInput } from '@/components/ui';
+import { Button, FormField, NumberInput, SelectField } from '@/components/ui';
 
 interface AssemblyEditorSidebarProps {
     assembly: WallAssembly;
     tempAssembly: WallAssembly;
     setTempAssembly: (assembly: WallAssembly) => void;
-    updateAssemblyInfo: (id: string, field: keyof WallAssembly, value: any) => void;
+    updateAssemblyInfo: <K extends keyof WallAssembly>(id: string, field: K, value: WallAssembly[K]) => void;
     totalAggLength: number;
     statsByHeight: Record<string, { len: number, area: number, perim?: number }>;
     onLoadTemplate?: (template: AssemblyTemplate) => void;
@@ -100,10 +100,10 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                         <SelectField
                             label="Category"
                             value={tempAssembly.assemblyType || 'Wall'}
-                            onChange={(e) => {
-                                const val = e.target.value as any;
-                                setTempAssembly({ ...tempAssembly, assemblyType: val });
-                                updateAssemblyInfo(assembly.id, 'assemblyType', val);
+                            onValueChange={(val) => {
+                                const nextAssemblyType = val as WallAssembly['assemblyType'];
+                                setTempAssembly({ ...tempAssembly, assemblyType: nextAssemblyType });
+                                updateAssemblyInfo(assembly.id, 'assemblyType', nextAssemblyType);
                             }}
                             options={categoryOptions}
                         />
@@ -111,10 +111,10 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                             <SelectField
                                 label="Grid/Type"
                                 value={tempAssembly.ceilingSubtype || 'Suspended'}
-                                onChange={(e) => {
-                                    const val = e.target.value as any;
-                                    setTempAssembly({ ...tempAssembly, ceilingSubtype: val });
-                                    updateAssemblyInfo(assembly.id, 'ceilingSubtype', val);
+                                onValueChange={(val) => {
+                                    const nextSubtype = val as WallAssembly['ceilingSubtype'];
+                                    setTempAssembly({ ...tempAssembly, ceilingSubtype: nextSubtype });
+                                    updateAssemblyInfo(assembly.id, 'ceilingSubtype', nextSubtype);
                                 }}
                                 options={ceilingSubtypeOptions}
                             />
@@ -124,10 +124,10 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                     <SelectField
                         label="Framing Type"
                         value={tempAssembly.framingType || 'Light Metal'}
-                        onChange={(e) => {
-                            const val = e.target.value as any;
-                            setTempAssembly({ ...tempAssembly, framingType: val });
-                            updateAssemblyInfo(assembly.id, 'framingType', val);
+                        onValueChange={(val) => {
+                            const nextFramingType = val as WallAssembly['framingType'];
+                            setTempAssembly({ ...tempAssembly, framingType: nextFramingType });
+                            updateAssemblyInfo(assembly.id, 'framingType', nextFramingType);
                         }}
                         options={framingTypeOptions}
                     />

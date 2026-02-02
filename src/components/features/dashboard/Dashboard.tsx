@@ -6,7 +6,7 @@ import { ProjectSummary } from '@/types';
 import { PROJECT_STATUSES } from '@/constants';
 import { getStatusColor } from '@/lib/utils/projectUtils';
 import { ProjectModal } from '@/components/features/project/ProjectModal';
-import { Button, IconButton, SearchInput, FilterSelect, ConfirmModal, useToast } from '@/components/ui';
+import { Button, ConfirmModal, FilterSelect, IconButton, SearchInput, Select, useToast } from '@/components/ui';
 
 interface DashboardProps {
   onOpenProject: (project?: ProjectSummary) => void;
@@ -43,20 +43,20 @@ const ProjectCard: React.FC<{
 
         {isEditingStatus ? (
           <div onClick={e => e.stopPropagation()}>
-            <select
+            <Select
               autoFocus
-              className="text-xs border border-blue-300 rounded px-1 py-0.5 outline-none"
+              containerClassName="w-auto"
+              options={PROJECT_STATUSES.map((status) => ({ value: status, label: status }))}
+              size="xs"
               value={project.status}
-              onChange={(e) => {
-                onUpdate({ ...project, status: e.target.value as ProjectSummary['status'] });
+              onValueChange={(nextValue) => {
+                onUpdate({ ...project, status: nextValue as ProjectSummary['status'] });
                 setIsEditingStatus(false);
               }}
-              onBlur={() => setIsEditingStatus(false)}
-            >
-              {PROJECT_STATUSES.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
+              onClose={() => setIsEditingStatus(false)}
+              variant="filter"
+              aria-label="Project status"
+            />
           </div>
         ) : (
           <span
@@ -79,22 +79,24 @@ const ProjectCard: React.FC<{
           <div className="w-6 flex justify-center"><User className="w-4 h-4 text-slate-400" /></div>
           {isEditingAssignee ? (
             <div onClick={e => e.stopPropagation()} className="flex-1">
-              <select
+              <Select
                 autoFocus
-                className="w-full text-xs border border-blue-300 rounded px-1 py-0.5 outline-none"
+                containerClassName="w-full"
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
+                ]}
+                size="xs"
                 value={teamMembers.find(m => m.name === project.assignedTo)?.id || ''}
-                onChange={(e) => {
-                  const newMember = teamMembers.find(m => m.id === e.target.value);
+                onValueChange={(nextValue) => {
+                  const newMember = teamMembers.find(m => m.id === nextValue);
                   onUpdate({ ...project, assignedTo: newMember?.name || 'Unassigned' });
                   setIsEditingAssignee(false);
                 }}
-                onBlur={() => setIsEditingAssignee(false)}
-              >
-                <option value="">Unassigned</option>
-                {teamMembers.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
+                onClose={() => setIsEditingAssignee(false)}
+                variant="filter"
+                aria-label="Project assignee"
+              />
             </div>
           ) : (
             <span
@@ -459,7 +461,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <FilterSelect
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onValueChange={setStatusFilter}
               options={[
                 { value: 'All', label: 'All Status' },
                 ...PROJECT_STATUSES.map(status => ({ value: status, label: status }))
@@ -468,7 +470,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
 
             <FilterSelect
               value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
+              onValueChange={setAssigneeFilter}
               options={assigneeOptions}
               showIcon={false}
             />

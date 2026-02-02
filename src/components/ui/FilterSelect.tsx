@@ -1,37 +1,39 @@
 import React from 'react';
 import { Filter } from 'lucide-react';
 
-interface FilterSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-    label?: string;
+import { Select } from './Select';
+
+interface FilterSelectProps {
+    className?: string;
+    disabled?: boolean;
     options: { value: string; label: string }[];
     showIcon?: boolean;
+    value: string;
+    label?: string;
+    onValueChange: (value: string) => void;
 }
 
 export const FilterSelect: React.FC<FilterSelectProps> = ({
+    className = '',
+    disabled = false,
     label,
+    onValueChange,
     options,
     showIcon = true,
-    className = '',
-    ...props
+    value
 }) => {
     return (
-        <div className="flex items-center gap-2">
-            {showIcon && <Filter className="w-4 h-4 text-slate-400" />}
-            {label && <span className="text-xs text-slate-500">{label}</span>}
-            <select
-                className={`
-                    bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg
-                    focus:ring-blue-500 focus:border-blue-500 block p-2
-                    ${className}
-                `.trim().replace(/\s+/g, ' ')}
-                {...props}
-            >
-                {options.map(option => (
-                    <option key={option.value} value={option.value}>
-                        {option.label}
-                    </option>
-                ))}
-            </select>
-        </div>
+        <Select
+            containerClassName="w-auto"
+            disabled={disabled}
+            icon={showIcon ? Filter : undefined}
+            options={options}
+            size="sm"
+            variant="filter"
+            value={value}
+            className={className}
+            onValueChange={onValueChange}
+            aria-label={label || 'Filter'}
+        />
     );
 };

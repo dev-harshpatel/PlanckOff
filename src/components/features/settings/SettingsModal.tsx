@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Save, Key, Settings as SettingsIcon, Shield, Plus, Trash2, X } from 'lucide-react';
 import { AppSettings, UserRole } from '@/types';
-import { Modal, ModalBody, ModalFooter, FormField, SelectField, Button, IconButton, ConfirmModal, useToast } from '@/components/ui';
+import { Button, ConfirmModal, FormField, IconButton, Modal, ModalBody, ModalFooter, SelectField, useToast } from '@/components/ui';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -132,7 +132,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                         <SelectField
                                             label="Default Currency"
                                             value={localSettings.defaultCurrency || 'USD'}
-                                            onChange={(e) => setLocalSettings({ ...localSettings, defaultCurrency: e.target.value as any })}
+                                            onValueChange={(nextValue) => setLocalSettings({ ...localSettings, defaultCurrency: nextValue as AppSettings['defaultCurrency'] })}
                                             options={[
                                                 { value: 'USD', label: 'USD ($)' },
                                                 { value: 'CAD', label: 'CAD (C$)' },

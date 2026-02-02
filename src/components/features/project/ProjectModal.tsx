@@ -229,8 +229,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         icon={User}
                         required
                         value={formData.assignedTo}
-                        onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
+                        onValueChange={(nextValue) => setFormData({ ...formData, assignedTo: nextValue })}
                         options={teamMemberOptions}
+                        placeholder="Select a team member..."
                     />
 
                     <div>

@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { WallAssembly, TakeoffInstance } from '@/types';
 import { Plus, Trash2, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
-import { ConfirmModal } from '@/components/ui';
+import { ConfirmModal, Select } from '@/components/ui';
 
 interface TakeoffScheduleViewProps {
     assemblies: WallAssembly[];
@@ -155,28 +155,36 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                         <span className="text-xs font-bold uppercase">Filters:</span>
                     </div>
 
-                    <select
-                        className="bg-white border border-slate-300 text-xs rounded px-2 py-1 outline-none focus:border-blue-500"
+                    <Select
+                        containerClassName="w-auto"
+                        options={[
+                            { value: 'All', label: 'All Types' },
+                            { value: 'Interior Wall', label: 'Interior Walls' },
+                            { value: 'Exterior Wall', label: 'Exterior Walls' },
+                            { value: 'Ceiling', label: 'Ceilings' },
+                            { value: 'Soffit', label: 'Soffits' },
+                            { value: 'Bulkhead', label: 'Bulkheads' },
+                            { value: 'Hollow Metal Frame', label: 'Frames' },
+                        ]}
+                        size="xs"
                         value={filterType}
-                        onChange={(e) => setFilterType(e.target.value)}
-                    >
-                        <option value="All">All Types</option>
-                        <option value="Interior Wall">Interior Walls</option>
-                        <option value="Exterior Wall">Exterior Walls</option>
-                        <option value="Ceiling">Ceilings</option>
-                        <option value="Soffit">Soffits</option>
-                        <option value="Bulkhead">Bulkheads</option>
-                        <option value="Hollow Metal Frame">Frames</option>
-                    </select>
+                        variant="filter"
+                        onValueChange={setFilterType}
+                        aria-label="Filter by type"
+                    />
 
-                    <select
-                        className="bg-white border border-slate-300 text-xs rounded px-2 py-1 outline-none focus:border-blue-500 w-24"
+                    <Select
+                        containerClassName="w-28"
+                        options={[
+                            { value: 'All', label: 'All Levels' },
+                            ...uniqueLevels.map((level) => ({ value: level, label: level })),
+                        ]}
+                        size="xs"
                         value={filterLevel}
-                        onChange={(e) => setFilterLevel(e.target.value)}
-                    >
-                        <option value="All">All Levels</option>
-                        {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
+                        variant="filter"
+                        onValueChange={setFilterLevel}
+                        aria-label="Filter by level"
+                    />
 
                     <div className="relative">
                         <input
@@ -224,22 +232,26 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                         <div key={row.id} className={`flex px-4 py-1 border-b border-slate-100 text-xs hover:bg-slate-50 items-center group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                             {/* TYPE DROPDOWN */}
                             <div className="w-32 pr-2">
-                                <select
-                                    className="w-full bg-transparent border border-transparent hover:border-slate-300 rounded focus:border-blue-400 outline-none text-[11px] truncate cursor-pointer"
+                                <Select
+                                    options={[
+                                        { value: 'Interior Wall', label: 'Interior Wall' },
+                                        { value: 'Exterior Wall', label: 'Exterior Wall' },
+                                        { value: 'Ceiling', label: 'Ceiling' },
+                                        { value: 'Soffit', label: 'Soffit' },
+                                        { value: 'Bulkhead', label: 'Bulkhead' },
+                                        { value: 'Hollow Metal Frame', label: 'H.M. Frame' },
+                                        { value: 'Access Panel', label: 'Access Panel' },
+                                    ]}
+                                    size="xs"
                                     value={row.assembly.assemblyType === 'Wall' ? 'Interior Wall' : (row.assembly.assemblyType || 'Interior Wall')}
-                                    onChange={(e) => {
+                                    variant="ghost"
+                                    className="text-[11px]"
+                                    onValueChange={(nextValue) => {
                                         // This updates the assembly definition itself
-                                        handleFieldChange(row, 'assemblyType', e.target.value);
+                                        handleFieldChange(row, 'assemblyType', nextValue);
                                     }}
-                                >
-                                    <option value="Interior Wall">Interior Wall</option>
-                                    <option value="Exterior Wall">Exterior Wall</option>
-                                    <option value="Ceiling">Ceiling</option>
-                                    <option value="Soffit">Soffit</option>
-                                    <option value="Bulkhead">Bulkhead</option>
-                                    <option value="Hollow Metal Frame">H.M. Frame</option>
-                                    <option value="Access Panel">Access Panel</option>
-                                </select>
+                                    aria-label="Assembly type"
+                                />
                             </div>
 
                             {/* CODE (Read-only or rename assembly?) */}

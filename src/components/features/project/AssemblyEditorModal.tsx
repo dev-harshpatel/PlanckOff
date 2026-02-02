@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { WallAssembly, MaterialDefinition, AssemblyComponent } from '@/types';
 import { X, Trash2, Plus, AppWindow } from 'lucide-react';
 import { DEFAULT_TEMPLATES, AssemblyTemplate } from '@/constants/defaultAssemblies';
-import { Button, IconButton, MaterialSearch, NumberInput, Modal } from '@/components/ui';
+import { Button, IconButton, MaterialSearch, Modal, NumberInput, Select } from '@/components/ui';
 import { FormulaDebugModal } from '@/components/features/project/FormulaDebugModal';
 import { AssemblyEditorSidebar } from './AssemblyEditorSidebar';
 
@@ -349,15 +349,19 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
 
                                                 {/* UOM Dropdown */}
                                                 <td className="border-r border-slate-200 text-center p-0">
-                                                    <select
-                                                        className="w-full h-full bg-transparent text-center outline-none text-[10px]"
+                                                    <Select
+                                                        containerClassName="w-full"
+                                                        options={Array.from(new Set(unitOptions)).map((unit) => ({
+                                                            value: unit,
+                                                            label: getUnitSuffix(unit),
+                                                        }))}
+                                                        size="xs"
                                                         value={comp.selectedUnit || details.unit}
-                                                        onChange={(e) => handleUpdateComponent(assembly.id, comp.id, 'selectedUnit', e.target.value)}
-                                                    >
-                                                        {Array.from(new Set(unitOptions)).map(u => (
-                                                            <option key={u} value={u}>{getUnitSuffix(u)}</option>
-                                                        ))}
-                                                    </select>
+                                                        variant="ghost"
+                                                        className="h-full px-1 pr-7 text-center text-[10px] leading-none focus:ring-0"
+                                                        onValueChange={(nextValue) => handleUpdateComponent(assembly.id, comp.id, 'selectedUnit', nextValue)}
+                                                        aria-label="Unit of measure"
+                                                    />
                                                 </td>
 
                                                 {/* Formula Basis */}

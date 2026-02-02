@@ -154,7 +154,7 @@ export const PromoteDemoteModal: React.FC<PromoteDemoteModalProps> = ({
           <SelectField
             label="New Role"
             value={selectedRoleId}
-            onChange={e => setSelectedRoleId(e.target.value)}
+            onValueChange={setSelectedRoleId}
             options={roles.map(role => ({
               value: role.id,
               label: `${role.name} (Level ${role.level})`,

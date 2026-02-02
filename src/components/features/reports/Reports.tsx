@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, ProposalConfig } from '@/types';
 import { calculateMaterials } from '@/services/gemini/calculateMaterials';
 import { Printer, FileText, Settings } from 'lucide-react';
+import { Select } from '@/components/ui';
 import { MarkupsView } from '@/components/features/reports/Markups';
 import { MaterialsView, ExtendedLineItem } from '@/components/features/reports/MaterialsView';
 import { LaborView } from '@/components/features/reports/LaborView';
@@ -321,9 +322,15 @@ export const Reports: React.FC<ReportsProps> = ({
                     ) : null)}
 
                     {activeReport === 'bidding' && (
-                        <select value={floorFilter} onChange={e => setFloorFilter(e.target.value)} className="px-3 py-2 rounded-md border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            {biddingData.levels.map(l => <option key={l} value={l}>Floor: {l}</option>)}
-                        </select>
+                        <Select
+                            containerClassName="w-auto"
+                            options={biddingData.levels.map((level) => ({ value: level, label: `Floor: ${level}` }))}
+                            size="sm"
+                            value={floorFilter}
+                            variant="filter"
+                            onValueChange={setFloorFilter}
+                            aria-label="Filter bidding summary by floor"
+                        />
                     )}
 
                     <button onClick={() => window.print()} className="px-3 py-2 bg-slate-800 text-white rounded-md flex items-center gap-2 text-sm font-medium hover:bg-slate-900 shadow-sm">

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { MaterialDefinition, CalculatedMaterial } from '@/types';
 import { Filter, Download } from 'lucide-react';
+import { Select } from '@/components/ui';
 
 interface MaterialsViewProps {
     items: ExtendedLineItem[];
@@ -28,7 +29,9 @@ export const MaterialsView: React.FC<MaterialsViewProps> = ({ items, priceMap })
 
     // Extract Unique Values for Dropdowns
     const options = useMemo(() => {
-        const getOpts = (field: keyof ExtendedLineItem) => Array.from(new Set(items.map(i => i[field] || 'Unknown'))).sort();
+        const getOpts = <K extends keyof ExtendedLineItem>(field: K) => (
+            Array.from(new Set(items.map((item) => String(item[field] ?? 'Unknown')))).sort()
+        );
         return {
             sections: getOpts('section'),
             areas: getOpts('area'),
@@ -73,53 +76,69 @@ export const MaterialsView: React.FC<MaterialsViewProps> = ({ items, priceMap })
                     {/* Section Filter */}
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-bold text-slate-500">Section</label>
-                        <select
+                        <Select
+                            containerClassName="min-w-[150px] w-auto"
+                            options={[
+                                { value: 'All', label: 'All Sections' },
+                                ...options.sections.map((section) => ({ value: section, label: section })),
+                            ]}
+                            size="xs"
                             value={filters.section}
-                            onChange={e => setFilters({ ...filters, section: e.target.value })}
-                            className="text-xs border border-slate-300 rounded px-2 py-1 min-w-[150px]"
-                        >
-                            <option value="All">All Sections</option>
-                            {options.sections.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                            variant="filter"
+                            onValueChange={(nextValue) => setFilters({ ...filters, section: nextValue })}
+                            aria-label="Filter by section"
+                        />
                     </div>
 
                     {/* Area Filter */}
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-bold text-slate-500">Area / Floor</label>
-                        <select
+                        <Select
+                            containerClassName="min-w-[120px] w-auto"
+                            options={[
+                                { value: 'All', label: 'All Areas' },
+                                ...options.areas.map((area) => ({ value: area, label: area })),
+                            ]}
+                            size="xs"
                             value={filters.area}
-                            onChange={e => setFilters({ ...filters, area: e.target.value })}
-                            className="text-xs border border-slate-300 rounded px-2 py-1 min-w-[120px]"
-                        >
-                            <option value="All">All Areas</option>
-                            {options.areas.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                            variant="filter"
+                            onValueChange={(nextValue) => setFilters({ ...filters, area: nextValue })}
+                            aria-label="Filter by area"
+                        />
                     </div>
 
                     {/* Cost Code Filter */}
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-bold text-slate-500">Cost Code</label>
-                        <select
+                        <Select
+                            containerClassName="min-w-[120px] w-auto"
+                            options={[
+                                { value: 'All', label: 'All Codes' },
+                                ...options.costCodes.map((costCode) => ({ value: costCode, label: costCode })),
+                            ]}
+                            size="xs"
                             value={filters.costCode}
-                            onChange={e => setFilters({ ...filters, costCode: e.target.value })}
-                            className="text-xs border border-slate-300 rounded px-2 py-1 min-w-[120px]"
-                        >
-                            <option value="All">All Codes</option>
-                            {options.costCodes.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                            variant="filter"
+                            onValueChange={(nextValue) => setFilters({ ...filters, costCode: nextValue })}
+                            aria-label="Filter by cost code"
+                        />
                     </div>
 
                     {/* Supplier Filter */}
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] uppercase font-bold text-slate-500">Supplier</label>
-                        <select
+                        <Select
+                            containerClassName="min-w-[120px] w-auto"
+                            options={[
+                                { value: 'All', label: 'All Suppliers' },
+                                ...options.suppliers.map((supplier) => ({ value: supplier, label: supplier })),
+                            ]}
+                            size="xs"
                             value={filters.supplier}
-                            onChange={e => setFilters({ ...filters, supplier: e.target.value })}
-                            className="text-xs border border-slate-300 rounded px-2 py-1 min-w-[120px]"
-                        >
-                            <option value="All">All Suppliers</option>
-                            {options.suppliers.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                            variant="filter"
+                            onValueChange={(nextValue) => setFilters({ ...filters, supplier: nextValue })}
+                            aria-label="Filter by supplier"
+                        />
                     </div>
                 </div>
 

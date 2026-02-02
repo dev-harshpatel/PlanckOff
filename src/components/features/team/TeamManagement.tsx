@@ -435,11 +435,11 @@ export const TeamManagement: React.FC = () => {
             />
 
             <SelectField
-              label="Role"
-              value={formData.role}
-              onChange={e => setFormData({ ...formData, role: e.target.value as RoleName })}
-              options={getAvailableRoleOptions()}
               disabled={isSubmitting || !!preSelectedRole}
+              label="Role"
+              onValueChange={(nextValue) => setFormData({ ...formData, role: nextValue as RoleName })}
+              options={getAvailableRoleOptions()}
+              value={formData.role}
             />
 
             {modalMode === 'invite' && (
