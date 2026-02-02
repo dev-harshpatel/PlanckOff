@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { WallAssembly, MaterialDefinition, AssemblyComponent } from '@/types';
-import { X, Trash2, Plus, AppWindow } from 'lucide-react';
+import { Trash2, Plus, AppWindow } from 'lucide-react';
 import { DEFAULT_TEMPLATES, AssemblyTemplate } from '@/constants/defaultAssemblies';
-import { Button, IconButton, MaterialSearch, Modal, NumberInput, Select } from '@/components/ui';
+import { Button, CloseButton, IconButton, MaterialSearch, Modal, NumberInput, Select } from '@/components/ui';
 import { FormulaDebugModal } from '@/components/features/project/FormulaDebugModal';
 import { AssemblyEditorSidebar } from './AssemblyEditorSidebar';
 
@@ -130,7 +130,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
             closeOnOverlayClick={false}
             showCloseButton={false}
         >
-            <div className="bg-white w-[98vw] h-[95vh] flex flex-col overflow-hidden">
+            <div className="bg-white w-full h-[95vh] flex flex-col overflow-hidden">
                 {/* Header (Title Bar) */}
                 <div className="bg-blue-600 text-white px-6 py-3 flex justify-between items-center shrink-0">
                     <h2 className="text-xl font-bold flex items-center gap-2">
@@ -142,12 +142,10 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                             <div className="text-xs opacity-80 uppercase tracking-widest">Total cost</div>
                             <div className="text-2xl font-bold font-mono leading-none">${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         </div>
-                        <IconButton
-                            icon={X}
-                            variant="default"
-                            size="lg"
+                        <CloseButton
                             onClick={onClose}
-                            className="text-white hover:bg-blue-700"
+                            size="md"
+                            variant="light"
                         />
                     </div>
                 </div>
@@ -168,13 +166,14 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
 
                     {/* RIGHT CONTENT (9 Cols) */}
                     <div className="flex-1 flex flex-col bg-white min-w-0">
-                        <div className="px-4 py-2 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
-                            <h3 className="font-bold text-slate-800 text-sm">Assembly Components</h3>
+                        <div className="px-4 py-2 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 gap-4">
+                            <h3 className="font-bold text-slate-800 text-sm whitespace-nowrap">Assembly Components</h3>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 icon={Plus}
                                 onClick={() => handleAddComponent(assembly.id)}
+                                className="shrink-0 whitespace-nowrap"
                             >
                                 Add Component
                             </Button>

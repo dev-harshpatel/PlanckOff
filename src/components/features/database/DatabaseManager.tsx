@@ -4,14 +4,15 @@ import React, { useState } from 'react';
 import { MaterialDefinition } from '@/types';
 import { Search, Plus, Download, Upload, X, Save, Trash2, Database } from 'lucide-react';
 import { read, utils, writeFile } from 'xlsx';
-import { Button, IconButton, SearchInput, ConfirmModal, useToast } from '@/components/ui';
+import { Button, CloseButton, IconButton, SearchInput, ConfirmModal, useToast } from '@/components/ui';
 
 interface DatabaseManagerProps {
     materials: MaterialDefinition[];
     onUpdateMaterials: (materials: MaterialDefinition[]) => void;
+    onClose?: () => void;
 }
 
-export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onUpdateMaterials }) => {
+export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onUpdateMaterials, onClose }) => {
     const toast = useToast();
     const [dbCategory, setDbCategory] = useState<string>('All');
     const [dbSearch, setDbSearch] = useState('');
@@ -207,6 +208,12 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({ materials, onU
                     >
                         Calc Prod
                     </Button>
+                    {onClose && (
+                        <CloseButton
+                            onClick={onClose}
+                            size="md"
+                        />
+                    )}
                 </div>
             </div>
 

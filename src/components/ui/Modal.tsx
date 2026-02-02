@@ -22,7 +22,7 @@ const sizeStyles: Record<ModalSize, string> = {
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
-    full: 'max-w-[95vw] w-full',
+    full: 'max-w-[98vw] w-full',
 };
 
 export const Modal: React.FC<ModalProps> = ({

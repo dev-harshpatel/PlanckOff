@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, AssemblyComponent, CalculationMethod } from '@/types';
 import { calculateMaterials } from '@/services/gemini/calculateMaterials';
 import { evaluateMath } from '@/services/gemini/client';
-import { Download, Plus, Calculator, FileSpreadsheet, Database, Upload, Layers, Ruler, Filter, X, ChevronLeft, ChevronRight, ArrowLeftRight, Trash2, Edit2, MoreVertical, Beaker, HelpCircle, Check, RefreshCw, FlaskConical, LayoutTemplate } from 'lucide-react';
+import { Download, Plus, Calculator, FileSpreadsheet, Database, Upload, Layers, Ruler, Filter, ChevronLeft, ChevronRight, ArrowLeftRight, Trash2, Edit2, MoreVertical, Beaker, HelpCircle, Check, RefreshCw, FlaskConical, LayoutTemplate } from 'lucide-react';
 import { read, utils, writeFile } from 'xlsx';
 import { DatabaseManager } from '@/components/features/database/DatabaseManager';
 import { Reports } from '@/components/features/reports/Reports';
@@ -83,6 +83,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     const [prodCalcOpen, setProdCalcOpen] = useState<string | null>(null); // Component ID for calc popup
     const [prodValues, setProdValues] = useState({ dailyOutput: 100, crewSize: 1, hoursPerDay: 8 });
     const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
+    const templateMenuRef = useRef<HTMLDivElement>(null);
 
     const handleAddFromTemplate = (template: AssemblyTemplate) => {
         const newAssembly: WallAssembly = {
@@ -166,6 +167,10 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
             }
             if (!target.closest('.formula-dropdown-container')) {
                 setFormulaDropdownOpen(null);
+            }
+            // Close template menu when clicking outside
+            if (templateMenuRef.current && !templateMenuRef.current.contains(event.target as Node)) {
+                setIsTemplateMenuOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -913,7 +918,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                                     {sidebarWidth > 20 && "Wall Assemblies"}
                                 </h2>
                                 <div className="flex gap-1.5">
-                                    <div className="relative">
+                                    <div className="relative" ref={templateMenuRef}>
                                         <IconButton
                                             icon={LayoutTemplate}
                                             variant="default"
@@ -921,19 +926,22 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                                             tooltip="Add from Template"
                                         />
                                         {isTemplateMenuOpen && (
-                                            <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                                                <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                            <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                                                <div className="p-3 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
                                                     Select Template
                                                 </div>
-                                                <div className="max-h-[300px] overflow-y-auto">
+                                                <div className="max-h-[360px] overflow-y-auto">
                                                     {templates.map((tpl, idx) => (
                                                         <button
                                                             key={idx}
                                                             onClick={() => handleAddFromTemplate(tpl)}
-                                                            className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
+                                                            className="group w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-0 relative"
+                                                            title={tpl.description}
                                                         >
-                                                            <div className="text-sm font-semibold text-slate-800">{tpl.name}</div>
-                                                            <div className="text-xs text-slate-500 truncate" title={tpl.description}>{tpl.description}</div>
+                                                            <div className="text-sm font-semibold text-slate-800 leading-tight">{tpl.name}</div>
+                                                            <div className="text-xs text-slate-500 mt-1 line-clamp-2 group-hover:line-clamp-none transition-all">
+                                                                {tpl.description}
+                                                            </div>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -946,21 +954,22 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                                         onClick={() => setIsDatabaseOpen(true)}
                                         tooltip="Database"
                                     />
-                                    <div className="relative">
+                                    <label className="relative cursor-pointer">
                                         <input
-                                            type="file" accept="image/*,application/pdf"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                             onChange={(e) => e.target.files?.[0] && onAnalyze(e.target.files[0])}
                                             disabled={isAnalyzing}
                                         />
                                         <IconButton
                                             icon={Upload}
                                             variant="default"
-                                            onClick={() => {}}
                                             disabled={isAnalyzing}
                                             tooltip="Upload Drawing"
+                                            className="pointer-events-none"
                                         />
-                                    </div>
+                                    </label>
                                     <IconButton
                                         icon={Plus}
                                         variant="primary"
@@ -1020,16 +1029,21 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                             Takeoff Schedule
                         </h2>
                         <div className="flex items-center gap-2">
-                            <div className="relative">
-                                <input type="file" accept=".xlsx" onChange={handleScheduleUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            <label className="relative cursor-pointer inline-flex">
+                                <input
+                                    type="file"
+                                    accept=".xlsx"
+                                    onChange={handleScheduleUpload}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
                                 <Button
                                     variant="primary"
                                     icon={Upload}
-                                    onClick={() => {}}
+                                    className="pointer-events-none"
                                 >
                                     Upload Schedule
                                 </Button>
-                            </div>
+                            </label>
                         </div>
                     </div>
 
@@ -1076,15 +1090,12 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                 onClose={() => setIsDatabaseOpen(false)}
                 size="full"
             >
-                <div className="h-full flex flex-col overflow-hidden relative">
-                    <IconButton
-                        icon={X}
-                        variant="default"
-                        onClick={() => setIsDatabaseOpen(false)}
-                        className="absolute top-4 right-4 z-50"
-                        tooltip="Close"
+                <div className="h-full flex flex-col overflow-hidden">
+                    <DatabaseManager
+                        materials={materials}
+                        onUpdateMaterials={onUpdateMaterials}
+                        onClose={() => setIsDatabaseOpen(false)}
                     />
-                    <DatabaseManager materials={materials} onUpdateMaterials={onUpdateMaterials} />
                 </div>
             </Modal>
 

@@ -148,8 +148,8 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
     return (
         <div className="flex flex-col h-full bg-white font-sans">
             {/* TOOLBAR */}
-            <div className="flex-none bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1">
+            <div className="flex-none bg-slate-50 border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-4 @container">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="flex items-center gap-1 text-slate-500">
                         <Filter className="w-3 h-3" />
                         <span className="text-xs font-bold uppercase">Filters:</span>
@@ -204,9 +204,11 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
 
                 <button
                     onClick={handleAddManual}
-                    className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors shrink-0"
+                    className="flex items-center justify-center gap-1.5 px-2 @[500px]:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors shrink-0"
+                    title="Add Manual Item"
                 >
-                    <Plus className="w-3 h-3" /> Add Manual Item
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden @[500px]:inline whitespace-nowrap">Add Manual Item</span>
                 </button>
             </div>
 

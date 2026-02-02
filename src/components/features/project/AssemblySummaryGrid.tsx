@@ -172,10 +172,10 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
             {/* Header */}
             <div className="flex-none bg-white border-b border-slate-200 font-bold text-slate-600 flex items-center px-2 py-2 sticky top-0 z-10 shadow-sm">
                 <div className="w-12 px-1">Code</div>
-                <div className="flex-1 px-2">Description</div>
+                <div className="flex-1 px-2 min-w-0">Description</div>
                 <div className="w-14 text-right px-1">Qty</div>
-                <div className="w-12 text-right px-1 text-[10px] text-slate-400">Perm</div>
-                <div className="w-16 text-right px-1">Total</div>
+                <div className="w-10 text-right px-1 text-[10px] text-slate-400">Perm</div>
+                <div className="w-14 text-right pr-6">Total</div>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -196,15 +196,17 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                                 key={row.id}
                                 onClick={() => onSelectAssembly(row.id)}
                                 onDoubleClick={() => onEditAssembly && onEditAssembly(row.id)}
-                                className={`flex items-center px-2 py-1.5 border-b border-slate-100 cursor-pointer transition-colors group relative
+                                className={`flex items-center px-2 py-1.5 border-b border-slate-100 cursor-pointer transition-colors group
                                     ${selectedAssemblyId === row.id ? 'bg-blue-600 text-white' : 'hover:bg-blue-50 text-slate-700'}
                                 `}
                             >
                                 <div className={`w-12 px-1 truncate font-medium ${selectedAssemblyId === row.id ? 'text-blue-100' : 'text-slate-500'}`}>{row.code}</div>
-                                <div className="flex-1 px-2 truncate font-medium">{row.name}</div>
+                                <div className="flex-1 px-2 truncate font-medium min-w-0">{row.name}</div>
                                 <div className="w-14 text-right px-1 font-mono text-[10px]">{Math.round(row.totalQty).toLocaleString()} {row.unit}</div>
-                                <div className="w-12 text-right px-1 font-mono text-[10px] text-slate-400">{row.type === 'ACT Ceiling' || row.type === 'Suspended Grid' || row.type === 'Baffles' || row.type.includes('Ceiling') ? Math.round(row.totalPerimeter || 0) : '-'}</div>
-                                <div className="w-16 text-right px-1 font-mono font-bold">{Math.round(row.totalCost).toLocaleString()}</div>
+                                <div className={`w-10 text-right px-1 font-mono text-[10px] ${selectedAssemblyId === row.id ? 'text-blue-200' : 'text-slate-400'}`}>
+                                    {row.type === 'ACT Ceiling' || row.type === 'Suspended Grid' || row.type === 'Baffles' || row.type.includes('Ceiling') ? Math.round(row.totalPerimeter || 0) : '-'}
+                                </div>
+                                <div className="w-14 text-right font-mono font-bold pr-1">{Math.round(row.totalCost).toLocaleString()}</div>
 
                                 {/* DELETE BUTTON - Show on hover */}
                                 {onDeleteAssembly && (
@@ -213,8 +215,10 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                                             e.stopPropagation();
                                             openDeleteModal(row.id, row.name);
                                         }}
-                                        className={`absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-red-100 hover:text-red-600 hidden group-hover:flex
-                                            ${selectedAssemblyId === row.id ? 'text-white hover:text-red-200 hover:bg-white/20' : 'text-slate-400'}
+                                        className={`w-5 flex-shrink-0 flex items-center justify-center p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity
+                                            ${selectedAssemblyId === row.id
+                                                ? 'text-blue-200 hover:text-red-200 hover:bg-white/20'
+                                                : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}
                                         `}
                                         title="Delete Assembly"
                                     >

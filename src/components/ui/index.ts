@@ -14,6 +14,8 @@ export { StatusBadge } from './StatusBadge';
 
 export { IconButton } from './IconButton';
 
+export { CloseButton } from './CloseButton';
+
 export { SearchInput } from './SearchInput';
 
 export { ToggleGroup } from './ToggleGroup';
