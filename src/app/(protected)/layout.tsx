@@ -1,49 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation";
 import { AppProvider } from "@/context/AppContext";
-import { Navbar } from "@/components/layout/Navbar";
-import { SettingsModal } from "@/components/features/settings/SettingsModal";
-import { useApp } from "@/context/AppContext";
 
-function AppLayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isProjectPage = pathname.startsWith("/project");
-
-  const { appSettings, setAppSettings, rolePermissions, setRolePermissions } =
-    useApp();
-  const [showSettings, setShowSettings] = useState(false);
-
-  // Project page has its own layout/header
-  if (isProjectPage) {
-    return <>{children}</>;
-  }
-
-  return (
-    <div className="h-screen bg-slate-50 text-slate-900 flex flex-col font-sans overflow-hidden">
-      <Navbar onOpenSettings={() => setShowSettings(true)} />
-
-      <main className="flex-1 relative overflow-y-auto">{children}</main>
-
-      {showSettings && (
-        <SettingsModal
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-          settings={appSettings}
-          onSave={setAppSettings}
-          rolePermissions={rolePermissions}
-          onUpdateRoles={setRolePermissions}
-        />
-      )}
-    </div>
-  );
-}
-
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AppProvider>
-      <AppLayoutContent>{children}</AppLayoutContent>
-    </AppProvider>
-  );
+/**
+ * Root protected layout - ONLY provides context
+ *
+ * IMPORTANT: This layout must NOT conditionally change its DOM structure
+ * based on pathname or any runtime value. Doing so breaks App Router's
+ * chunk generation and causes stale chunk 404 errors in dev mode.
+ *
+ * Instead, use nested route groups to create different layout hierarchies:
+ * - (app)/ routes get the Navbar via (app)/layout.tsx
+ * - project/ routes have their own layout without Navbar
+ */
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <AppProvider>{children}</AppProvider>;
 }

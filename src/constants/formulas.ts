@@ -1,3 +1,4 @@
+// !! remove this file not needed anymore.
 import { CalculationMethod } from '../types';
 
 export const FORMULA_DEFINITIONS: Record<string, { label: string, formula?: string }> = {
