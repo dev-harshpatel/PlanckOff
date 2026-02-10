@@ -188,7 +188,9 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       const count = extractJson.assemblyCount ?? extractJson.result?.assemblies?.length ?? 0;
       const extractionId = extractJson.extractionId;
       setAssemblyCount(count);
-      extractionResultRef.current = extractJson.result;
+      extractionResultRef.current = extractJson.result
+        ? { assemblies: extractJson.result.assemblies ?? [] }
+        : null;
 
       // Stage 2: Match
       setStage('matching');
@@ -216,7 +218,9 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
 
       const matched = matchJson.matchedCount ?? matchJson.result?.assemblies?.length ?? 0;
       setMatchedCount(matched);
-      matchResultRef.current = matchJson.result;
+      matchResultRef.current = matchJson.result
+        ? { assemblies: matchJson.result.assemblies ?? [] }
+        : null;
 
       // Done
       setStage('done');
