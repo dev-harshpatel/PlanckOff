@@ -19,6 +19,7 @@ interface ImportFilesModalProps {
     extractionResult?: { assemblies: unknown[] };
     matchResult?: { assemblies: unknown[] };
   }) => void;
+  projectId?: string;
 }
 
 const fileToBase64 = (file: File): Promise<string> => {
@@ -45,6 +46,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
   isOpen,
   onClose,
   onComplete,
+  projectId,
 }) => {
   const toast = useToast();
   const [pdfSlot, setPdfSlot] = useState<FileSlot>({ file: null, status: 'empty' });
@@ -170,11 +172,17 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       const extractRes = await fetch('/api/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64 }),
+        body: JSON.stringify({ pdfBase64, projectId: projectId ?? undefined }),
         signal: controller.signal,
       });
 
-      const extractJson = await extractRes.json();
+      const extractRaw = await extractRes.text();
+      let extractJson: { error?: string; extractionId?: string; result?: { assemblies?: unknown[] }; assemblyCount?: number };
+      try {
+        extractJson = JSON.parse(extractRaw);
+      } catch {
+        throw new Error(`Extract failed: server returned invalid JSON (status ${extractRes.status})`);
+      }
       if (!extractRes.ok) throw new Error(extractJson.error || `Extract failed (${extractRes.status})`);
 
       const count = extractJson.assemblyCount ?? extractJson.result?.assemblies?.length ?? 0;
@@ -189,14 +197,21 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       const matchRes = await fetch('/api/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           extraction: extractJson.result,
           extractionId: extractionId,
+          projectId: projectId ?? undefined,
         }),
         signal: controller.signal,
       });
 
-      const matchJson = await matchRes.json();
+      const matchRaw = await matchRes.text();
+      let matchJson: { error?: string; result?: { assemblies?: unknown[] }; matchedCount?: number };
+      try {
+        matchJson = JSON.parse(matchRaw);
+      } catch {
+        throw new Error(`Match failed: server returned invalid JSON (status ${matchRes.status})`);
+      }
       if (!matchRes.ok) throw new Error(matchJson.error || `Match failed (${matchRes.status})`);
 
       const matched = matchJson.matchedCount ?? matchJson.result?.assemblies?.length ?? 0;

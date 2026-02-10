@@ -30,8 +30,8 @@ export async function GET() {
         }
       }
       latestAssemblyFile = maxAssemblyFile;
-    } catch (err) {
-      console.error("Error reading assembly-data directory:", err);
+    } catch {
+      // Directory may not exist
     }
 
     // Get latest material-match file
@@ -53,8 +53,8 @@ export async function GET() {
         }
       }
       latestMaterialFile = maxMaterialFile;
-    } catch (err) {
-      console.error("Error reading material-data directory:", err);
+    } catch {
+      // Directory may not exist
     }
 
     return NextResponse.json({
@@ -64,7 +64,6 @@ export async function GET() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[assembly-files] Error:", message);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 },

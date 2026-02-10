@@ -9,10 +9,9 @@ import {
  * Returns the latest assembly extraction and material match data from database
  */
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const projectId = searchParams.get("projectId") || undefined;
+  const projectId = req.nextUrl.searchParams.get("projectId") || undefined;
 
+  try {
     const [assemblyResult, materialResult] = await Promise.all([
       getLatestAssemblyExtraction(projectId),
       getLatestMaterialMatch(projectId),
@@ -20,23 +19,30 @@ export async function GET(req: NextRequest) {
 
     if (!assemblyResult.data || !materialResult.data) {
       return NextResponse.json({
-        success: false,
+        success: true,
         message: "No assembly data found",
         hasData: false,
       });
     }
 
+    // Normalize JSONB: Supabase may return it as object or string
+    const rawAssembly = assemblyResult.data.data;
+    const rawMaterial = materialResult.data.data;
+    const assemblyData =
+      typeof rawAssembly === "string" ? JSON.parse(rawAssembly) : rawAssembly;
+    const materialData =
+      typeof rawMaterial === "string" ? JSON.parse(rawMaterial) : rawMaterial;
+
     return NextResponse.json({
       success: true,
       hasData: true,
-      assemblyData: assemblyResult.data.data,
-      materialData: materialResult.data.data,
+      assemblyData,
+      materialData,
       assemblyFilename: assemblyResult.data.filename,
       materialFilename: materialResult.data.filename,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[assembly-data] Error:", message);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 },

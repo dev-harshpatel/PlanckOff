@@ -90,38 +90,46 @@ function ProjectContent() {
   // Load assembly and material costing data
   useEffect(() => {
     const loadAssemblyData = async () => {
+      const url = projectId
+        ? `/api/assembly-data?projectId=${projectId}`
+        : "/api/assembly-data";
       try {
-        // Fetch the latest data from database
-        const url = projectId
-          ? `/api/assembly-data?projectId=${projectId}`
-          : "/api/assembly-data";
         const response = await fetch(url);
-        const data = await response.json();
+        const rawText = await response.text();
+
+        let data: {
+          success?: boolean;
+          hasData?: boolean;
+          assemblyData?: { assemblies?: unknown[] };
+          materialData?: { assemblies?: unknown[] };
+          assemblyFilename?: string;
+          materialFilename?: string;
+          error?: string;
+        };
+        try {
+          data = JSON.parse(rawText);
+        } catch (parseErr) {
+          throw parseErr;
+        }
 
         if (!data.success || !data.hasData) {
-          console.warn("No assembly data found yet");
           setIsLoadingAssemblyData(false);
           return;
         }
 
-        console.log(
-          `Loading assembly data from DB: ${data.assemblyFilename} and ${data.materialFilename}`,
-        );
-
-        const assemblyDataArray = data.assemblyData.assemblies || [];
-        const costingDataArray = data.materialData.assemblies || [];
+        const assemblyDataArray = (data.assemblyData?.assemblies || []) as AssemblyData[];
+        const costingDataArray = (data.materialData?.assemblies || []) as MaterialCosting[];
 
         setAssemblyData(assemblyDataArray);
         setMaterialCostingData(costingDataArray);
 
-        // Map JSON data to WallAssembly format and add to assemblies
         const mappedAssemblies = mapJsonToWallAssemblies(
           assemblyDataArray,
           costingDataArray,
         );
         setAssemblies((prev) => [...prev, ...mappedAssemblies]);
-      } catch (err) {
-        console.error("Failed to load assembly data:", err);
+      } catch {
+        // Ignore load errors
       } finally {
         setIsLoadingAssemblyData(false);
       }
@@ -357,6 +365,7 @@ function ProjectContent() {
           onCloseReport={() => setShowReport(false)}
           assemblyData={assemblyData}
           materialCostingData={materialCostingData}
+          projectId={projectId}
         />
       </div>
     </div>

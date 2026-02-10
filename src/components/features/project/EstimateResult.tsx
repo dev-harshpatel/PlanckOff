@@ -88,6 +88,7 @@ interface EstimateResultProps {
   templates?: AssemblyTemplate[];
   assemblyData?: AssemblyData[];
   materialCostingData?: MaterialCosting[];
+  projectId?: string | null;
 }
 
 // Local definitions moved to calculationUtils.ts
@@ -107,6 +108,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   templates = DEFAULT_TEMPLATES,
   assemblyData = [],
   materialCostingData = [],
+  projectId: projectIdProp,
 }) => {
   const [assemblies, setAssemblies] =
     useState<WallAssembly[]>(initialAssemblies);
@@ -1687,6 +1689,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onComplete={handleImportComplete}
+        projectId={projectIdProp ?? undefined}
       />
     </div>
   );

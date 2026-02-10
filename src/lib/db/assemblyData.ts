@@ -77,19 +77,30 @@ export const saveMaterialMatch = async (
  * Get latest assembly extraction for a project
  */
 export const getLatestAssemblyExtraction = async (projectId?: string) => {
-  let query = supabaseAdmin
+  if (projectId) {
+    const { data, error } = await supabaseAdmin
+      .from("assembly_extractions")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!error && data) return { data, error: null };
+    if (error && error.code !== "PGRST116") throw error;
+  }
+
+  const { data, error } = await supabaseAdmin
     .from("assembly_extractions")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(1)
+    .single();
 
-  if (projectId) {
-    query = query.eq("project_id", projectId);
+  if (error) {
+    if (error.code !== "PGRST116") throw error;
+    return { data: null, error: null };
   }
-
-  const { data, error } = await query.single();
-
-  if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
   return { data, error: null };
 };
 
@@ -97,19 +108,30 @@ export const getLatestAssemblyExtraction = async (projectId?: string) => {
  * Get latest material match for a project
  */
 export const getLatestMaterialMatch = async (projectId?: string) => {
-  let query = supabaseAdmin
+  if (projectId) {
+    const { data, error } = await supabaseAdmin
+      .from("material_matches")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!error && data) return { data, error: null };
+    if (error && error.code !== "PGRST116") throw error;
+  }
+
+  const { data, error } = await supabaseAdmin
     .from("material_matches")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(1);
+    .limit(1)
+    .single();
 
-  if (projectId) {
-    query = query.eq("project_id", projectId);
+  if (error) {
+    if (error.code !== "PGRST116") throw error;
+    return { data: null, error: null };
   }
-
-  const { data, error } = await query.single();
-
-  if (error && error.code !== "PGRST116") throw error;
   return { data, error: null };
 };
 

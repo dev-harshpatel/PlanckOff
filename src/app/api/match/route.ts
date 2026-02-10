@@ -16,7 +16,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { extraction, extractionId, projectId } = await req.json();
+    let body: { extraction?: { assemblies?: unknown[] }; extractionId?: string; projectId?: string };
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      const msg = parseErr instanceof Error ? parseErr.message : "Invalid JSON body";
+      return NextResponse.json(
+        { error: `Invalid request body: ${msg}` },
+        { status: 400 },
+      );
+    }
+
+    const { extraction, extractionId, projectId } = body;
     if (!extraction?.assemblies) {
       return NextResponse.json(
         { error: "No extraction data provided" },
@@ -24,43 +35,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(
-      `[match] Received ${extraction.assemblies.length} assemblies to match`,
-    );
-    const startTime = Date.now();
-
-    // Load material database
     const dbPath = path.join(process.cwd(), "data", "material-database.json");
-    const dbRaw = await readFile(dbPath, "utf-8");
-    const database = JSON.parse(dbRaw) as Record<string, unknown>[];
-    console.log(`[match] Loaded material database: ${database.length} entries`);
+    let database: Record<string, unknown>[];
+    try {
+      const dbRaw = await readFile(dbPath, "utf-8");
+      database = JSON.parse(dbRaw) as Record<string, unknown>[];
+    } catch (readErr) {
+      const msg = readErr instanceof Error ? readErr.message : "Unknown error";
+      return NextResponse.json(
+        { error: `Material database not available: ${msg}` },
+        { status: 500 },
+      );
+    }
 
     const result = await matchMaterialsToDatabase(
-      extraction,
+      { assemblies: extraction.assemblies },
       database,
       apiKey,
     );
 
-    // Generate filename
     const timestamp = Date.now();
     const filename = `material-match-${timestamp}.json`;
 
-    // Save to database
+    const extractionIdStr = extractionId ?? "";
     const { data: savedData, error: saveError } = await saveMaterialMatch(
       { assemblies: result.assemblies },
       filename,
-      extractionId,
+      extractionIdStr,
       projectId,
     );
 
     if (saveError) {
-      throw new Error(`Failed to save to database: ${saveError}`);
+      throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
-
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(
-      `[match] Saved to DB (${filename}) — ${result.assemblies.length} matched in ${elapsed}s`,
-    );
 
     return NextResponse.json({
       success: true,
@@ -71,7 +78,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
-    console.error(`[match] Error: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

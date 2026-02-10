@@ -14,7 +14,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { pdfBase64, projectId } = await req.json();
+    let body: { pdfBase64?: string; projectId?: string };
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      const msg = parseErr instanceof Error ? parseErr.message : "Invalid JSON body";
+      return NextResponse.json(
+        { error: `Invalid request body: ${msg}` },
+        { status: 400 },
+      );
+    }
+
+    const { pdfBase64, projectId } = body;
     if (!pdfBase64) {
       return NextResponse.json(
         { error: "No pdfBase64 provided" },
@@ -22,16 +33,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`[extract] PDF base64 length: ${pdfBase64.length} chars`);
-    const startTime = Date.now();
-
     const result = await extractAssembliesFromPDF(pdfBase64, apiKey);
-
-    // Generate filename
     const timestamp = Date.now();
     const filename = `assembly-data-${timestamp}.json`;
 
-    // Save to database
     const { data: savedData, error: saveError } = await saveAssemblyExtraction(
       { assemblies: result.assemblies },
       filename,
@@ -39,13 +44,8 @@ export async function POST(req: NextRequest) {
     );
 
     if (saveError) {
-      throw new Error(`Failed to save to database: ${saveError}`);
+      throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
-
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(
-      `[extract] Saved to DB (${filename}) — ${result.assemblies.length} assemblies in ${elapsed}s`,
-    );
 
     return NextResponse.json({
       success: true,
@@ -57,7 +57,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
-    console.error(`[extract] Error: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
