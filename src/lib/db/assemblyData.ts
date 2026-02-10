@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 export interface AssemblyExtraction {
   id: string;
@@ -30,21 +30,15 @@ export const saveAssemblyExtraction = async (
   data: { assemblies: unknown[] },
   filename: string,
   projectId?: string,
+  createdBy?: string,
 ) => {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const { data: result, error } = await supabase
+  const { data: result, error } = await supabaseAdmin
     .from("assembly_extractions")
     .insert({
       project_id: projectId || null,
       filename,
       data,
-      created_by: user.id,
+      created_by: createdBy || null,
     })
     .select()
     .single();
@@ -61,22 +55,16 @@ export const saveMaterialMatch = async (
   filename: string,
   extractionId: string,
   projectId?: string,
+  createdBy?: string,
 ) => {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const { data: result, error } = await supabase
+  const { data: result, error } = await supabaseAdmin
     .from("material_matches")
     .insert({
       project_id: projectId || null,
       extraction_id: extractionId,
       filename,
       data,
-      created_by: user.id,
+      created_by: createdBy || null,
     })
     .select()
     .single();
@@ -89,9 +77,7 @@ export const saveMaterialMatch = async (
  * Get latest assembly extraction for a project
  */
 export const getLatestAssemblyExtraction = async (projectId?: string) => {
-  const supabase = createClient();
-
-  let query = supabase
+  let query = supabaseAdmin
     .from("assembly_extractions")
     .select("*")
     .order("created_at", { ascending: false })
@@ -111,9 +97,7 @@ export const getLatestAssemblyExtraction = async (projectId?: string) => {
  * Get latest material match for a project
  */
 export const getLatestMaterialMatch = async (projectId?: string) => {
-  const supabase = createClient();
-
-  let query = supabase
+  let query = supabaseAdmin
     .from("material_matches")
     .select("*")
     .order("created_at", { ascending: false })
@@ -133,9 +117,7 @@ export const getLatestMaterialMatch = async (projectId?: string) => {
  * Get all assembly extractions for a project
  */
 export const getAssemblyExtractions = async (projectId?: string) => {
-  const supabase = createClient();
-
-  let query = supabase
+  let query = supabaseAdmin
     .from("assembly_extractions")
     .select("*")
     .order("created_at", { ascending: false });
@@ -154,9 +136,7 @@ export const getAssemblyExtractions = async (projectId?: string) => {
  * Get all material matches for a project
  */
 export const getMaterialMatches = async (projectId?: string) => {
-  const supabase = createClient();
-
-  let query = supabase
+  let query = supabaseAdmin
     .from("material_matches")
     .select("*")
     .order("created_at", { ascending: false });
