@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
   '/api/auth/logout',
   '/api/team/set-password',
   '/api/assembly-files',
+  '/api/assembly-data',
   '/api/extract',
   '/api/match',
 ];

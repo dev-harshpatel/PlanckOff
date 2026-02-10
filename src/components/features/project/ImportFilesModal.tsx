@@ -178,6 +178,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       if (!extractRes.ok) throw new Error(extractJson.error || `Extract failed (${extractRes.status})`);
 
       const count = extractJson.assemblyCount ?? extractJson.result?.assemblies?.length ?? 0;
+      const extractionId = extractJson.extractionId;
       setAssemblyCount(count);
       extractionResultRef.current = extractJson.result;
 
@@ -188,7 +189,10 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       const matchRes = await fetch('/api/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ extraction: extractJson.result }),
+        body: JSON.stringify({ 
+          extraction: extractJson.result,
+          extractionId: extractionId,
+        }),
         signal: controller.signal,
       });
 

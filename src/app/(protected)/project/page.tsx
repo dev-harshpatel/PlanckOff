@@ -91,47 +91,25 @@ function ProjectContent() {
   useEffect(() => {
     const loadAssemblyData = async () => {
       try {
-        // Get the latest file names from the API
-        const filesResponse = await fetch("/api/assembly-files");
-        const filesData = await filesResponse.json();
+        // Fetch the latest data from database
+        const url = projectId
+          ? `/api/assembly-data?projectId=${projectId}`
+          : "/api/assembly-data";
+        const response = await fetch(url);
+        const data = await response.json();
 
-        if (!filesData.success) {
-          console.warn("No assembly files found yet");
-          setIsLoadingAssemblyData(false);
-          return;
-        }
-
-        const { assemblyFile, materialFile } = filesData;
-
-        if (!assemblyFile || !materialFile) {
-          console.warn(
-            "Assembly or material files not found:",
-            assemblyFile,
-            materialFile,
-          );
+        if (!data.success || !data.hasData) {
+          console.warn("No assembly data found yet");
           setIsLoadingAssemblyData(false);
           return;
         }
 
         console.log(
-          `Loading assembly data from: ${assemblyFile} and ${materialFile}`,
+          `Loading assembly data from DB: ${data.assemblyFilename} and ${data.materialFilename}`,
         );
 
-        // Fetch the latest files
-        const [assemblyRes, costingRes] = await Promise.all([
-          fetch(`/assembly-data/${assemblyFile}`),
-          fetch(`/material-data/${materialFile}`),
-        ]);
-
-        if (!assemblyRes.ok || !costingRes.ok) {
-          throw new Error("Failed to fetch assembly data files");
-        }
-
-        const assemblyJson = await assemblyRes.json();
-        const costingJson = await costingRes.json();
-
-        const assemblyDataArray = assemblyJson.assemblies || [];
-        const costingDataArray = costingJson.assemblies || [];
+        const assemblyDataArray = data.assemblyData.assemblies || [];
+        const costingDataArray = data.materialData.assemblies || [];
 
         setAssemblyData(assemblyDataArray);
         setMaterialCostingData(costingDataArray);
@@ -150,7 +128,7 @@ function ProjectContent() {
     };
 
     loadAssemblyData();
-  }, []);
+  }, [projectId]);
 
   const handleAnalyze = async (file: File) => {
     setState(AppState.ANALYZING);
