@@ -15,6 +15,9 @@ const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/team/set-password',
+  '/api/assembly-files',
+  '/api/extract',
+  '/api/match',
 ];
 
 // Paths that start with these prefixes are public
@@ -23,10 +26,12 @@ const PUBLIC_PREFIXES = [
   '/_next',
   '/images',
   '/favicon',
+  '/assembly-data/',
+  '/material-data/',
 ];
 
 // Static file extensions to ignore
-const STATIC_EXTENSIONS = ['.ico', '.png', '.jpg', '.jpeg', '.svg', '.css', '.js'];
+const STATIC_EXTENSIONS = ['.ico', '.png', '.jpg', '.jpeg', '.svg', '.css', '.js', '.json'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

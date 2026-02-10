@@ -1,6 +1,6 @@
 const PROMPT = `You are a construction cost estimator. Match each extracted assembly material to database entries. Output ONLY valid JSON.
 
-INPUTS: (1) Extracted assemblies (assemblies, materials, raw_text, thickness_mm, layers, fire_rating). (2) Material & labor DB (code, type, description, category, matCost, per, manufacturer).
+INPUTS: (1) Extracted assemblies (assemblies, materials, raw_text, thickness_mm, layers, fire_rating). (2) Material & labor DB (code, section, type, description, category, matCost, per, manufacturer).
 
 RULES:
 1) Material match: Use category, thickness (mm→inch OK), keywords (Type X, Regular, Shaftliner, Furring, CH Stud). No match → null.
@@ -12,8 +12,8 @@ RULES:
 7) SKIP null/empty materials: If an extracted material has null or empty raw_text, OMIT it entirely from the output. Do not match, do not guess, do not assign any materials or labor to it. Only process materials that have a real, non-null raw_text value.
 
 OUTPUT (valid JSON only, no markdown):
-{"assemblies":[{"assembly_id":"string","materials_costing":[{"extracted_material":{...},"matched_materials":[{"code","description","manufacturer","unit","unit_cost"}],"matched_labor":[{"code","description","unit","unit_cost"}]}]}]}
-Use "unit" for per, "unit_cost" as number from matCost. Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
+{"assemblies":[{"assembly_id":"string","materials_costing":[{"extracted_material":{...},"matched_materials":[{"code","section","description","manufacturer","unit","unit_cost"}],"matched_labor":[{"code","section","description","unit","unit_cost"}]}]}]}
+Use "unit" for per, "unit_cost" as number from matCost, "section" from DB section field. Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
 
 function repairJSON(input: string): string {
   try {
@@ -80,6 +80,7 @@ function repairJSON(input: string): string {
 
 type TrimmedDbEntry = {
   code: string;
+  section: string;
   type: string;
   description: string;
   category: string;
@@ -91,6 +92,7 @@ type TrimmedDbEntry = {
 function trimDatabaseForMatch(db: Record<string, unknown>[]): TrimmedDbEntry[] {
   return db.map((row) => ({
     code: String(row.code ?? ""),
+    section: String(row.section ?? ""),
     type: String(row.type ?? ""),
     description: String(row.description ?? ""),
     category: String(row.category ?? ""),

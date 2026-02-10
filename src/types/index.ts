@@ -91,6 +91,10 @@ export interface AssemblyComponent {
   overrideQuantity?: number;
   overrideMatCost?: number;
   overrideLaborCost?: number;
+  // Fields from JSON import
+  materialCode?: string; // Code from matched_materials or matched_labor
+  sectionCode?: string; // Section code (e.g., "09200")
+  ocSpacing?: string; // OC spacing (e.g., "400 mm O.C." or "16\"")
 }
 
 export interface WallAssembly {

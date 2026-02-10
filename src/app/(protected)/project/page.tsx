@@ -14,9 +14,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { AppState, ProjectSummary, WallAssembly } from "@/types";
+import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
 import { identifyWallAssemblies } from "@/services/gemini/client";
 import { useApp } from "@/context/AppContext";
+import { mapJsonToWallAssemblies } from "@/lib/utils/assemblyJsonMapper";
 
 function ProjectContent() {
   const router = useRouter();
@@ -33,7 +35,7 @@ function ProjectContent() {
     "proposal" | "bidding" | "markups" | "materials" | "labor"
   >("proposal");
   const [displayUnit, setDisplayUnit] = useState<"imperial" | "metric">(
-    "imperial"
+    "imperial",
   );
 
   const [activeProject, setActiveProject] = useState<ProjectSummary>({
@@ -45,6 +47,13 @@ function ProjectContent() {
     projectNumber: "",
   });
   const [isLoadingProject, setIsLoadingProject] = useState(true);
+
+  // Assembly and Material Costing Data
+  const [assemblyData, setAssemblyData] = useState<AssemblyData[]>([]);
+  const [materialCostingData, setMaterialCostingData] = useState<
+    MaterialCosting[]
+  >([]);
+  const [isLoadingAssemblyData, setIsLoadingAssemblyData] = useState(true);
 
   // Fetch project data
   useEffect(() => {
@@ -78,6 +87,71 @@ function ProjectContent() {
     fetchProject();
   }, [projectId]);
 
+  // Load assembly and material costing data
+  useEffect(() => {
+    const loadAssemblyData = async () => {
+      try {
+        // Get the latest file names from the API
+        const filesResponse = await fetch("/api/assembly-files");
+        const filesData = await filesResponse.json();
+
+        if (!filesData.success) {
+          console.warn("No assembly files found yet");
+          setIsLoadingAssemblyData(false);
+          return;
+        }
+
+        const { assemblyFile, materialFile } = filesData;
+
+        if (!assemblyFile || !materialFile) {
+          console.warn(
+            "Assembly or material files not found:",
+            assemblyFile,
+            materialFile,
+          );
+          setIsLoadingAssemblyData(false);
+          return;
+        }
+
+        console.log(
+          `Loading assembly data from: ${assemblyFile} and ${materialFile}`,
+        );
+
+        // Fetch the latest files
+        const [assemblyRes, costingRes] = await Promise.all([
+          fetch(`/assembly-data/${assemblyFile}`),
+          fetch(`/material-data/${materialFile}`),
+        ]);
+
+        if (!assemblyRes.ok || !costingRes.ok) {
+          throw new Error("Failed to fetch assembly data files");
+        }
+
+        const assemblyJson = await assemblyRes.json();
+        const costingJson = await costingRes.json();
+
+        const assemblyDataArray = assemblyJson.assemblies || [];
+        const costingDataArray = costingJson.assemblies || [];
+
+        setAssemblyData(assemblyDataArray);
+        setMaterialCostingData(costingDataArray);
+
+        // Map JSON data to WallAssembly format and add to assemblies
+        const mappedAssemblies = mapJsonToWallAssemblies(
+          assemblyDataArray,
+          costingDataArray,
+        );
+        setAssemblies((prev) => [...prev, ...mappedAssemblies]);
+      } catch (err) {
+        console.error("Failed to load assembly data:", err);
+      } finally {
+        setIsLoadingAssemblyData(false);
+      }
+    };
+
+    loadAssemblyData();
+  }, []);
+
   const handleAnalyze = async (file: File) => {
     setState(AppState.ANALYZING);
     setError(null);
@@ -93,13 +167,15 @@ function ProjectContent() {
           const detectedAssemblies = await identifyWallAssemblies(
             base64String,
             mimeType,
-            materials
+            materials,
           );
           setAssemblies((prev) => [...prev, ...detectedAssemblies]);
           setState(AppState.ESTIMATING);
         } catch (err: unknown) {
           const errorMessage =
-            err instanceof Error ? err.message : "Failed to identify wall types.";
+            err instanceof Error
+              ? err.message
+              : "Failed to identify wall types.";
           setError(errorMessage);
           setState(AppState.ERROR);
         }
@@ -136,7 +212,9 @@ function ProjectContent() {
               {isLoadingProject ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-                  <span className="text-sm text-slate-400">Loading project...</span>
+                  <span className="text-sm text-slate-400">
+                    Loading project...
+                  </span>
                 </div>
               ) : (
                 <>
@@ -162,7 +240,7 @@ function ProjectContent() {
             <button
               onClick={() =>
                 setDisplayUnit((u) =>
-                  u === "imperial" ? "metric" : "imperial"
+                  u === "imperial" ? "metric" : "imperial",
                 )
               }
               className="text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2 text-slate-600 hover:bg-slate-50 border-slate-200 bg-white shadow-sm"
@@ -299,6 +377,8 @@ function ProjectContent() {
           activeReportTab={activeReportTab}
           setActiveReportTab={setActiveReportTab}
           onCloseReport={() => setShowReport(false)}
+          assemblyData={assemblyData}
+          materialCostingData={materialCostingData}
         />
       </div>
     </div>

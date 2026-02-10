@@ -54,6 +54,7 @@ import { TakeoffScheduleView } from "@/components/features/project/TakeoffSchedu
 import { AssemblySummaryGrid } from "@/components/features/project/AssemblySummaryGrid";
 import { ImportFilesModal } from "@/components/features/project/ImportFilesModal";
 import { AggregatedTakeoff } from "@/types/takeoff";
+import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { FORMULA_DEFINITIONS } from "@/constants/formulas";
 import {
   detectLengthFt,
@@ -85,6 +86,8 @@ interface EstimateResultProps {
   ) => void;
   onCloseReport?: () => void;
   templates?: AssemblyTemplate[];
+  assemblyData?: AssemblyData[];
+  materialCostingData?: MaterialCosting[];
 }
 
 // Local definitions moved to calculationUtils.ts
@@ -102,6 +105,8 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   setActiveReportTab,
   onCloseReport,
   templates = DEFAULT_TEMPLATES,
+  assemblyData = [],
+  materialCostingData = [],
 }) => {
   const [assemblies, setAssemblies] =
     useState<WallAssembly[]>(initialAssemblies);
@@ -1540,7 +1545,10 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                 takeoffs={takeoffs}
                 materials={materials}
                 priceMap={priceMap}
-                onSelectAssembly={(id) => setActiveAssemblyId(id)}
+                onSelectAssembly={(id) => {
+                  setActiveAssemblyId(id);
+                  setEditingAssemblyId(id);
+                }}
                 onEditAssembly={(id) => setEditingAssemblyId(id)}
                 selectedAssemblyId={activeAssemblyId}
                 onDeleteAssembly={deleteAssembly}

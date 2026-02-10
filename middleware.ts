@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 // Routes that don't require authentication
 const publicRoutes = ['/login'];
-const publicPrefixes = ['/api/', '/_next/', '/favicon', '/logo'];
+const publicPrefixes = ['/api/', '/_next/', '/favicon', '/logo', '/assembly-data/', '/material-data/'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -43,7 +43,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (like images)
+     * - JSON data files
+     * - api routes (handled by publicPrefixes check)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|assembly-data|material-data|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json)$).*)',
   ],
 };

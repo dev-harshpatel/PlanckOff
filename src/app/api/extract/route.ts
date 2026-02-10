@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
 
     const result = await extractAssembliesFromPDF(pdfBase64, apiKey);
 
-    // Save to assembly-data/assembly-data-N.json
-    const outputDir = path.join(process.cwd(), "assembly-data");
+    // Save to public/assembly-data/assembly-data-N.json
+    const outputDir = path.join(process.cwd(), "public", "assembly-data");
     await mkdir(outputDir, { recursive: true });
     const filename = await getNextFilename(outputDir, "assembly-data", ".json");
     const filePath = path.join(outputDir, filename);

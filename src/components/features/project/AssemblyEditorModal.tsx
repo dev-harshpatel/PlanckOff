@@ -208,18 +208,26 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                         const isMaterial = !comp.materialName.toLowerCase().includes('labor') && !comp.materialName.toLowerCase().includes('install');
                                         const matName = comp.materialName;
 
-                                        // Infer Section
-                                        let section = "09200";
-                                        if (matName.includes("Stud") || matName.includes("Track")) section = "09100";
-                                        if (matName.includes("Insulation")) section = "07210";
-                                        if (matName.includes("Tape") || matName.includes("Joint")) section = "09240";
+                                        // Use section from component if available, otherwise infer
+                                        let section = comp.sectionCode || "";
+                                        if (!section) {
+                                            section = "09200";
+                                            if (matName.includes("Stud") || matName.includes("Track")) section = "09100";
+                                            if (matName.includes("Insulation")) section = "07210";
+                                            if (matName.includes("Tape") || matName.includes("Joint")) section = "09240";
+                                        }
 
                                         // Infer Height/OC/Layers
                                         const heightVal = comp.heightCondition?.max ? `${comp.heightCondition.max}'` : (assembly.defaultHeight ? `${assembly.defaultHeight}'` : '');
 
-                                        // OC Extraction using Regex to support custom values
-                                        const ocMatch = comp.usage.match(/Vertical @ (\d+)"? OC/);
-                                        const ocVal = ocMatch ? `${ocMatch[1]}"` : (comp.usage.includes('16') ? '16"' : (comp.usage.includes('24') ? '24"' : (comp.usage.includes('12') ? '12"' : '')));
+                                        // Use OC from component if available, otherwise extract from usage
+                                        let ocVal = '';
+                                        if (comp.ocSpacing) {
+                                            ocVal = comp.ocSpacing;
+                                        } else {
+                                            const ocMatch = comp.usage.match(/Vertical @ (\d+)"? OC/);
+                                            ocVal = ocMatch ? `${ocMatch[1]}"` : (comp.usage.includes('16') ? '16"' : (comp.usage.includes('24') ? '24"' : (comp.usage.includes('12') ? '12"' : '')));
+                                        }
 
 
                                         // Track Logic for Layers Column
@@ -273,6 +281,20 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
 
                                                 <td className="border-r border-slate-200 text-center px-1">
                                                     {(() => {
+                                                        // Use materialCode from component if available (from JSON import)
+                                                        if (comp.materialCode) {
+                                                            const isLabor = comp.materialCode.startsWith('LAB-');
+                                                            return (
+                                                                <div className="flex flex-col items-center leading-none py-0.5">
+                                                                    <span className="font-bold text-[10px] text-slate-700">{comp.materialCode}</span>
+                                                                    <span className={`text-[8px] uppercase font-bold ${isLabor ? 'text-amber-600' : 'text-cyan-600'}`}>
+                                                                        {isLabor ? 'Labor' : 'Mat.'}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        
+                                                        // Otherwise, look up from materials database
                                                         const mat = materials.find(m => m.description === comp.materialName);
                                                         if (!mat) return <span className="text-slate-300">-</span>;
                                                         return (

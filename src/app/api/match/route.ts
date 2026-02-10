@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
 
     const result = await matchMaterialsToDatabase(extraction, database, apiKey);
 
-    // Save to material-data/material-match-N.json
-    const outputDir = path.join(process.cwd(), "material-data");
+    // Save to public/material-data/material-match-N.json
+    const outputDir = path.join(process.cwd(), "public", "material-data");
     await mkdir(outputDir, { recursive: true });
     const filename = await getNextFilename(outputDir, "material-match", ".json");
     const filePath = path.join(outputDir, filename);
