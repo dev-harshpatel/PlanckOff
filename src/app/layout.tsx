@@ -4,6 +4,8 @@ import './globals.css';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/components/ui';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -27,6 +29,8 @@ export default function RootLayout({
             </ErrorBoundary>
           </ToastProvider>
         </AuthProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
