@@ -153,6 +153,8 @@ export interface TakeoffInstance {
   height: number;
   ceilingArea?: number;
   perimeter?: number;
+  lengthUnit?: string;  // LF, SF, M, M2
+  areaUnit?: string;    // SF, M2
 }
 
 export interface EstimateState {

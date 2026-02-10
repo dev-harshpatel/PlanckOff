@@ -52,6 +52,8 @@ import {
 import { AssemblyEditorModal } from "@/components/features/project/AssemblyEditorModal";
 import { TakeoffScheduleView } from "@/components/features/project/TakeoffScheduleView";
 import { AssemblySummaryGrid } from "@/components/features/project/AssemblySummaryGrid";
+import { ImportFilesModal } from "@/components/features/project/ImportFilesModal";
+import { AggregatedTakeoff } from "@/types/takeoff";
 import { FORMULA_DEFINITIONS } from "@/constants/formulas";
 import {
   detectLengthFt,
@@ -121,30 +123,9 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const drawingUploadInputRef = useRef<HTMLInputElement>(null);
-  const scheduleUploadInputRef = useRef<HTMLInputElement>(null);
-
   const [filterLevel, setFilterLevel] = useState<string>("All");
 
   const [filterTag, setFilterTag] = useState<string>("All");
-
-  const handleOpenDrawingUpload = () => {
-    if (isAnalyzing) return;
-    drawingUploadInputRef.current?.click();
-  };
-
-  const handleDrawingUploadChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    onAnalyze(file);
-    e.target.value = "";
-  };
-
-  const handleOpenScheduleUpload = () => {
-    scheduleUploadInputRef.current?.click();
-  };
 
   // Alternative Pricing State
   const [pricingScopes, setPricingScopes] = useState<string[]>([
@@ -157,6 +138,154 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
 
   // Toast and confirmation modals
   const toast = useToast();
+
+  // Import Files Modal state (Phase 1)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importedPdfFile, setImportedPdfFile] = useState<File | null>(null);
+  const [importedTakeoffData, setImportedTakeoffData] = useState<AggregatedTakeoff[] | null>(null);
+
+  const handleImportComplete = useCallback((data: {
+    pdfFile: File;
+    excelFile?: File;
+    takeoffData?: AggregatedTakeoff[];
+    extractionResult?: { assemblies: unknown[] };
+    matchResult?: { assemblies: unknown[] };
+  }) => {
+    setImportedPdfFile(data.pdfFile);
+    setIsImportModalOpen(false);
+
+    if (data.extractionResult) {
+      console.log('[Import] Extraction result:', data.extractionResult.assemblies?.length, 'assemblies');
+    }
+    if (data.matchResult) {
+      console.log('[Import] Match result:', data.matchResult.assemblies?.length, 'assemblies matched');
+    }
+
+    // If Excel data present, load into project
+    if (data.excelFile && data.takeoffData) {
+      setImportedTakeoffData(data.takeoffData);
+      const loadExcelIntoProject = async () => {
+        try {
+          const buffer = await data.excelFile!.arrayBuffer();
+          const workbook = read(buffer);
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
+          const rows: any[] = (Array.isArray(jsonData) ? jsonData : []) as any[];
+
+          if (rows.length < 2) return;
+
+          const fileHeaders = rows[0] as string[];
+          const colMap = {
+            code: fileHeaders.findIndex((h) => h?.match(/wall type|code|mark/i)),
+            desc: fileHeaders.findIndex((h) => h?.match(/description|name/i)),
+            type: fileHeaders.findIndex((h) => h?.match(/assembly type|type/i)),
+            level: fileHeaders.findIndex((h) => h?.match(/level|floor/i)),
+            length: fileHeaders.findIndex((h) => h?.match(/wall length|length/i)),
+            height: fileHeaders.findIndex((h) => h?.match(/height/i)),
+            area: fileHeaders.findIndex((h) => h?.match(/area parem|area param|ceiling area|net area/i)),
+            perimeter: fileHeaders.findIndex((h) => h?.match(/perimeter|area perimeter|zone perimeter/i)),
+          };
+
+          if (colMap.code === -1) colMap.code = 3;
+          if (colMap.desc === -1) colMap.desc = 1;
+
+          const lengthUnitIdx = colMap.length !== -1 ? colMap.length + 1 : -1;
+          const areaUnitIdx = colMap.area !== -1 ? colMap.area + 1 : -1;
+
+          const currentAssemblies = [...assemblies];
+          const newTakeoffs: Record<string, TakeoffInstance[]> = { ...takeoffs };
+
+          (rows.slice(1) as any[]).forEach((row: any, idx: number) => {
+            const code = String(row[colMap.code] || '').trim();
+            if (!code) return;
+
+            let detectedType: any = 'Wall';
+            if (colMap.type !== -1 && row[colMap.type]) {
+              const val = String(row[colMap.type]).trim();
+              if (val.match(/ceiling/i)) detectedType = 'Ceiling';
+              else if (val.match(/soffit/i)) detectedType = 'Soffit';
+              else if (val.match(/bulkhead/i)) detectedType = 'Bulkhead';
+              else if (val.match(/exterior/i)) detectedType = 'Exterior Wall';
+              else if (val.match(/interior/i)) detectedType = 'Interior Wall';
+              else if (val.match(/frame/i)) detectedType = 'Hollow Metal Frame';
+              else if (val.match(/access/i)) detectedType = 'Access Panel';
+            } else {
+              const desc = String(row[colMap.desc] || '').toLowerCase();
+              if (desc.includes('ceiling')) detectedType = 'Ceiling';
+              else if (desc.includes('soffit')) detectedType = 'Soffit';
+            }
+
+            let assembly = currentAssemblies.find(
+              (a) => a.code.toLowerCase() === code.toLowerCase(),
+            );
+            if (!assembly) {
+              const newId = `auto-${code}-${Date.now()}-${idx}`;
+              assembly = {
+                id: newId,
+                code,
+                description: String(row[colMap.desc] || `Imported ${code}`),
+                framingType: 'Light Metal',
+                assemblyType: detectedType,
+                components: [],
+              };
+              currentAssemblies.push(assembly);
+            }
+
+            if (!newTakeoffs[assembly.id]) newTakeoffs[assembly.id] = [];
+
+            let len = 0, ht = 0, area = 0, perim = 0;
+            if (colMap.length !== -1) len = parseFloat(row[colMap.length]) || 0;
+            if (colMap.height !== -1) ht = parseFloat(row[colMap.height]) || 0;
+            if (colMap.area !== -1) area = parseFloat(row[colMap.area]) || 0;
+            if (colMap.perimeter !== -1) perim = parseFloat(row[colMap.perimeter]) || 0;
+
+            const rawLengthUnit = lengthUnitIdx >= 0 ? String(row[lengthUnitIdx] || '').toUpperCase().trim() : '';
+            const rawAreaUnit = areaUnitIdx >= 0 ? String(row[areaUnitIdx] || '').toUpperCase().trim() : '';
+
+            if (rawLengthUnit === 'SF' || rawLengthUnit === 'M2') {
+              area = len;
+              len = 0;
+            }
+
+            if (detectedType === 'Ceiling') {
+              const colE = parseFloat(row[4]) || 0;
+              const colG = parseFloat(row[6]) || 0;
+              if (colE > 0) area = colE;
+              if (colG > 0) perim = colG;
+              len = 0;
+            } else if (colMap.length === -1 && colMap.height === -1) {
+              len = parseFloat(row[4]) || 0;
+              ht = parseFloat(row[14]) || 0;
+            }
+
+            newTakeoffs[assembly.id].push({
+              id: `imp-${Date.now()}-${idx}`,
+              level: colMap.level !== -1 ? String(row[colMap.level]) : '1',
+              description: String(row[colMap.desc] || row[1] || 'Imported'),
+              quantity: 1,
+              length: len,
+              height: ht,
+              ceilingArea: area,
+              perimeter: perim,
+              lengthUnit: rawLengthUnit || (len > 0 ? 'LF' : ''),
+              areaUnit: rawAreaUnit || (area > 0 ? 'SF' : ''),
+            });
+          });
+
+          setAssemblies(currentAssemblies);
+          setTakeoffs(newTakeoffs);
+          toast.success('Files Imported', `Loaded ${data.takeoffData!.length} assemblies from takeoff schedule.`);
+        } catch {
+          toast.error('Import Failed', 'Error loading schedule data into project.');
+        }
+      };
+
+      loadExcelIntoProject();
+    } else {
+      toast.success('PDF Processed', 'Assemblies extracted and matched successfully.');
+    }
+  }, [assemblies, takeoffs, toast]);
+
   const [isScopeDeleteModalOpen, setIsScopeDeleteModalOpen] = useState(false);
   const [scopeToDelete, setScopeToDelete] = useState<string | null>(null);
 
@@ -989,7 +1118,9 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
           length: len,
           height: ht,
           ceilingArea: area,
-          perimeter: perim, // Mapped Perimeter
+          perimeter: perim,
+          lengthUnit: len > 0 ? 'LF' : '',
+          areaUnit: area > 0 ? 'SF' : '',
         });
       });
 
@@ -1381,20 +1512,11 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                     onClick={() => setIsDatabaseOpen(true)}
                     tooltip="Database"
                   />
-                  <input
-                    ref={drawingUploadInputRef}
-                    type="file"
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                    onChange={handleDrawingUploadChange}
-                    disabled={isAnalyzing}
-                  />
                   <IconButton
                     icon={Upload}
                     variant="default"
-                    disabled={isAnalyzing}
-                    onClick={handleOpenDrawingUpload}
-                    tooltip="Upload Drawing"
+                    onClick={() => setIsImportModalOpen(true)}
+                    tooltip="Import Files"
                   />
                   <IconButton
                     icon={Plus}
@@ -1464,19 +1586,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
               Takeoff Schedule
             </h2>
             <div className="flex items-center gap-2">
-              <input
-                ref={scheduleUploadInputRef}
-                type="file"
-                accept=".xlsx"
-                onChange={handleScheduleUpload}
-                className="hidden"
-              />
               <Button
-                variant="primary"
+                variant="secondary"
                 icon={Upload}
-                onClick={handleOpenScheduleUpload}
+                onClick={() => setIsImportModalOpen(true)}
+                size="sm"
               >
-                Upload Schedule
+                Import Files
               </Button>
             </div>
           </div>
@@ -1484,7 +1600,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
 
         <div className="flex-1 overflow-hidden relative flex flex-col">
           {/* Pass props to new View */}
-          {/* Pass props to new View (Simplified for simple list) */}
           <TakeoffScheduleView
             assemblies={filteredAssemblies}
             takeoffs={takeoffs}
@@ -1557,6 +1672,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         confirmText="Remove"
         cancelText="Cancel"
         variant="warning"
+      />
+
+      {/* Import Files Modal (Phase 1) */}
+      <ImportFilesModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onComplete={handleImportComplete}
       />
     </div>
   );

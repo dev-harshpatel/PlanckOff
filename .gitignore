@@ -29,3 +29,6 @@ dist-ssr
 .cursor/**
 !.cursor/rules/
 !.cursor/rules/**/*.mdc
+
+#folder 
+/data-extract

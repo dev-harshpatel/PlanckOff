@@ -219,8 +219,10 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                 <div className="w-16 cursor-pointer hover:text-blue-600 flex items-center" onClick={() => handleSort('level')}>Lvl {renderSortArrow('level')}</div>
                 <div className="flex-1 cursor-pointer hover:text-blue-600 flex items-center" onClick={() => handleSort('description')}>Desc {renderSortArrow('description')}</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('length')}>Length {renderSortArrow('length')}</div>
+                <div className="w-12 text-center">Unit</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('height')}>Height {renderSortArrow('height')}</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('area')}>Area {renderSortArrow('area')}</div>
+                <div className="w-12 text-center">Unit</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('perimeter')}>Perim {renderSortArrow('perimeter')}</div>
                 <div className="w-8"></div>
             </div>
@@ -291,6 +293,11 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                                 />
                             </div>
 
+                            {/* LENGTH UNIT */}
+                            <div className="w-12 text-center text-[10px] text-slate-400 font-medium">
+                                {row.instance.lengthUnit || (row.instance.length ? 'LF' : '-')}
+                            </div>
+
                             {/* HEIGHT */}
                             <div className="w-20 text-right pr-2">
                                 <input
@@ -307,6 +314,11 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                                 <span className="text-slate-500 font-mono">
                                     {row.instance.ceilingArea ? row.instance.ceilingArea.toFixed(0) : ((row.instance.length || 0) * (row.instance.height || 0)).toFixed(0)}
                                 </span>
+                            </div>
+
+                            {/* AREA UNIT */}
+                            <div className="w-12 text-center text-[10px] text-slate-400 font-medium">
+                                {row.instance.areaUnit || 'SF'}
                             </div>
 
                             {/* PERIMETER (Only for Ceilings usually, but user asked for it) */}
