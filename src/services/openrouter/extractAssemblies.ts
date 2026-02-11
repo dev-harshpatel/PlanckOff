@@ -119,6 +119,7 @@ export async function extractAssembliesFromPDF(
 
   if (!response.ok) {
     const err = await response.text();
+    console.error("[extract] OpenRouter API error:", response.status, err.slice(0, 500));
     throw new Error(`OpenRouter API error (${response.status}): ${err}`);
   }
 
@@ -146,6 +147,7 @@ export async function extractAssembliesFromPDF(
       parsed = JSON.parse(repairJSON(cleaned));
       console.log(`[extract] Repaired JSON — ${parsed.assemblies?.length ?? 0} assemblies`);
     } catch (repairErr) {
+      console.error("[extract] JSON repair failed:", repairErr);
       throw new Error(`Failed to parse AI response: ${repairErr}`);
     }
   }

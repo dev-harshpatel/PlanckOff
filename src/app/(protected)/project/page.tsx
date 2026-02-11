@@ -54,6 +54,8 @@ function ProjectContent() {
     MaterialCosting[]
   >([]);
   const [isLoadingAssemblyData, setIsLoadingAssemblyData] = useState(true);
+  const [assemblyDataRefreshTrigger, setAssemblyDataRefreshTrigger] =
+    useState(0);
 
   // Fetch project data
   useEffect(() => {
@@ -127,7 +129,11 @@ function ProjectContent() {
           assemblyDataArray,
           costingDataArray,
         );
-        setAssemblies((prev) => [...prev, ...mappedAssemblies]);
+        const newAssemblyIds = new Set(assemblyDataArray.map((a) => a.assembly_id));
+        setAssemblies((prev) => [
+          ...prev.filter((a) => !newAssemblyIds.has(a.id)),
+          ...mappedAssemblies,
+        ]);
       } catch {
         // Ignore load errors
       } finally {
@@ -136,7 +142,7 @@ function ProjectContent() {
     };
 
     loadAssemblyData();
-  }, [projectId]);
+  }, [projectId, assemblyDataRefreshTrigger]);
 
   const handleAnalyze = async (file: File) => {
     setState(AppState.ANALYZING);
@@ -366,6 +372,9 @@ function ProjectContent() {
           assemblyData={assemblyData}
           materialCostingData={materialCostingData}
           projectId={projectId}
+          onImportComplete={() =>
+            setAssemblyDataRefreshTrigger((t) => t + 1)
+          }
         />
       </div>
     </div>

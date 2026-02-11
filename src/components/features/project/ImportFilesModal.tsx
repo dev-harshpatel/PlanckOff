@@ -72,6 +72,10 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
   const pdfReady = pdfSlot.status === 'ready';
   const isProcessing = stage === 'extracting' || stage === 'matching';
 
+  // Overwrite confirmation: show when project has existing extraction data
+  const [showOverwriteModal, setShowOverwriteModal] = useState(false);
+  const [isCheckingExisting, setIsCheckingExisting] = useState(false);
+
   // Timer effect
   useEffect(() => {
     if (isProcessing) {
@@ -143,6 +147,8 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     setErrorMessage('');
     setAssemblyCount(0);
     setMatchedCount(0);
+    setShowOverwriteModal(false);
+    setIsCheckingExisting(false);
     extractionResultRef.current = null;
     matchResultRef.current = null;
   }, []);
@@ -156,7 +162,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     setErrorMessage('Processing cancelled');
   }, []);
 
-  const handleContinue = async () => {
+  const runExtractionAndMatch = useCallback(async () => {
     if (!pdfReady || !pdfSlot.file) return;
 
     const controller = new AbortController();
@@ -236,7 +242,53 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       setStage('error');
       setErrorMessage(message);
     }
-  };
+  }, [pdfReady, pdfSlot.file, projectId]);
+
+  const handleContinue = useCallback(async () => {
+    if (!pdfReady || !pdfSlot.file) return;
+
+    // If project has existing data, show overwrite confirmation
+    if (projectId) {
+      setIsCheckingExisting(true);
+      try {
+        const res = await fetch(`/api/assembly-data?projectId=${projectId}`);
+        const data = await res.json();
+        if (data.success && (data.hasExtraction ?? data.hasData)) {
+          setShowOverwriteModal(true);
+          setIsCheckingExisting(false);
+          return;
+        }
+      } catch {
+        // Proceed if check fails
+      }
+      setIsCheckingExisting(false);
+    }
+
+    await runExtractionAndMatch();
+  }, [pdfReady, pdfSlot.file, projectId, runExtractionAndMatch]);
+
+  const handleOverwriteConfirm = useCallback(async () => {
+    if (!projectId) return;
+    setShowOverwriteModal(false);
+    try {
+      const res = await fetch(`/api/assembly-data?projectId=${projectId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete previous data');
+      }
+      await runExtractionAndMatch();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setStage('error');
+      setErrorMessage(message);
+    }
+  }, [projectId, runExtractionAndMatch]);
+
+  const handleOverwriteCancel = useCallback(() => {
+    setShowOverwriteModal(false);
+  }, []);
 
   const handleDoneClose = () => {
     if (pdfSlot.file) {
@@ -330,7 +382,30 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {stage === 'idle' && (
+          {stage === 'idle' && showOverwriteModal && (
+            <div className="flex flex-col items-center justify-center py-12 px-6">
+              <p className="text-base font-medium text-slate-800 mb-6 text-center">
+                This project already has assembly data. Please select one of the options below.
+              </p>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleOverwriteCancel}
+                  size="sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleOverwriteConfirm}
+                  size="sm"
+                >
+                  Overwrite all previous data
+                </Button>
+              </div>
+            </div>
+          )}
+          {stage === 'idle' && !showOverwriteModal && (
             <>
               <FileUploadZone
                 pdfSlot={pdfSlot}
@@ -359,8 +434,8 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
           {stage === 'error' && renderErrorView()}
         </div>
 
-        {/* Footer — only shown during idle stage */}
-        {stage === 'idle' && (
+        {/* Footer — only shown during idle stage, hidden when overwrite modal is shown */}
+        {stage === 'idle' && !showOverwriteModal && (
           <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
             <div className="text-xs text-slate-500">
               {pdfSlot.file
@@ -376,13 +451,13 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
               </Button>
               <Button
                 variant="primary"
-                icon={isParsingExcel ? Loader2 : ArrowRight}
+                icon={isParsingExcel || isCheckingExisting ? Loader2 : ArrowRight}
                 iconPosition="right"
                 onClick={handleContinue}
-                disabled={!pdfReady || isParsingExcel}
+                disabled={!pdfReady || isParsingExcel || isCheckingExisting}
                 size="sm"
               >
-                {isParsingExcel ? 'Parsing Excel...' : 'Continue'}
+                {isParsingExcel ? 'Parsing Excel...' : isCheckingExisting ? 'Checking...' : 'Continue'}
               </Button>
             </div>
           </div>

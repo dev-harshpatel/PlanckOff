@@ -89,6 +89,7 @@ interface EstimateResultProps {
   assemblyData?: AssemblyData[];
   materialCostingData?: MaterialCosting[];
   projectId?: string | null;
+  onImportComplete?: () => void;
 }
 
 // Local definitions moved to calculationUtils.ts
@@ -109,6 +110,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   assemblyData = [],
   materialCostingData = [],
   projectId: projectIdProp,
+  onImportComplete,
 }) => {
   const [assemblies, setAssemblies] =
     useState<WallAssembly[]>(initialAssemblies);
@@ -160,6 +162,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   }) => {
     setImportedPdfFile(data.pdfFile);
     setIsImportModalOpen(false);
+    onImportComplete?.();
 
     if (data.extractionResult) {
       console.log('[Import] Extraction result:', data.extractionResult.assemblies?.length, 'assemblies');
@@ -291,7 +294,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     } else {
       toast.success('PDF Processed', 'Assemblies extracted and matched successfully.');
     }
-  }, [assemblies, takeoffs, toast]);
+  }, [assemblies, onImportComplete, takeoffs, toast]);
 
   const [isScopeDeleteModalOpen, setIsScopeDeleteModalOpen] = useState(false);
   const [scopeToDelete, setScopeToDelete] = useState<string | null>(null);

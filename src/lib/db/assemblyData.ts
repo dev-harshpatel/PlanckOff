@@ -43,7 +43,10 @@ export const saveAssemblyExtraction = async (
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[assemblyData] saveAssemblyExtraction error:", error.code, error.message);
+    throw error;
+  }
   return { data: result, error: null };
 };
 
@@ -69,12 +72,17 @@ export const saveMaterialMatch = async (
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("[assemblyData] saveMaterialMatch error:", error.code, error.message);
+    throw error;
+  }
   return { data: result, error: null };
 };
 
 /**
- * Get latest assembly extraction for a project
+ * Get latest assembly extraction for a project.
+ * When projectId is provided, returns only data for that project (no fallback).
+ * When projectId is omitted, returns latest record regardless of project.
  */
 export const getLatestAssemblyExtraction = async (projectId?: string) => {
   if (projectId) {
@@ -88,6 +96,7 @@ export const getLatestAssemblyExtraction = async (projectId?: string) => {
 
     if (!error && data) return { data, error: null };
     if (error && error.code !== "PGRST116") throw error;
+    return { data: null, error: null };
   }
 
   const { data, error } = await supabaseAdmin
@@ -105,7 +114,9 @@ export const getLatestAssemblyExtraction = async (projectId?: string) => {
 };
 
 /**
- * Get latest material match for a project
+ * Get latest material match for a project.
+ * When projectId is provided, returns only data for that project (no fallback).
+ * When projectId is omitted, returns latest record regardless of project.
  */
 export const getLatestMaterialMatch = async (projectId?: string) => {
   if (projectId) {
@@ -119,6 +130,7 @@ export const getLatestMaterialMatch = async (projectId?: string) => {
 
     if (!error && data) return { data, error: null };
     if (error && error.code !== "PGRST116") throw error;
+    return { data: null, error: null };
   }
 
   const { data, error } = await supabaseAdmin
@@ -133,6 +145,25 @@ export const getLatestMaterialMatch = async (projectId?: string) => {
     return { data: null, error: null };
   }
   return { data, error: null };
+};
+
+/**
+ * Delete all assembly extraction and material match data for a project
+ */
+export const deleteProjectAssemblyData = async (projectId: string) => {
+  const [extractionResult, matchResult] = await Promise.all([
+    supabaseAdmin
+      .from("assembly_extractions")
+      .delete()
+      .eq("project_id", projectId),
+    supabaseAdmin
+      .from("material_matches")
+      .delete()
+      .eq("project_id", projectId),
+  ]);
+
+  if (extractionResult.error) throw extractionResult.error;
+  if (matchResult.error) throw matchResult.error;
 };
 
 /**

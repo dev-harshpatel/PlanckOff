@@ -189,6 +189,7 @@ export async function matchMaterialsToDatabase(
           console.log(`[match] Batch ${batchIdx + 1} — retrying after 5xx...`);
           continue;
         }
+        console.error(`[match] Batch ${batchIdx + 1} — OpenRouter API error:`, response.status, err.slice(0, 500));
         throw new Error(`OpenRouter API error (batch ${batchIdx + 1}): ${err}`);
       }
 
@@ -216,7 +217,7 @@ export async function matchMaterialsToDatabase(
           console.log(`[match] Batch ${batchIdx + 1} — repaired successfully`);
           break;
         } catch (repairErr) {
-          console.warn(`[match] Batch ${batchIdx + 1} — parse failed (attempt ${attempt}): ${repairErr}`);
+          console.error(`[match] Batch ${batchIdx + 1} — JSON parse/repair failed (attempt ${attempt}):`, repairErr);
           if (attempt >= MAX_BATCH_RETRIES) continue;
         }
       }
