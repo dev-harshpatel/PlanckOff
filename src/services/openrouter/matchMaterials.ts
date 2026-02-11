@@ -10,10 +10,11 @@ RULES:
 5) Labor: Gypsum→Hang Drywall + Type X premium if Type X; Sheathing/Shaftliner→Shaftliner install; Metal studs→Install Metal Studs; CH→Shaftwall Framing; Furring→Furring Channel; Batt→Install Batt; Sealants→Fire-Stop/Caulking. Labor additive.
 6) Do NOT invent codes, SKUs, or sealants. Only use DB entries.
 7) SKIP null/empty materials: If an extracted material has null or empty raw_text, OMIT it entirely from the output. Do not match, do not guess, do not assign any materials or labor to it. Only process materials that have a real, non-null raw_text value.
+8) REQUIRED — section: Each matched_materials and matched_labor entry MUST include the "section" field. Copy the exact "section" value (e.g. "09 22 16", "09 29 00", "01 00 00") from the DB entry you matched. Never omit section.
 
 OUTPUT (valid JSON only, no markdown):
 {"assemblies":[{"assembly_id":"string","materials_costing":[{"extracted_material":{...},"matched_materials":[{"code","section","description","manufacturer","unit","unit_cost"}],"matched_labor":[{"code","section","description","unit","unit_cost"}]}]}]}
-Use "unit" for per, "unit_cost" as number from matCost, "section" from DB section field. Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
+Required fields: "unit" = per from DB, "unit_cost" = number from matCost, "section" = exact section code from DB (REQUIRED for every matched_materials and matched_labor entry). Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
 
 function repairJSON(input: string): string {
   try {

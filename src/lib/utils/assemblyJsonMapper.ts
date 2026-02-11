@@ -1,6 +1,22 @@
 import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { AssemblyComponent, WallAssembly } from "@/types";
 
+/** Extract numeric spacing value from string or object format */
+const resolveSpacingValue = (
+  spacing: string | { unit?: string; value?: number } | null | undefined,
+): number | null => {
+  if (spacing == null) return null;
+  if (typeof spacing === "object" && "value" in spacing) {
+    const v = typeof spacing.value === "number" ? spacing.value : null;
+    return v;
+  }
+  if (typeof spacing === "string") {
+    const match = spacing.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+  return null;
+};
+
 /**
  * Maps JSON assembly data to WallAssembly format for the UI
  * @param assemblyData - Array of assembly data from assembly-data JSON
@@ -27,7 +43,15 @@ export const mapJsonToWallAssemblies = (
         const steelFraming = assembly.materials.steel_framing.find(
           (sf) => sf.raw_text === extracted_material.raw_text,
         );
-        const spacing = steelFraming?.spacing || "";
+        const spacingRaw = steelFraming?.spacing;
+        // spacing can be string ("400 mm O.C."), object ({ unit: "mm", value: 400 }), or null
+        const spacingValue = resolveSpacingValue(spacingRaw);
+        const spacingDisplay =
+          typeof spacingRaw === "string"
+            ? spacingRaw
+            : spacingValue != null
+              ? `${spacingValue} mm O.C.`
+              : "";
 
         // Get layers from gypsum_board if available
         const gypsumBoard = assembly.materials.gypsum_board.find(
@@ -37,15 +61,10 @@ export const mapJsonToWallAssemblies = (
 
         // Determine usage based on material type
         let usage = "Coverage (1 Layer)";
-        if (spacing) {
-          // Extract spacing value (e.g., "400 mm O.C." -> "400")
-          const spacingMatch = spacing.match(/(\d+)/);
-          if (spacingMatch) {
-            const spacingValue = parseInt(spacingMatch[1]);
-            // Convert mm to inches if needed (400mm ≈ 16")
-            const spacingInches = Math.round(spacingValue / 25.4);
-            usage = `Vertical @ ${spacingInches}" OC`;
-          }
+        if (spacingValue != null && spacingValue > 0) {
+          // Convert mm to inches if needed (400mm ≈ 16")
+          const spacingInches = Math.round(spacingValue / 25.4);
+          usage = `Vertical @ ${spacingInches}" OC`;
         } else if (layers && layers > 1) {
           usage = `Coverage (${layers} Layers)`;
         }
@@ -60,8 +79,8 @@ export const mapJsonToWallAssemblies = (
             materialCost: material.unit_cost,
             overrideLayers: layers || undefined,
             materialCode: material.code, // Store the code from JSON
-            sectionCode: "", // Leave empty as requested
-            ocSpacing: spacing, // Store the OC spacing from JSON
+            sectionCode: material.section ?? "", // From material_matches DB
+            ocSpacing: spacingDisplay, // Store the OC spacing from JSON
           });
         });
 
@@ -74,8 +93,8 @@ export const mapJsonToWallAssemblies = (
             wasteFactor: 0,
             materialCost: labor.unit_cost,
             materialCode: labor.code, // Store the code from JSON
-            sectionCode: "", // Leave empty as requested
-            ocSpacing: spacing, // Store the OC spacing from JSON
+            sectionCode: labor.section ?? "", // From material_matches DB
+            ocSpacing: spacingDisplay, // Store the OC spacing from JSON
           });
         });
       });

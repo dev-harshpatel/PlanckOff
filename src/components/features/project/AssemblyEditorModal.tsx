@@ -206,16 +206,9 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                     {assembly.components.map((comp, idx) => {
                                         const details = getRowDetails(comp, assembly, takeoffInstances);
                                         const isMaterial = !comp.materialName.toLowerCase().includes('labor') && !comp.materialName.toLowerCase().includes('install');
-                                        const matName = comp.materialName;
 
-                                        // Use section from component if available, otherwise infer
-                                        let section = comp.sectionCode || "";
-                                        if (!section) {
-                                            section = "09200";
-                                            if (matName.includes("Stud") || matName.includes("Track")) section = "09100";
-                                            if (matName.includes("Insulation")) section = "07210";
-                                            if (matName.includes("Tape") || matName.includes("Joint")) section = "09240";
-                                        }
+                                        // Use section from material_matches (sectionCode) — no inference
+                                        const section = comp.sectionCode || "";
 
                                         // Infer Height/OC/Layers
                                         const heightVal = comp.heightCondition?.max ? `${comp.heightCondition.max}'` : (assembly.defaultHeight ? `${assembly.defaultHeight}'` : '');

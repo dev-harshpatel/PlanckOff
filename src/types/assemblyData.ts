@@ -37,6 +37,7 @@ export interface AssemblyData {
 
 export interface MatchedMaterial {
   code: string;
+  section?: string;
   description: string;
   manufacturer: string;
   unit: string;
@@ -45,6 +46,7 @@ export interface MatchedMaterial {
 
 export interface MatchedLabor {
   code: string;
+  section?: string;
   description: string;
   unit: string;
   unit_cost: number;

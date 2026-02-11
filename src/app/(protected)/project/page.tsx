@@ -89,14 +89,17 @@ function ProjectContent() {
     fetchProject();
   }, [projectId]);
 
-  // Load assembly and material costing data
+  // Load assembly and material costing data when projectId is in URL
   useEffect(() => {
     const loadAssemblyData = async () => {
-      const url = projectId
-        ? `/api/assembly-data?projectId=${projectId}`
-        : "/api/assembly-data";
+      if (!projectId) {
+        setIsLoadingAssemblyData(false);
+        return;
+      }
+
+      const url = `/api/assembly-data?projectId=${projectId}`;
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { credentials: "include" });
         const rawText = await response.text();
 
         let data: {
@@ -111,7 +114,9 @@ function ProjectContent() {
         try {
           data = JSON.parse(rawText);
         } catch (parseErr) {
-          throw parseErr;
+          console.error("[Project] Failed to parse assembly-data response:", parseErr);
+          setIsLoadingAssemblyData(false);
+          return;
         }
 
         if (!data.success || !data.hasData) {
@@ -134,8 +139,8 @@ function ProjectContent() {
           ...prev.filter((a) => !newAssemblyIds.has(a.id)),
           ...mappedAssemblies,
         ]);
-      } catch {
-        // Ignore load errors
+      } catch (err) {
+        console.error("[Project] Failed to load assembly data:", err);
       } finally {
         setIsLoadingAssemblyData(false);
       }

@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   deleteProjectAssemblyData,
+  getAssemblyExtractionById,
   getLatestAssemblyExtraction,
   getLatestMaterialMatch,
 } from "@/lib/db/assemblyData";
 
 /**
  * GET /api/assembly-data?projectId=xxx
- * Returns the latest assembly extraction and material match data from database
+ * Returns the latest assembly extraction and material match data from database.
+ * When material match exists but extraction was saved without project_id,
+ * fetches extraction via extraction_id from the material match.
  */
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("projectId") || undefined;
@@ -18,17 +21,24 @@ export async function GET(req: NextRequest) {
       getLatestMaterialMatch(projectId),
     ]);
 
-    if (!assemblyResult.data || !materialResult.data) {
+    // If we have material match but no extraction for project, fetch extraction by extraction_id
+    let assemblyRecord = assemblyResult.data;
+    if (!assemblyRecord && materialResult.data?.extraction_id) {
+      const byId = await getAssemblyExtractionById(materialResult.data.extraction_id);
+      assemblyRecord = byId.data;
+    }
+
+    if (!assemblyRecord || !materialResult.data) {
       return NextResponse.json({
         success: true,
         message: "No assembly data found",
         hasData: false,
-        hasExtraction: !!assemblyResult.data,
+        hasExtraction: !!assemblyRecord,
       });
     }
 
     // Normalize JSONB: Supabase may return it as object or string
-    const rawAssembly = assemblyResult.data.data;
+    const rawAssembly = assemblyRecord.data;
     const rawMaterial = materialResult.data.data;
     const assemblyData =
       typeof rawAssembly === "string" ? JSON.parse(rawAssembly) : rawAssembly;
@@ -41,7 +51,7 @@ export async function GET(req: NextRequest) {
       hasExtraction: true,
       assemblyData,
       materialData,
-      assemblyFilename: assemblyResult.data.filename,
+      assemblyFilename: assemblyRecord.filename,
       materialFilename: materialResult.data.filename,
     });
   } catch (error) {

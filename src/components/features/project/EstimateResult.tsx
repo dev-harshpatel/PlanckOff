@@ -422,8 +422,16 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Sync assemblies from parent: in project view, replace with loaded data; otherwise merge new ones
   useEffect(() => {
-    if (initialAssemblies.length > assemblies.length) {
+    if (viewMode === "project" && initialAssemblies.length > 0) {
+      setAssemblies(initialAssemblies);
+      const newTakeoffs: Record<string, TakeoffInstance[]> = {};
+      initialAssemblies.forEach((a) => {
+        newTakeoffs[a.id] = takeoffs[a.id] || [];
+      });
+      setTakeoffs(newTakeoffs);
+    } else if (initialAssemblies.length > assemblies.length) {
       const newOnes = initialAssemblies.slice(assemblies.length);
       setAssemblies((prev) => [...prev, ...newOnes]);
       const newTakeoffs: Record<string, TakeoffInstance[]> = { ...takeoffs };
@@ -434,7 +442,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       });
       setTakeoffs(newTakeoffs);
     }
-  }, [initialAssemblies]);
+  }, [initialAssemblies, viewMode]);
 
   useEffect(() => {
     const initial: Record<string, TakeoffInstance[]> = {};

@@ -167,6 +167,24 @@ export const deleteProjectAssemblyData = async (projectId: string) => {
 };
 
 /**
+ * Get assembly extraction by ID.
+ * Used when we have a material match but extraction was saved without project_id.
+ */
+export const getAssemblyExtractionById = async (extractionId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from("assembly_extractions")
+    .select("*")
+    .eq("id", extractionId)
+    .single();
+
+  if (error) {
+    if (error.code !== "PGRST116") throw error;
+    return { data: null, error: null };
+  }
+  return { data, error: null };
+};
+
+/**
  * Get all assembly extractions for a project
  */
 export const getAssemblyExtractions = async (projectId?: string) => {
