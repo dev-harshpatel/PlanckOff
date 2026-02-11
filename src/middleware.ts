@@ -19,6 +19,7 @@ const PUBLIC_PATHS = [
   '/api/assembly-data',
   '/api/extract',
   '/api/match',
+  '/api/test-redis',
 ];
 
 // Paths that start with these prefixes are public
