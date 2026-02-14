@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
+import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
 import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
 import { saveMaterialMatch } from "@/lib/db/assemblyData";
 
@@ -40,15 +39,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const dbPath = path.join(process.cwd(), "data", "material-database.json");
+    const totalStart = Date.now();
+    let dbLoadMs = 0;
+
     let database: Record<string, unknown>[];
     try {
-      const dbRaw = await readFile(dbPath, "utf-8");
-      database = JSON.parse(dbRaw) as Record<string, unknown>[];
-      console.log(`[match] Loaded material database: ${database.length} entries from ${dbPath}`);
+      const dbLoadStart = Date.now();
+      database = await getMaterialDatabase();
+      dbLoadMs = Date.now() - dbLoadStart;
+      console.log(`[match] Loaded material database: ${database.length} entries — ${(dbLoadMs / 1000).toFixed(2)}s`);
     } catch (readErr) {
       const msg = readErr instanceof Error ? readErr.message : "Unknown error";
-      console.error("[match] Failed to read material database:", msg, "path:", dbPath);
+      console.error("[match] Failed to load material database:", msg);
       return NextResponse.json(
         { error: `Material database not available: ${msg}` },
         { status: 500 },
@@ -56,31 +58,37 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[match] Starting material matching for ${extraction.assemblies.length} assemblies, extractionId: ${extractionId ?? "none"}`);
+    const matchStart = Date.now();
     const result = await matchMaterialsToDatabase(
       { assemblies: extraction.assemblies },
       database,
       apiKey,
     );
-    console.log(`[match] Matched ${result.assemblies.length} assemblies`);
+    const matchMs = Date.now() - matchStart;
+    console.log(`[match] Matched ${result.assemblies.length} assemblies — ${(matchMs / 1000).toFixed(2)}s`);
 
     const timestamp = Date.now();
     const filename = `material-match-${timestamp}.json`;
 
     const extractionIdStr = extractionId ?? "";
     console.log(`[match] Saving to database (${filename})...`);
+    const dbStart = Date.now();
     const { data: savedData, error: saveError } = await saveMaterialMatch(
       { assemblies: result.assemblies },
       filename,
       extractionIdStr,
       projectId,
     );
+    const dbMs = Date.now() - dbStart;
 
     if (saveError) {
       console.error("[match] DB save error:", saveError);
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
+    const totalMs = Date.now() - totalStart;
     console.log(`[match] Success: saved match id ${savedData.id}`);
+    console.log(`[match] Phase times — material DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, DB save: ${(dbMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },

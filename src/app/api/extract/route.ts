@@ -38,26 +38,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const totalStart = Date.now();
+
     console.log(`[extract] Starting PDF extraction, projectId: ${projectId ?? "none"}`);
+    const extractStart = Date.now();
     const result = await extractAssembliesFromPDF(pdfBase64, apiKey);
-    console.log(`[extract] Extracted ${result.assemblies.length} assemblies from PDF`);
+    const extractMs = Date.now() - extractStart;
+    console.log(`[extract] Extracted ${result.assemblies.length} assemblies from PDF — ${(extractMs / 1000).toFixed(2)}s`);
 
     const timestamp = Date.now();
     const filename = `assembly-data-${timestamp}.json`;
 
     console.log(`[extract] Saving to database (${filename})...`);
+    const dbStart = Date.now();
     const { data: savedData, error: saveError } = await saveAssemblyExtraction(
       { assemblies: result.assemblies },
       filename,
       projectId,
     );
+    const dbMs = Date.now() - dbStart;
 
     if (saveError) {
       console.error("[extract] DB save error:", saveError);
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
+    const totalMs = Date.now() - totalStart;
     console.log(`[extract] Success: saved extraction id ${savedData.id}`);
+    console.log(`[extract] Phase times — extraction: ${(extractMs / 1000).toFixed(2)}s, DB save: ${(dbMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },

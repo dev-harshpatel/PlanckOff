@@ -39,9 +39,13 @@ export const mapJsonToWallAssemblies = (
       costing.materials_costing.forEach((item) => {
         const { extracted_material, matched_materials, matched_labor } = item;
 
+        if (!extracted_material?.raw_text) return;
+
+        const rawText = extracted_material.raw_text;
+
         // Get OC from steel_framing if available
-        const steelFraming = assembly.materials.steel_framing.find(
-          (sf) => sf.raw_text === extracted_material.raw_text,
+        const steelFraming = assembly.materials?.steel_framing?.find(
+          (sf) => sf?.raw_text === rawText,
         );
         const spacingRaw = steelFraming?.spacing;
         // spacing can be string ("400 mm O.C."), object ({ unit: "mm", value: 400 }), or null
@@ -54,8 +58,8 @@ export const mapJsonToWallAssemblies = (
               : "";
 
         // Get layers from gypsum_board if available
-        const gypsumBoard = assembly.materials.gypsum_board.find(
-          (gb) => gb.raw_text === extracted_material.raw_text,
+        const gypsumBoard = assembly.materials?.gypsum_board?.find(
+          (gb) => gb?.raw_text === rawText,
         );
         const layers = gypsumBoard?.layers;
 
@@ -70,7 +74,7 @@ export const mapJsonToWallAssemblies = (
         }
 
         // Add components for each matched material
-        matched_materials.forEach((material, idx) => {
+        (matched_materials ?? []).forEach((material, idx) => {
           components.push({
             id: `${assembly.assembly_id}-mat-${idx}-${Date.now()}`,
             materialName: material.description,
@@ -85,7 +89,7 @@ export const mapJsonToWallAssemblies = (
         });
 
         // Add components for each matched labor
-        matched_labor.forEach((labor, idx) => {
+        (matched_labor ?? []).forEach((labor, idx) => {
           components.push({
             id: `${assembly.assembly_id}-lab-${idx}-${Date.now()}`,
             materialName: labor.description,
