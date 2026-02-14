@@ -26,7 +26,14 @@ export const normalizeExcelHeaders = (
     type: ["type", "division", "trade"],
     manufacturer: ["manufacturer", "vendor", "supplier", "brand"],
     description: ["description", "name", "item description", "material name"],
-    matCost: ["matcost", "mat cost", "material cost", "price", "cost"],
+    matCost: [
+      "matcost",
+      "mat cost",
+      "material cost",
+      "price",
+      "cost",
+      "unit price",
+    ],
     per: ["per", "unit", "uom", "unit of measure"],
     priceUpdated: [
       "priceupdated",
@@ -237,6 +244,7 @@ const inferUnitFromCategory = (
 
 /**
  * Validate batch of materials and return results
+ * Uniquifies duplicate codes by appending _2, _3, etc. so all rows upload
  */
 export const validateMaterialsBatch = (
   data: any[],
@@ -247,11 +255,19 @@ export const validateMaterialsBatch = (
 } => {
   const validMaterials: MaterialDefinition[] = [];
   const invalidRows: { row: number; errors: string[] }[] = [];
+  const codeCount = new Map<string, number>();
 
   data.forEach((row, index) => {
     const { material, errors } = validateMaterialData(row, headerMap);
 
     if (material && errors.length === 0) {
+      const baseCode = material.code;
+      const count = (codeCount.get(baseCode) ?? 0) + 1;
+      codeCount.set(baseCode, count);
+
+      if (count > 1) {
+        material.code = `${baseCode}_${count}`;
+      }
       validMaterials.push(material);
     } else {
       invalidRows.push({

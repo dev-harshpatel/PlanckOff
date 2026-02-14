@@ -194,6 +194,8 @@ export async function updateMaterial(
 
 /**
  * Bulk upsert materials (insert or update)
+ * Deduplicates by code (keeps last occurrence) to avoid PostgreSQL error:
+ * "ON CONFLICT DO UPDATE command cannot affect row a second time"
  */
 export async function bulkUpsertMaterials(
   materials: MaterialDefinition[],
@@ -201,7 +203,14 @@ export async function bulkUpsertMaterials(
   data: MaterialDefinition[] | null;
   error: { message: string; code: string } | null;
 }> {
-  const dbRows = materials.map(transformToDbRow);
+  // Deduplicate by code - keep last occurrence (Excel-style: later row overwrites)
+  const seen = new Map<string, MaterialDefinition>();
+  for (const m of materials) {
+    seen.set(m.code, m);
+  }
+  const deduped = Array.from(seen.values());
+
+  const dbRows = deduped.map(transformToDbRow);
 
   const { data, error } = await supabaseAdmin
     .from(TABLES.MATERIALS)
