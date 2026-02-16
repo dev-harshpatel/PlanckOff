@@ -11,7 +11,8 @@ import { saveFinalOutput } from "@/lib/db/pipelineOutputs";
 // import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 import { finalizeAssembliesWithTakeoff } from "@/services/openrouter/finalizeAssemblies";
 
-export const maxDuration = 600;
+// Hobby plan max: 300s. Pro allows up to 900s.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   console.log("[finalize] POST request received");

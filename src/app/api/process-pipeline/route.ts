@@ -17,7 +17,8 @@ import {
 } from "@/lib/db/pipelineOutputs";
 // import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
-export const maxDuration = 600;
+// Hobby plan max: 300s. Pro allows up to 900s.
+export const maxDuration = 300;
 
 const TAG = "[process-pipeline]";
 const elapsed = (start: number) => `${((performance.now() - start) / 1000).toFixed(2)}s`;
