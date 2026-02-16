@@ -5,19 +5,30 @@ import { FileUploadZone, FileSlot } from './FileUploadZone';
 import { TakeoffPreview } from './TakeoffPreview';
 import { AggregatedTakeoff } from '@/types/takeoff';
 import { Modal, Button, useToast } from '@/components/ui';
-import { Upload, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { usePipeline } from '@/context/PipelineContext';
+import {
+  AlertCircle,
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+  Minimize2,
+  Maximize2,
+  Upload,
+} from "lucide-react";
 
-type Stage = 'idle' | 'extracting' | 'matching' | 'done' | 'error';
+type Stage = "idle" | "processing" | "done" | "error";
 
 interface ImportFilesModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onComplete: (data: {
-    pdfFile: File;
+  /** Optional: use props instead of context (for backwards compat when rendered with props). */
+  isOpen?: boolean;
+  onClose?: () => void;
+  onComplete?: (data: {
+    assemblyResult?: { assemblies: unknown[] };
     excelFile?: File;
+    finalResult?: { assemblies?: unknown[] };
+    pdfFile: File;
     takeoffData?: AggregatedTakeoff[];
-    extractionResult?: { assemblies: unknown[] };
-    matchResult?: { assemblies: unknown[] };
+    takeoffResult?: unknown[];
   }) => void;
   projectId?: string;
 }
@@ -43,12 +54,19 @@ function formatElapsed(seconds: number): string {
 }
 
 export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
-  isOpen,
-  onClose,
-  onComplete,
-  projectId,
+  isOpen: isOpenProp,
+  onClose: onCloseProp,
+  onComplete: onCompleteProp,
+  projectId: projectIdProp,
 }) => {
   const toast = useToast();
+  const pipeline = usePipeline();
+
+  const useContextMode = isOpenProp === undefined;
+  const isOpen = useContextMode ? pipeline.isOpen : (isOpenProp ?? false);
+  const projectId = useContextMode ? pipeline.projectId : projectIdProp;
+  const onClose = useContextMode ? pipeline.closeImportModal : (onCloseProp ?? (() => {}));
+  const getOnComplete = useContextMode ? pipeline.getOnComplete : () => onCompleteProp;
   const [pdfSlot, setPdfSlot] = useState<FileSlot>({ file: null, status: 'empty' });
   const [excelSlot, setExcelSlot] = useState<FileSlot>({ file: null, status: 'empty' });
   const [takeoffData, setTakeoffData] = useState<AggregatedTakeoff[] | null>(null);
@@ -66,11 +84,15 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
   // Refs for timer & abort
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const extractionResultRef = useRef<{ assemblies: unknown[] } | null>(null);
-  const matchResultRef = useRef<{ assemblies: unknown[] } | null>(null);
+  const assemblyResultRef = useRef<{ assemblies: unknown[] } | null>(null);
+  const takeoffResultRef = useRef<unknown[] | null>(null);
+  const finalResultRef = useRef<{ assemblies?: unknown[] } | null>(null);
 
-  const pdfReady = pdfSlot.status === 'ready';
-  const isProcessing = stage === 'extracting' || stage === 'matching';
+  const pdfReady = pdfSlot.status === "ready";
+  const excelReady = excelSlot.status === "ready";
+  const isProcessing = stage === "processing";
+
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // Overwrite confirmation: show when project has existing extraction data
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
@@ -149,8 +171,10 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     setMatchedCount(0);
     setShowOverwriteModal(false);
     setIsCheckingExisting(false);
-    extractionResultRef.current = null;
-    matchResultRef.current = null;
+    setIsMinimized(false);
+    assemblyResultRef.current = null;
+    takeoffResultRef.current = null;
+    finalResultRef.current = null;
   }, []);
 
   const handleCancel = useCallback(() => {
@@ -162,90 +186,84 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     setErrorMessage('Processing cancelled');
   }, []);
 
-  const runExtractionAndMatch = useCallback(async () => {
-    if (!pdfReady || !pdfSlot.file) return;
+  const runFullPipeline = useCallback(async () => {
+    if (!pdfReady || !pdfSlot.file || !excelReady || !excelSlot.file) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      // Stage 1: Extract
-      setStage('extracting');
-      setStatusMessage('Extracting assemblies from PDF...');
+      setStage("processing");
+      setStatusMessage(
+        "Processing PDF, Excel, and generating final output...",
+      );
 
-      const pdfBase64 = await fileToBase64(pdfSlot.file);
+      const [pdfBase64, excelBase64] = await Promise.all([
+        fileToBase64(pdfSlot.file),
+        fileToBase64(excelSlot.file),
+      ]);
 
-      const extractRes = await fetch('/api/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64, projectId: projectId ?? undefined }),
-        signal: controller.signal,
-      });
-
-      const extractRaw = await extractRes.text();
-      let extractJson: { error?: string; extractionId?: string; result?: { assemblies?: unknown[] }; assemblyCount?: number };
-      try {
-        extractJson = JSON.parse(extractRaw);
-      } catch {
-        throw new Error(`Extract failed: server returned invalid JSON (status ${extractRes.status})`);
-      }
-      if (!extractRes.ok) throw new Error(extractJson.error || `Extract failed (${extractRes.status})`);
-
-      const count = extractJson.assemblyCount ?? extractJson.result?.assemblies?.length ?? 0;
-      const extractionId = extractJson.extractionId;
-      setAssemblyCount(count);
-      extractionResultRef.current = extractJson.result
-        ? { assemblies: extractJson.result.assemblies ?? [] }
-        : null;
-
-      // Stage 2: Match
-      setStage('matching');
-      setStatusMessage(`Matching ${count} assemblies to material database...`);
-
-      const matchRes = await fetch('/api/match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/process-pipeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          extraction: extractJson.result,
-          extractionId: extractionId,
+          pdfBase64,
+          excelBase64,
           projectId: projectId ?? undefined,
         }),
         signal: controller.signal,
       });
 
-      const matchRaw = await matchRes.text();
-      let matchJson: { error?: string; result?: { assemblies?: unknown[] }; matchedCount?: number };
+      const raw = await res.text();
+      let json: {
+        error?: string;
+        success?: boolean;
+        assemblyCount?: number;
+        takeoffCount?: number;
+        finalCount?: number;
+        tokensUsed?: number;
+        assemblyResult?: { assemblies: unknown[] };
+        takeoffResult?: unknown[];
+        finalResult?: { assemblies?: unknown[] };
+      };
       try {
-        matchJson = JSON.parse(matchRaw);
+        json = JSON.parse(raw);
       } catch {
-        throw new Error(`Match failed: server returned invalid JSON (status ${matchRes.status})`);
+        throw new Error(
+          `Pipeline failed: server returned invalid JSON (status ${res.status})`,
+        );
       }
-      if (!matchRes.ok) throw new Error(matchJson.error || `Match failed (${matchRes.status})`);
+      if (!res.ok) throw new Error(json.error || `Pipeline failed (${res.status})`);
 
-      const matched = matchJson.matchedCount ?? matchJson.result?.assemblies?.length ?? 0;
-      setMatchedCount(matched);
-      matchResultRef.current = matchJson.result
-        ? { assemblies: matchJson.result.assemblies ?? [] }
-        : null;
+      const ac = json.assemblyCount ?? 0;
+      const tc = json.takeoffCount ?? 0;
+      const fc = json.finalCount ?? 0;
+      setAssemblyCount(ac);
+      setMatchedCount(fc);
+      assemblyResultRef.current = json.assemblyResult ?? null;
+      takeoffResultRef.current = json.takeoffResult ?? null;
+      finalResultRef.current = json.finalResult ?? null;
 
-      // Done
-      setStage('done');
-      setStatusMessage(`Wall assemblies matched! ${count} assemblies extracted, ${matched} matched.`);
+      setStage("done");
+      setStatusMessage(
+        `Complete! ${ac} assemblies, ${tc} takeoff rows, ${fc} final assemblies.`,
+      );
+      toast.success("Pipeline Complete", `${ac} assemblies, ${fc} final output.`);
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        setStage('error');
-        setErrorMessage('Processing cancelled');
+      if ((err as Error).name === "AbortError") {
+        setStage("error");
+        setErrorMessage("Processing cancelled");
         return;
       }
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('[ImportFiles] Pipeline error:', message);
-      setStage('error');
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[ImportFiles] Pipeline error:", message);
+      setStage("error");
       setErrorMessage(message);
     }
-  }, [pdfReady, pdfSlot.file, projectId]);
+  }, [pdfReady, pdfSlot.file, excelReady, excelSlot.file, projectId]);
 
   const handleContinue = useCallback(async () => {
-    if (!pdfReady || !pdfSlot.file) return;
+    if (!pdfReady || !pdfSlot.file || !excelReady || !excelSlot.file) return;
 
     // If project has existing data, show overwrite confirmation
     if (projectId) {
@@ -264,27 +282,27 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       setIsCheckingExisting(false);
     }
 
-    await runExtractionAndMatch();
-  }, [pdfReady, pdfSlot.file, projectId, runExtractionAndMatch]);
+    await runFullPipeline();
+  }, [pdfReady, pdfSlot.file, projectId, runFullPipeline]);
 
   const handleOverwriteConfirm = useCallback(async () => {
     if (!projectId) return;
     setShowOverwriteModal(false);
     try {
       const res = await fetch(`/api/assembly-data?projectId=${projectId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to delete previous data');
+        throw new Error(data.error || "Failed to delete previous data");
       }
-      await runExtractionAndMatch();
+      await runFullPipeline();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setStage('error');
       setErrorMessage(message);
     }
-  }, [projectId, runExtractionAndMatch]);
+  }, [projectId, runFullPipeline]);
 
   const handleOverwriteCancel = useCallback(() => {
     setShowOverwriteModal(false);
@@ -292,15 +310,18 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
 
   const handleDoneClose = () => {
     if (pdfSlot.file) {
-      onComplete({
+      const cb = getOnComplete();
+      cb?.({
+        assemblyResult: assemblyResultRef.current ?? undefined,
+        excelFile: excelSlot.file ?? undefined,
+        finalResult: finalResultRef.current ?? undefined,
         pdfFile: pdfSlot.file,
-        excelFile: excelSlot.file || undefined,
-        takeoffData: takeoffData || undefined,
-        extractionResult: extractionResultRef.current || undefined,
-        matchResult: matchResultRef.current || undefined,
+        takeoffData: takeoffData ?? undefined,
+        takeoffResult: takeoffResultRef.current ?? undefined,
       });
     }
     resetState();
+    if (useContextMode) pipeline.closeImportModal();
   };
 
   const handleClose = () => {
@@ -313,17 +334,58 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     resetState();
   };
 
-  // Render processing/done/error views
+  const handleMinimize = useCallback(() => setIsMinimized(true), []);
+  const handleExpand = useCallback(() => setIsMinimized(false), []);
+
   const renderProcessingView = () => (
     <div className="flex flex-col items-center justify-center py-16 px-6">
       <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-6">
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
       </div>
       <p className="text-lg font-semibold text-slate-800 mb-2">{statusMessage}</p>
-      <p className="text-sm text-slate-500 tabular-nums">{formatElapsed(elapsedSeconds)}</p>
+      <p className="text-sm text-slate-500 tabular-nums">
+        {formatElapsed(elapsedSeconds)}
+      </p>
+      <div className="mt-6 flex gap-3">
+        <Button
+          variant="secondary"
+          icon={Minimize2}
+          onClick={handleMinimize}
+          size="sm"
+        >
+          Minimize
+        </Button>
+        <button
+          onClick={handleCancel}
+          className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderMinimizedBar = () => (
+    <div
+      className="fixed bottom-4 right-4 z-[10000] flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-lg"
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin text-blue-600" />
+      <span className="text-sm font-medium text-slate-700">
+        Processing... {formatElapsed(elapsedSeconds)}
+      </span>
+      <Button
+        variant="secondary"
+        icon={Maximize2}
+        onClick={handleExpand}
+        size="sm"
+      >
+        Expand
+      </Button>
       <button
         onClick={handleCancel}
-        className="mt-6 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+        className="text-xs text-red-600 hover:text-red-700"
       >
         Cancel
       </button>
@@ -366,17 +428,27 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     </div>
   );
 
+  const showMinimized = isMinimized && isProcessing;
+
   return (
-    <Modal isOpen={isOpen} onClose={isProcessing ? () => {} : handleClose} size="lg">
-      <div className="flex flex-col max-h-[80vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200">
+    <Modal
+      isOpen={isOpen}
+      minimized={showMinimized}
+      onClose={isProcessing ? () => {} : handleClose}
+      size="lg"
+    >
+      {showMinimized ? (
+        renderMinimizedBar()
+      ) : (
+        <div className="flex flex-col max-h-[80vh]">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Upload className="w-5 h-5 text-emerald-600" />
             Import Project Files
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Upload your Wall Spec PDF to extract and match assemblies. Takeoff Schedule (.xlsx) is optional.
+            Upload Wall Spec PDF and Takeoff Excel to process and generate final assemblies.
           </p>
         </div>
 
@@ -429,21 +501,18 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
             </>
           )}
 
-          {(stage === 'extracting' || stage === 'matching') && renderProcessingView()}
-          {stage === 'done' && renderDoneView()}
-          {stage === 'error' && renderErrorView()}
+          {stage === "processing" && !isMinimized && renderProcessingView()}
+          {stage === "done" && renderDoneView()}
+          {stage === "error" && renderErrorView()}
         </div>
 
         {/* Footer — only shown during idle stage, hidden when overwrite modal is shown */}
         {stage === 'idle' && !showOverwriteModal && (
           <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
             <div className="text-xs text-slate-500">
-              {pdfSlot.file
-                ? excelSlot.file
-                  ? 'PDF and Excel uploaded. Ready to continue.'
-                  : 'PDF uploaded. Ready to extract assemblies.'
-                : 'Upload a Wall Spec PDF to continue.'
-              }
+              {pdfSlot.file && excelSlot.file
+                ? "PDF and Excel uploaded. Ready to process."
+                : "Upload both Wall Spec PDF and Takeoff Excel to continue."}
             </div>
             <div className="flex items-center gap-3">
               <Button variant="ghost" onClick={handleClose} size="sm" disabled={isParsingExcel}>
@@ -454,15 +523,25 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
                 icon={isParsingExcel || isCheckingExisting ? Loader2 : ArrowRight}
                 iconPosition="right"
                 onClick={handleContinue}
-                disabled={!pdfReady || isParsingExcel || isCheckingExisting}
+                disabled={
+                  !pdfReady ||
+                  !excelReady ||
+                  isParsingExcel ||
+                  isCheckingExisting
+                }
                 size="sm"
               >
-                {isParsingExcel ? 'Parsing Excel...' : isCheckingExisting ? 'Checking...' : 'Continue'}
+                {isParsingExcel
+                  ? "Parsing Excel..."
+                  : isCheckingExisting
+                    ? "Checking..."
+                    : "Continue"}
               </Button>
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </Modal>
   );
 };

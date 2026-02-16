@@ -4,15 +4,22 @@
 
 export interface MaterialItem {
   raw_text: string;
-  thickness: number | null;
+  thickness?: number | { unit?: string; value?: number } | null;
   type: string | null;
-  layers: number | null;
+  layers?: number | null;
   size: string | null;
   gauge: string | null;
-  spacing: string | null;
+  spacing?: string | { unit?: string; value?: number } | null;
   description: string | null;
-  r_value: string | null;
-  depth: number | null;
+  r_value?: string | null;
+  depth?: number | null;
+  /** final_output format fields */
+  height_ft?: number;
+  height_category?: string;
+  total_length?: number;
+  ceiling_area?: number | null;
+  area_parementer?: number | null;
+  selected_gauge?: string | null;
 }
 
 export interface AssemblyMaterials {
@@ -30,9 +37,16 @@ export interface AssemblyMaterials {
 
 export interface AssemblyData {
   assembly_id: string;
-  fire_rating: string | null;
-  stc_rating: string | null;
-  materials: AssemblyMaterials;
+  fire_rating?: string | null;
+  stc_rating?: string | null;
+  materials?: AssemblyMaterials;
+  /** final_output format fields */
+  assembly_type?: string;
+  height_ft?: number;
+  height_category?: string;
+  total_length?: number;
+  ceiling_area?: number | null;
+  area_parementer?: number | null;
 }
 
 export interface MatchedMaterial {

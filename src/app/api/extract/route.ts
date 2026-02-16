@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
 import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
+import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
+// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 export const maxDuration = 180;
 
@@ -49,27 +50,27 @@ export async function POST(req: NextRequest) {
     const timestamp = Date.now();
     const filename = `assembly-data-${timestamp}.json`;
 
-    console.log(`[extract] Saving to database (${filename})...`);
-    const dbStart = Date.now();
     const { data: savedData, error: saveError } = await saveAssemblyExtraction(
       { assemblies: result.assemblies },
       filename,
       projectId,
     );
-    const dbMs = Date.now() - dbStart;
-
     if (saveError) {
       console.error("[extract] DB save error:", saveError);
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
+    // const localPath = await writeJsonToLocal("assembly", {
+    //   assemblies: result.assemblies,
+    // });
+    console.log(`[extract] DB: ${savedData?.id}`);
+
     const totalMs = Date.now() - totalStart;
-    console.log(`[extract] Success: saved extraction id ${savedData.id}`);
-    console.log(`[extract] Phase times — extraction: ${(extractMs / 1000).toFixed(2)}s, DB save: ${(dbMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log(`[extract] Success. Phase times — extraction: ${(extractMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },
-      extractionId: savedData.id,
+      extractionId: savedData?.id,
       filename,
       assemblyCount: result.assemblies.length,
       truncated: result.truncated,

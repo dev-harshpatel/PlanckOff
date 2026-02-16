@@ -7,13 +7,14 @@ import { X } from 'lucide-react';
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 
 interface ModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    title?: string;
-    size?: ModalSize;
-    children: React.ReactNode;
-    showCloseButton?: boolean;
-    closeOnOverlayClick?: boolean;
+  children: React.ReactNode;
+  closeOnOverlayClick?: boolean;
+  isOpen: boolean;
+  minimized?: boolean;
+  onClose: () => void;
+  showCloseButton?: boolean;
+  size?: ModalSize;
+  title?: string;
 }
 
 const sizeStyles: Record<ModalSize, string> = {
@@ -26,57 +27,61 @@ const sizeStyles: Record<ModalSize, string> = {
 };
 
 export const Modal: React.FC<ModalProps> = ({
-    isOpen,
-    onClose,
-    title,
-    size = 'md',
-    children,
-    showCloseButton = true,
-    closeOnOverlayClick = true,
+  children,
+  closeOnOverlayClick = true,
+  isOpen,
+  minimized = false,
+  onClose,
+  showCloseButton = true,
+  size = "md",
+  title,
 }) => {
-    const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-    useEffect(() => {
-        setMounted(true);
-        return () => setMounted(false);
-    }, []);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
-    if (!isOpen || !mounted) return null;
+  if (!isOpen || !mounted) return null;
 
-    const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (closeOnOverlayClick && e.target === e.currentTarget) {
-            onClose();
-        }
-    };
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (closeOnOverlayClick && e.target === e.currentTarget) {
+      onClose();
+    }
+  };
 
-    const modalContent = (
-        <div
-            className="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
-            onClick={handleOverlayClick}
-        >
-            <div
-                className={`bg-white rounded-xl shadow-2xl w-full ${sizeStyles[size]} ${size === 'full' ? 'h-[95vh]' : ''} overflow-hidden animate-in fade-in zoom-in duration-200`}
-            >
-                {title && (
-                    <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
-                        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
-                        {showCloseButton && (
-                            <button
-                                onClick={onClose}
-                                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        )}
-                    </div>
-                )}
-                {children}
-            </div>
-        </div>
-    );
+  if (minimized) {
+    return createPortal(<>{children}</>, document.body);
+  }
 
-    // Use portal to render at document body level
-    return createPortal(modalContent, document.body);
+  const modalContent = (
+    <div
+      className="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+      onClick={handleOverlayClick}
+    >
+      <div
+        className={`bg-white rounded-xl shadow-2xl w-full ${sizeStyles[size]} ${size === "full" ? "h-[95vh]" : ""} overflow-hidden animate-in fade-in zoom-in duration-200`}
+      >
+        {title && (
+          <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+            {showCloseButton && (
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
 };
 
 // Sub-components for better structure

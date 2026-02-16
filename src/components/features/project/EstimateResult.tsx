@@ -52,10 +52,13 @@ import {
 import { AssemblyEditorModal } from "@/components/features/project/AssemblyEditorModal";
 import { TakeoffScheduleView } from "@/components/features/project/TakeoffScheduleView";
 import { AssemblySummaryGrid } from "@/components/features/project/AssemblySummaryGrid";
-import { ImportFilesModal } from "@/components/features/project/ImportFilesModal";
+import { usePipeline } from "@/context/PipelineContext";
 import { AggregatedTakeoff } from "@/types/takeoff";
 import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { FORMULA_DEFINITIONS } from "@/constants/formulas";
+import {
+  mapFinalOutputToTakeoffs,
+} from "@/lib/utils/assemblyJsonMapper";
 import {
   detectLengthFt,
   getFilteredFormulas,
@@ -121,6 +124,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   const [editingAssemblyId, setEditingAssemblyId] = useState<string | null>(
     null,
   );
+  const [editingHeight, setEditingHeight] = useState<number | null>(null);
   const [activeAssemblyId, setActiveAssemblyId] = useState<string | null>(null); // For sidebar selection
   const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"schedule" | "materials">(
@@ -147,28 +151,41 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
 
   // Toast and confirmation modals
   const toast = useToast();
-
-  // Import Files Modal state (Phase 1)
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const { openImportModal } = usePipeline();
   const [importedPdfFile, setImportedPdfFile] = useState<File | null>(null);
   const [importedTakeoffData, setImportedTakeoffData] = useState<AggregatedTakeoff[] | null>(null);
 
   const handleImportComplete = useCallback((data: {
-    pdfFile: File;
+    assemblyResult?: { assemblies: unknown[] };
     excelFile?: File;
+    finalResult?: { assemblies?: unknown[] };
+    pdfFile: File;
     takeoffData?: AggregatedTakeoff[];
-    extractionResult?: { assemblies: unknown[] };
-    matchResult?: { assemblies: unknown[] };
+    takeoffResult?: unknown[];
   }) => {
     setImportedPdfFile(data.pdfFile);
-    setIsImportModalOpen(false);
     onImportComplete?.();
 
-    if (data.extractionResult) {
-      console.log('[Import] Extraction result:', data.extractionResult.assemblies?.length, 'assemblies');
+    if (data.assemblyResult) {
+      console.log(
+        "[Import] Assembly result:",
+        data.assemblyResult.assemblies?.length,
+        "assemblies",
+      );
     }
-    if (data.matchResult) {
-      console.log('[Import] Match result:', data.matchResult.assemblies?.length, 'assemblies matched');
+    if (data.takeoffResult) {
+      console.log(
+        "[Import] Takeoff result:",
+        Array.isArray(data.takeoffResult) ? data.takeoffResult.length : 0,
+        "rows",
+      );
+    }
+    if (data.finalResult) {
+      console.log(
+        "[Import] Final result:",
+        data.finalResult.assemblies?.length ?? 0,
+        "assemblies (saved to data/output/final_output/)",
+      );
     }
 
     // If Excel data present, load into project
@@ -423,26 +440,42 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   }, []);
 
   // Sync assemblies from parent: in project view, replace with loaded data; otherwise merge new ones
+  // When materialCostingData has final_output format (height_ft, total_length), populate takeoffs from it
   useEffect(() => {
     if (viewMode === "project" && initialAssemblies.length > 0) {
       setAssemblies(initialAssemblies);
-      const newTakeoffs: Record<string, TakeoffInstance[]> = {};
-      initialAssemblies.forEach((a) => {
-        newTakeoffs[a.id] = takeoffs[a.id] || [];
-      });
+      const hasFinalOutputFormat = materialCostingData.some(
+        (a) =>
+          typeof (a as { height_ft?: number; total_length?: number }).height_ft === "number" &&
+          typeof (a as { height_ft?: number; total_length?: number }).total_length === "number",
+      );
+      let newTakeoffs: Record<string, TakeoffInstance[]>;
+      if (hasFinalOutputFormat) {
+        newTakeoffs = mapFinalOutputToTakeoffs(materialCostingData);
+        // Ensure every assembly has an entry (even if empty)
+        initialAssemblies.forEach((a) => {
+          if (!newTakeoffs[a.id]) newTakeoffs[a.id] = [];
+        });
+      } else {
+        newTakeoffs = {};
+        initialAssemblies.forEach((a) => {
+          newTakeoffs[a.id] = takeoffs[a.id] || [];
+        });
+      }
       setTakeoffs(newTakeoffs);
     } else if (initialAssemblies.length > assemblies.length) {
       const newOnes = initialAssemblies.slice(assemblies.length);
       setAssemblies((prev) => [...prev, ...newOnes]);
-      const newTakeoffs: Record<string, TakeoffInstance[]> = { ...takeoffs };
+      const mergedTakeoffs: Record<string, TakeoffInstance[]> = { ...takeoffs };
       newOnes.forEach((a) => {
-        if (!newTakeoffs[a.id]) {
-          newTakeoffs[a.id] = [];
+        if (!mergedTakeoffs[a.id]) {
+          mergedTakeoffs[a.id] = [];
         }
       });
-      setTakeoffs(newTakeoffs);
+      setTakeoffs(mergedTakeoffs);
     }
-  }, [initialAssemblies, viewMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- takeoffs intentionally excluded to avoid sync loop
+  }, [initialAssemblies, viewMode, materialCostingData]);
 
   useEffect(() => {
     const initial: Record<string, TakeoffInstance[]> = {};
@@ -1398,10 +1431,15 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     );
 
     if (assemblyInstances.length > 0) {
-      totalAggLength = Object.values(statsByHeight).reduce(
-        (a: number, b: any) => a + (b.len || 0),
+      const baseTotal = Object.entries(statsByHeight).reduce(
+        (a: number, [h, b]: [string, { len?: number }]) =>
+          a + (b.len || 0),
         0,
       ) as number;
+      totalAggLength =
+        editingHeight != null && statsByHeight[editingHeight]
+          ? statsByHeight[editingHeight].len
+          : baseTotal;
     } else {
       totalAggLength = currentEditingAssembly.defaultLength || 0;
     }
@@ -1533,7 +1571,9 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                   <IconButton
                     icon={Upload}
                     variant="default"
-                    onClick={() => setIsImportModalOpen(true)}
+                    onClick={() =>
+                      openImportModal(projectIdProp ?? undefined, handleImportComplete)
+                    }
                     tooltip="Import Files"
                   />
                   <IconButton
@@ -1558,11 +1598,15 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
                 takeoffs={takeoffs}
                 materials={materials}
                 priceMap={priceMap}
-                onSelectAssembly={(id) => {
+                onSelectAssembly={(id, height) => {
                   setActiveAssemblyId(id);
                   setEditingAssemblyId(id);
+                  setEditingHeight(height ?? null);
                 }}
-                onEditAssembly={(id) => setEditingAssemblyId(id)}
+                onEditAssembly={(id, height) => {
+                  setEditingAssemblyId(id);
+                  setEditingHeight(height ?? null);
+                }}
                 selectedAssemblyId={activeAssemblyId}
                 onDeleteAssembly={deleteAssembly}
               />
@@ -1610,7 +1654,9 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
               <Button
                 variant="secondary"
                 icon={Upload}
-                onClick={() => setIsImportModalOpen(true)}
+                onClick={() =>
+                  openImportModal(projectIdProp ?? undefined, handleImportComplete)
+                }
                 size="sm"
               >
                 Import Files
@@ -1635,7 +1681,10 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       {/* --- ASSEMBLY EDIT MODAL --- */}
       <AssemblyEditorModal
         isOpen={!!currentEditingAssembly}
-        onClose={() => setEditingAssemblyId(null)}
+        onClose={() => {
+          setEditingAssemblyId(null);
+          setEditingHeight(null);
+        }}
         assembly={
           currentEditingAssembly || {
             id: "",
@@ -1659,6 +1708,8 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
             : []
         }
         statsByHeight={statsByHeight}
+        selectedHeight={editingHeight}
+        onSelectHeight={setEditingHeight}
         onLoadTemplate={handleLoadTemplate}
         templates={templates}
       />
@@ -1693,14 +1744,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         confirmText="Remove"
         cancelText="Cancel"
         variant="warning"
-      />
-
-      {/* Import Files Modal (Phase 1) */}
-      <ImportFilesModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onComplete={handleImportComplete}
-        projectId={projectIdProp ?? undefined}
       />
     </div>
   );

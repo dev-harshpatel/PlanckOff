@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
-import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
 import { saveMaterialMatch } from "@/lib/db/assemblyData";
+import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
+// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 export const maxDuration = 180;
 
@@ -69,30 +70,30 @@ export async function POST(req: NextRequest) {
 
     const timestamp = Date.now();
     const filename = `material-match-${timestamp}.json`;
-
     const extractionIdStr = extractionId ?? "";
-    console.log(`[match] Saving to database (${filename})...`);
-    const dbStart = Date.now();
+
     const { data: savedData, error: saveError } = await saveMaterialMatch(
       { assemblies: result.assemblies },
       filename,
       extractionIdStr,
       projectId,
     );
-    const dbMs = Date.now() - dbStart;
-
     if (saveError) {
       console.error("[match] DB save error:", saveError);
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
+    // const localPath = await writeJsonToLocal("material_match", {
+    //   assemblies: result.assemblies,
+    // });
+    console.log(`[match] DB: ${savedData?.id}`);
+
     const totalMs = Date.now() - totalStart;
-    console.log(`[match] Success: saved match id ${savedData.id}`);
-    console.log(`[match] Phase times — material DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, DB save: ${(dbMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log(`[match] Success. Phase times — material DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },
-      matchId: savedData.id,
+      matchId: savedData?.id,
       filename,
       matchedCount: result.assemblies.length,
     });

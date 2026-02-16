@@ -22,6 +22,8 @@ interface AssemblyEditorModalProps {
     getRowDetails: (comp: AssemblyComponent, assembly: WallAssembly, instances: any[]) => any;
     takeoffInstances: any[];
     statsByHeight: Record<string, { len: number, area: number, perim?: number }>;
+    selectedHeight: number | null;
+    onSelectHeight: (height: number | null) => void;
     onLoadTemplate?: (template: AssemblyTemplate) => void;
     templates?: AssemblyTemplate[];
 }
@@ -29,7 +31,8 @@ interface AssemblyEditorModalProps {
 export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
     isOpen, onClose, assembly, updateAssemblyInfo, totalAggLength, materials,
     handleMaterialSelect, handleUpdateComponent, handleAddComponent, handleDeleteComponent,
-    getRowDetails, takeoffInstances, statsByHeight, onLoadTemplate, templates = DEFAULT_TEMPLATES
+    getRowDetails, takeoffInstances, statsByHeight, selectedHeight, onSelectHeight,
+    onLoadTemplate, templates = DEFAULT_TEMPLATES
 }) => {
     const [rowSearchOpen, setRowSearchOpen] = useState<string | null>(null);
     const [rowSearchQuery, setRowSearchQuery] = useState('');
@@ -159,6 +162,8 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                         updateAssemblyInfo={updateAssemblyInfo}
                         totalAggLength={totalAggLength}
                         statsByHeight={statsByHeight}
+                        selectedHeight={selectedHeight}
+                        onSelectHeight={onSelectHeight}
                         onLoadTemplate={onLoadTemplate}
                         templates={templates}
                         totalCost={totalCost}
@@ -189,7 +194,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.lab }}>Code<Resizer col="lab" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.height }}>Hgt<Resizer col="height" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.oc }}>OC<Resizer col="oc" /></th>
-                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.layers }}>Lyring<Resizer col="layers" /></th>
+                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.layers }}>Layering<Resizer col="layers" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.waste }}>Wst%<Resizer col="waste" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.qty }}>Qty<Resizer col="qty" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.uom }}>UOM<Resizer col="uom" /></th>
@@ -210,25 +215,45 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                         // Use section from material_matches (sectionCode) — no inference
                                         const section = comp.sectionCode || "";
 
-                                        // Infer Height/OC/Layers
-                                        const heightVal = comp.heightCondition?.max ? `${comp.heightCondition.max}'` : (assembly.defaultHeight ? `${assembly.defaultHeight}'` : '');
+                                        // Hgt: from overrideHeight (from JSON) or assembly.defaultHeight
+                                        const heightVal =
+                                            comp.overrideHeight != null
+                                                ? `${comp.overrideHeight}'`
+                                                : comp.heightCondition?.max
+                                                    ? `${comp.heightCondition.max}'`
+                                                    : assembly.defaultHeight
+                                                        ? `${assembly.defaultHeight}'`
+                                                        : "";
 
-                                        // Use OC from component if available, otherwise extract from usage
-                                        let ocVal = '';
+                                        // OC: from ocSpacing (from assembly-data) or extract from usage
+                                        let ocVal = "";
                                         if (comp.ocSpacing) {
                                             ocVal = comp.ocSpacing;
                                         } else {
                                             const ocMatch = comp.usage.match(/Vertical @ (\d+)"? OC/);
-                                            ocVal = ocMatch ? `${ocMatch[1]}"` : (comp.usage.includes('16') ? '16"' : (comp.usage.includes('24') ? '24"' : (comp.usage.includes('12') ? '12"' : '')));
+                                            ocVal = ocMatch
+                                                ? `${ocMatch[1]}"`
+                                                : comp.usage.includes("16")
+                                                    ? "16\""
+                                                    : comp.usage.includes("24")
+                                                        ? "24\""
+                                                        : comp.usage.includes("12")
+                                                            ? "12\""
+                                                            : "";
                                         }
 
-
-                                        // Track Logic for Layers Column
-                                        let layersVal = '';
-                                        if (comp.usage.includes('2 Layer')) layersVal = '2.00';
-                                        else if (comp.usage.includes('Coverage')) layersVal = '1.00';
-                                        else if (comp.usage.includes('Tracks (Top & Bottom)')) layersVal = '2';
-                                        else if (comp.usage.toLowerCase().includes('track') && !comp.usage.includes('&')) layersVal = '1';
+                                        // Layering: only for gypsum board (layers not applicable to steel framing, labor, etc.)
+                                        const isGypsumComponent =
+                                            comp.overrideLayers != null ||
+                                            comp.usage.includes("Coverage") ||
+                                            /gypsum|wallboard|drywall|type x/i.test(comp.materialName);
+                                        let layersVal = "";
+                                        if (isGypsumComponent) {
+                                            if (comp.usage.includes("2 Layer")) layersVal = "2.00";
+                                            else if (comp.usage.includes("Coverage")) layersVal = "1.00";
+                                            else if (comp.usage.includes("Tracks (Top & Bottom)")) layersVal = "2";
+                                            else if (comp.usage.toLowerCase().includes("track") && !comp.usage.includes("&")) layersVal = "1";
+                                        }
 
 
 
@@ -303,10 +328,13 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
 
                                                 {/* Inputs - Yellow Highlight */}
                                                 <td className="border-r border-slate-200 text-center bg-yellow-200 p-0">
-                                                    <NumberInput cellMode
+                                                    <NumberInput
+                                                        cellMode
                                                         className="w-full h-full bg-transparent text-center outline-none"
                                                         value={comp.overrideHeight}
-                                                        onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'overrideHeight', val)}
+                                                        onChange={(val) =>
+                                                            handleUpdateComponent(assembly.id, comp.id, "overrideHeight", val)
+                                                        }
                                                         placeholder={heightVal}
                                                     />
                                                 </td>
@@ -327,13 +355,20 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                     )}
                                                 </td>
                                                 <td className="border-r border-slate-200 text-center bg-yellow-200 p-0">
-                                                    <NumberInput cellMode
-                                                        className="w-full h-full bg-transparent text-center outline-none"
-                                                        value={comp.overrideLayers}
-                                                        onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'overrideLayers', val)}
-                                                        placeholder={layersVal}
-                                                        type="float" // Allow 1.5 layers?
-                                                    />
+                                                    {isGypsumComponent ? (
+                                                        <NumberInput
+                                                            cellMode
+                                                            className="w-full h-full bg-transparent text-center outline-none"
+                                                            value={comp.overrideLayers}
+                                                            onChange={(val) =>
+                                                                handleUpdateComponent(assembly.id, comp.id, "overrideLayers", val)
+                                                            }
+                                                            placeholder={layersVal}
+                                                            type="float"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-slate-400">-</span>
+                                                    )}
                                                 </td>
 
                                                 {/* Waste Factor */}

@@ -13,6 +13,8 @@ interface AssemblyEditorSidebarProps {
     updateAssemblyInfo: <K extends keyof WallAssembly>(id: string, field: K, value: WallAssembly[K]) => void;
     totalAggLength: number;
     statsByHeight: Record<string, { len: number, area: number, perim?: number }>;
+    selectedHeight: number | null;
+    onSelectHeight: (height: number | null) => void;
     onLoadTemplate?: (template: AssemblyTemplate) => void;
     templates?: AssemblyTemplate[];
     totalCost: number;
@@ -25,6 +27,8 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
     updateAssemblyInfo,
     totalAggLength,
     statsByHeight,
+    selectedHeight,
+    onSelectHeight,
     onLoadTemplate,
     templates = [],
     totalCost
@@ -32,22 +36,19 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
     const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
 
     const categoryOptions = [
-        { value: 'Wall', label: 'Framing (Wall)' },
-        { value: 'Ceiling', label: 'Ceiling' },
-        { value: 'Soffit', label: 'Soffit' }
+        { value: "Interior Walls", label: "Interior Walls" },
+        { value: "Exterior Walls", label: "Exterior Walls" },
+        { value: "Ceiling", label: "Ceiling" },
+        { value: "BulkHead", label: "BulkHead" },
+        { value: "Access Pannel", label: "Access Pannel" },
+        { value: "HM Frames", label: "HM Frames" },
     ];
 
     const ceilingSubtypeOptions = [
-        { value: 'Suspended', label: 'Suspended' },
-        { value: 'Hard Lid', label: 'Hard Lid' },
-        { value: 'Baffles', label: 'Baffles' },
-        { value: 'Steel Joist', label: 'Steel Joist' }
-    ];
-
-    const framingTypeOptions = [
-        { value: 'Light Metal', label: 'Light Metal' },
-        { value: 'Heavy Metal', label: 'Heavy Metal' },
-        { value: 'Wood', label: 'Wood' }
+        { value: "Suspended", label: "Suspended" },
+        { value: "Hard Lid", label: "Hard Lid" },
+        { value: "Baffles", label: "Baffles" },
+        { value: "Steel Joist", label: "Steel Joist" },
     ];
 
     return (
@@ -99,38 +100,45 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                     <div className="grid grid-cols-2 gap-2">
                         <SelectField
                             label="Category"
-                            value={tempAssembly.assemblyType || 'Wall'}
+                            value={
+                                tempAssembly.assemblyType ||
+                                "Interior Walls"
+                            }
                             onValueChange={(val) => {
-                                const nextAssemblyType = val as WallAssembly['assemblyType'];
-                                setTempAssembly({ ...tempAssembly, assemblyType: nextAssemblyType });
-                                updateAssemblyInfo(assembly.id, 'assemblyType', nextAssemblyType);
+                                const nextAssemblyType = val as WallAssembly["assemblyType"];
+                                setTempAssembly({
+                                    ...tempAssembly,
+                                    assemblyType: nextAssemblyType,
+                                });
+                                updateAssemblyInfo(
+                                    assembly.id,
+                                    "assemblyType",
+                                    nextAssemblyType,
+                                );
                             }}
                             options={categoryOptions}
                         />
-                        {tempAssembly.assemblyType === 'Ceiling' && (
+                        {tempAssembly.assemblyType === "Ceiling" && (
                             <SelectField
                                 label="Grid/Type"
-                                value={tempAssembly.ceilingSubtype || 'Suspended'}
+                                value={tempAssembly.ceilingSubtype || "Suspended"}
                                 onValueChange={(val) => {
-                                    const nextSubtype = val as WallAssembly['ceilingSubtype'];
-                                    setTempAssembly({ ...tempAssembly, ceilingSubtype: nextSubtype });
-                                    updateAssemblyInfo(assembly.id, 'ceilingSubtype', nextSubtype);
+                                    const nextSubtype =
+                                        val as WallAssembly["ceilingSubtype"];
+                                    setTempAssembly({
+                                        ...tempAssembly,
+                                        ceilingSubtype: nextSubtype,
+                                    });
+                                    updateAssemblyInfo(
+                                        assembly.id,
+                                        "ceilingSubtype",
+                                        nextSubtype,
+                                    );
                                 }}
                                 options={ceilingSubtypeOptions}
                             />
                         )}
                     </div>
-
-                    <SelectField
-                        label="Framing Type"
-                        value={tempAssembly.framingType || 'Light Metal'}
-                        onValueChange={(val) => {
-                            const nextFramingType = val as WallAssembly['framingType'];
-                            setTempAssembly({ ...tempAssembly, framingType: nextFramingType });
-                            updateAssemblyInfo(assembly.id, 'framingType', nextFramingType);
-                        }}
-                        options={framingTypeOptions}
-                    />
 
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
@@ -157,24 +165,53 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
 
                     {Object.keys(statsByHeight).length > 0 ? (
                         <div className="space-y-2">
-                            {(Object.entries(statsByHeight) as [string, { len: number, area: number, perim?: number }][]).map(([h, stats]) => (
-                                <div key={h} className="flex justify-between text-sm text-slate-700 items-center">
-                                    <div className="font-medium text-xs">{parseFloat(h) === 0 ? 'Ceiling' : `Wall @ ${h}'`}</div>
-                                    <div className="flex gap-2">
-                                        {assembly.assemblyType === 'Ceiling' ? (
-                                            <>
-                                                <span className="bg-blue-100 px-2 rounded font-mono text-xs">{stats.area.toFixed(0)} SF</span>
-                                                <span className="bg-slate-100 px-2 rounded font-mono text-xs text-slate-500">{stats.perim?.toFixed(0) || 0} LF</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="bg-slate-100 px-2 rounded font-mono text-xs">{stats.len.toFixed(0)} LF</span>
-                                                <span className="text-slate-400 text-xs">{stats.area.toFixed(0)} SF</span>
-                                            </>
+                            {(() => {
+                                const entries = Object.entries(statsByHeight) as [string, { len: number, area: number, perim?: number }][];
+                                const sortedHeights = entries.sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+                                const filtered = selectedHeight != null
+                                    ? sortedHeights.filter(([h]) => parseFloat(h) === selectedHeight)
+                                    : sortedHeights;
+                                return (
+                                    <>
+                                        {sortedHeights.length > 1 && (
+                                            <select
+                                                value={selectedHeight ?? ''}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    onSelectHeight(v === '' ? null : parseFloat(v));
+                                                }}
+                                                className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 mb-2 bg-white"
+                                                aria-label="Filter by height"
+                                            >
+                                                <option value="">All heights</option>
+                                                {sortedHeights.map(([h]) => (
+                                                    <option key={h} value={h}>
+                                                        {parseFloat(h) === 0 ? 'Ceiling' : `Wall @ ${h}'`}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         )}
-                                    </div>
-                                </div>
-                            ))}
+                                        {filtered.map(([h, stats]) => (
+                                            <div key={h} className="flex justify-between text-sm text-slate-700 items-center">
+                                                <div className="font-medium text-xs">{parseFloat(h) === 0 ? 'Ceiling' : `Wall @ ${h}'`}</div>
+                                                <div className="flex gap-2">
+                                                    {assembly.assemblyType === 'Ceiling' ? (
+                                                        <>
+                                                            <span className="bg-blue-100 px-2 rounded font-mono text-xs">{stats.area.toFixed(0)} SF</span>
+                                                            <span className="bg-slate-100 px-2 rounded font-mono text-xs text-slate-500">{stats.perim?.toFixed(0) || 0} LF</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="bg-slate-100 px-2 rounded font-mono text-xs">{stats.len.toFixed(0)} LF</span>
+                                                            <span className="text-slate-400 text-xs">{stats.area.toFixed(0)} SF</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </>
+                                );
+                            })()}
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 gap-3">

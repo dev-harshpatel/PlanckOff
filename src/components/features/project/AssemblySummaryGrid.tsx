@@ -20,8 +20,8 @@ interface AssemblySummaryGridProps {
     string,
     { cost: number; per?: string; waste?: number; supplier?: string }
   >;
-  onSelectAssembly: (id: string) => void;
-  onEditAssembly?: (id: string) => void;
+  onSelectAssembly: (id: string, height?: number) => void;
+  onEditAssembly?: (id: string, height?: number) => void;
   selectedAssemblyId?: string | null;
   onDeleteAssembly?: (id: string) => void;
 }
@@ -32,11 +32,12 @@ interface SummaryRow {
   name: string;
   type: string;
   totalQty: number;
-  totalPerimeter?: number; // Added Perimeter
+  totalPerimeter?: number;
   unit: string;
   unitCost: number;
   totalCost: number;
   instanceCount: number;
+  height?: number; // specific height variant
 }
 
 export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
@@ -73,31 +74,77 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
     setAssemblyToDelete(null);
   };
 
-  // Calculate Summary Data
+  // Determine Display Type helper
+  const getDisplayType = (asm: WallAssembly): string => {
+    let displayType: string = asm.assemblyType || "Wall";
+    if (asm.assemblyType === "Ceiling") {
+      if (
+        asm.description.toLowerCase().includes("tile") ||
+        asm.description.toLowerCase().includes("act")
+      )
+        displayType = "ACT Ceiling";
+      else if (asm.description.toLowerCase().includes("baffle"))
+        displayType = "Baffles";
+      else if (asm.description.toLowerCase().includes("grid"))
+        displayType = "Suspended Grid";
+      else if (
+        asm.description.toLowerCase().includes("joist") ||
+        asm.description.toLowerCase().includes("frame")
+      )
+        displayType = "Framed Ceiling";
+      if (asm.ceilingSubtype) displayType = asm.ceilingSubtype;
+    } else if (asm.assemblyType === "Soffit") {
+      displayType = "Soffits";
+    } else if (asm.assemblyType === "Bulkhead") {
+      displayType = "Bulkheads";
+    } else if (asm.assemblyType === "Hollow Metal Frame") {
+      displayType = "H.M. Frames";
+    } else if (asm.assemblyType === "Access Panel") {
+      displayType = "Access Panels";
+    } else if (asm.assemblyType === "Interior Wall") {
+      displayType = "Interior Walls";
+    } else if (asm.assemblyType === "Exterior Wall") {
+      displayType = "Exterior Walls";
+    }
+    return displayType;
+  };
+
+  // Calculate Summary Data - one row per (assembly, height) to show all variants
   const summaryRows: SummaryRow[] = useMemo(() => {
-    return assemblies.map((asm) => {
+    const rows: SummaryRow[] = [];
+    assemblies.forEach((asm) => {
       const instances = takeoffs[asm.id] || [];
+      const displayType = getDisplayType(asm);
+
       if (instances.length === 0) {
-        return {
+        rows.push({
           id: asm.id,
           code: asm.code,
           name: asm.description,
-          type: asm.assemblyType || "Wall",
+          type: displayType,
           totalQty: 0,
           totalPerimeter: 0,
           unit: asm.assemblyType === "Ceiling" ? "SF" : "LF",
           unitCost: 0,
           totalCost: 0,
           instanceCount: 0,
-        };
+        });
+        return;
       }
 
-      // Calculate Costs
-      let aggCost = 0;
-      let aggQty = 0;
-      let aggPerim = 0;
-
+      // Group instances by height
+      const byHeight = new Map<
+        number,
+        { instances: TakeoffInstance[]; cost: number; qty: number; perim: number }
+      >();
       instances.forEach((inst) => {
+        const h = inst.height || 0;
+        if (!byHeight.has(h)) {
+          byHeight.set(h, { instances: [], cost: 0, qty: 0, perim: 0 });
+        }
+        const entry = byHeight.get(h)!;
+        entry.instances.push(inst);
+
         const mats = calculateMaterials(asm, [inst], materials);
         let instCost = 0;
         mats.forEach((m) => {
@@ -106,65 +153,37 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
           if (m.category === "Labor" && !unitPrice) unitPrice = 65;
           instCost += m.quantity * unitPrice;
         });
-        aggCost += instCost;
+        entry.cost += instCost;
 
-        // Qty & Perim
         if (asm.assemblyType === "Ceiling") {
-          aggQty += inst.ceilingArea || 0;
-          aggPerim += inst.perimeter || 0;
+          entry.qty += inst.ceilingArea || 0;
+          entry.perim += inst.perimeter || 0;
         } else {
-          aggQty += (inst.length || 0) * (inst.quantity || 1);
-          aggPerim += 0; // Walls dont usually sum perimeter here, just Length
-          // Could potentially sum length as perimeter for walls if desired
+          entry.qty += (inst.length || 0) * (inst.quantity || 1);
         }
       });
 
-      // Determine Display Type
-      let displayType: string = asm.assemblyType || "Wall";
-      if (asm.assemblyType === "Ceiling") {
-        if (
-          asm.description.toLowerCase().includes("tile") ||
-          asm.description.toLowerCase().includes("act")
-        )
-          displayType = "ACT Ceiling";
-        else if (asm.description.toLowerCase().includes("baffle"))
-          displayType = "Baffles";
-        else if (asm.description.toLowerCase().includes("grid"))
-          displayType = "Suspended Grid";
-        else if (
-          asm.description.toLowerCase().includes("joist") ||
-          asm.description.toLowerCase().includes("frame")
-        )
-          displayType = "Framed Ceiling";
-        // Fallback to explicit subtype if available
-        if (asm.ceilingSubtype) displayType = asm.ceilingSubtype;
-      } else if (asm.assemblyType === "Soffit") {
-        displayType = "Soffits";
-      } else if (asm.assemblyType === "Bulkhead") {
-        displayType = "Bulkheads";
-      } else if (asm.assemblyType === "Hollow Metal Frame") {
-        displayType = "H.M. Frames";
-      } else if (asm.assemblyType === "Access Panel") {
-        displayType = "Access Panels";
-      } else if (asm.assemblyType === "Interior Wall") {
-        displayType = "Interior Walls";
-      } else if (asm.assemblyType === "Exterior Wall") {
-        displayType = "Exterior Walls";
-      }
-
-      return {
-        id: asm.id,
-        code: asm.code,
-        name: asm.description,
-        type: displayType,
-        totalQty: aggQty,
-        totalPerimeter: aggPerim,
-        unit: asm.assemblyType === "Ceiling" ? "SF" : "LF",
-        unitCost: aggQty > 0 ? aggCost / aggQty : 0,
-        totalCost: aggCost,
-        instanceCount: instances.length,
-      };
+      // Create one row per height variant
+      const sortedHeights = Array.from(byHeight.entries()).sort(
+        (a, b) => a[0] - b[0],
+      );
+      sortedHeights.forEach(([height, data]) => {
+        rows.push({
+          id: asm.id,
+          code: asm.code,
+          name: asm.description,
+          type: displayType,
+          totalQty: data.qty,
+          totalPerimeter: data.perim,
+          unit: asm.assemblyType === "Ceiling" ? "SF" : "LF",
+          unitCost: data.qty > 0 ? data.cost / data.qty : 0,
+          totalCost: data.cost,
+          instanceCount: data.instances.length,
+          height,
+        });
+      });
     });
+    return rows;
   }, [assemblies, takeoffs, materials, priceMap]);
 
   // Grouping
@@ -227,12 +246,17 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
               </div>
 
               {expandedGroups[group] &&
-                groupRows.map((row) => (
+                groupRows.map((row) => {
+                  const rowKey = row.height != null ? `${row.id}-${row.height}` : row.id;
+                  const isSelected =
+                    selectedAssemblyId === row.id &&
+                    (row.height == null || true); // Match by id; height used when opening modal
+                  return (
                   <div
-                    key={row.id}
-                    onClick={() => onSelectAssembly(row.id)}
+                    key={rowKey}
+                    onClick={() => onSelectAssembly(row.id, row.height)}
                     onDoubleClick={() =>
-                      onEditAssembly && onEditAssembly(row.id)
+                      onEditAssembly && onEditAssembly(row.id, row.height)
                     }
                     className={`flex items-center px-2 py-1.5 border-b border-slate-100 cursor-pointer transition-colors group
                                     ${selectedAssemblyId === row.id ? "bg-blue-600 text-white" : "hover:bg-blue-50 text-slate-700"}
@@ -244,7 +268,9 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                       {row.code}
                     </div>
                     <div className="flex-1 px-2 truncate font-medium min-w-0">
-                      {row.name}
+                      {row.height != null
+                        ? `${row.name} @ ${row.height}'`
+                        : row.name}
                     </div>
                     <div className="w-14 text-right px-1 font-mono text-[10px]">
                       {Math.round(row.totalQty).toLocaleString()} {row.unit}
@@ -283,7 +309,8 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                       </button>
                     )}
                   </div>
-                ))}
+                );
+                })}
             </div>
           ))}
       </div>

@@ -5,6 +5,7 @@ import {
   getLatestAssemblyExtraction,
   getLatestMaterialMatch,
 } from "@/lib/db/assemblyData";
+import { getLatestFinalOutput } from "@/lib/db/pipelineOutputs";
 
 /**
  * GET /api/assembly-data?projectId=xxx
@@ -16,9 +17,10 @@ export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("projectId") || undefined;
 
   try {
-    const [assemblyResult, materialResult] = await Promise.all([
+    const [assemblyResult, materialResult, finalResult] = await Promise.all([
       getLatestAssemblyExtraction(projectId),
       getLatestMaterialMatch(projectId),
+      getLatestFinalOutput(projectId),
     ]);
 
     // If we have material match but no extraction for project, fetch extraction by extraction_id
@@ -28,22 +30,52 @@ export async function GET(req: NextRequest) {
       assemblyRecord = byId.data;
     }
 
-    if (!assemblyRecord || !materialResult.data) {
+    // Prefer material_matches; fall back to final_output when material_matches is empty (process-pipeline)
+    let materialData: { assemblies?: unknown[] };
+    let materialFilename: string;
+
+    if (materialResult.data) {
+      const rawMaterial = materialResult.data.data;
+      materialData =
+        typeof rawMaterial === "string" ? JSON.parse(rawMaterial) : rawMaterial;
+      materialFilename = materialResult.data.filename;
+    } else if (finalResult.data) {
+      const rawFinal = finalResult.data.data;
+      materialData =
+        typeof rawFinal === "string" ? JSON.parse(rawFinal) : rawFinal;
+      materialFilename = finalResult.data.filename;
+    } else {
+      materialData = { assemblies: [] };
+      materialFilename = "";
+    }
+
+    // Need assembly extraction for structure; if we have final_output but no extraction, use final as assembly source
+    let assemblyData: { assemblies?: unknown[] };
+    if (assemblyRecord) {
+      const rawAssembly = assemblyRecord.data;
+      assemblyData =
+        typeof rawAssembly === "string" ? JSON.parse(rawAssembly) : rawAssembly;
+    } else if (materialData.assemblies && materialData.assemblies.length > 0) {
+      assemblyData = { assemblies: materialData.assemblies };
+    } else {
       return NextResponse.json({
         success: true,
         message: "No assembly data found",
         hasData: false,
-        hasExtraction: !!assemblyRecord,
+        hasExtraction: false,
       });
     }
 
-    // Normalize JSONB: Supabase may return it as object or string
-    const rawAssembly = assemblyRecord.data;
-    const rawMaterial = materialResult.data.data;
-    const assemblyData =
-      typeof rawAssembly === "string" ? JSON.parse(rawAssembly) : rawAssembly;
-    const materialData =
-      typeof rawMaterial === "string" ? JSON.parse(rawMaterial) : rawMaterial;
+    const hasCostingData =
+      materialData.assemblies && materialData.assemblies.length > 0;
+    if (!hasCostingData) {
+      return NextResponse.json({
+        success: true,
+        message: "No material costing data found",
+        hasData: false,
+        hasExtraction: !!assemblyRecord,
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -51,8 +83,8 @@ export async function GET(req: NextRequest) {
       hasExtraction: true,
       assemblyData,
       materialData,
-      assemblyFilename: assemblyRecord.filename,
-      materialFilename: materialResult.data.filename,
+      assemblyFilename: assemblyRecord?.filename ?? "",
+      materialFilename,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

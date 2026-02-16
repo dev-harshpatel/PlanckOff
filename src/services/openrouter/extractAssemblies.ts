@@ -1,18 +1,38 @@
-const PROMPT = `Extract wall, roof, and floor assembly data from the page image. Return ONLY valid JSON. No commentary, no markdown.
+const PROMPT = `You are a construction document reader extracting assembly material data from PDF drawings. Be THOROUGH — read every line of text for every assembly. Return ONLY valid JSON.
 
-ASSEMBLY ID: Short alphanumeric tag from page (e.g. W14, RF2B, WT1a). No long names. Untagged: UN-TAGGED-WALL-1, UN-TAGGED-ROOF-1, UN-TAGGED-FLOOR-1. Never null.
+ASSEMBLY ID: Short alphanumeric tag (e.g. W14, WE3, P1, RF2B). Untagged: UN-TAGGED-WALL-1, etc. Never null.
 
-EXTRACT: Gypsum board (each layer separate), gypsum sheathing, steel framing (studs/tracks/metal), batt/mineral wool insulation, plywood/OSB, blocking/bracing, steel deck, vapor barriers, sealants, trim/accessories.
+EXTRACT these material categories:
+- gypsum_board: GYPSUM WALLBOARD, GYPSUM BOARD, DRYWALL, TYPE X, TYPE 'X', fire-rated gypsum (interior finish)
+- gypsum_sheathing: GLASS MAT-FACED GYPSUM SHEATHING (exterior sheathing)
+- steel_framing: STEEL STUDS, METAL STUDS, C-H STUDS, FURRING CHANNEL, TRACKS
+- insulation: BATT INSULATION, ROCK WOOL BATT, SEMI-RIGID MINERAL WOOL, sound batts (extract ALL insulation types — a wall can have BOTH batt insulation AND semi-rigid mineral wool as separate entries)
+- plywood: PLYWOOD, OSB
+- blocking_and_bracing: BLOCKING, BRACING, CROSS BRACING
+- steel_deck: STEEL DECK
+- vapor_barriers: POLY VAPOUR BARRIER, POLYETHYLENE
+- sealants: SEALANT, CAULK (exclude acoustic caulk)
+- trim_and_accessories: TRIM, CORNER BEAD, J-TRIM
 
-EXCLUDE: Air barriers, cladding (brick/stone/metal/EIFS/siding/fibre cement), roofing membranes, rigid insulation, concrete/CMU/masonry, paint, window/curtain wall, aluminum panels/mullions, back pans, vertical support systems. Include sound batts; exclude acoustic caulk.
+EXCLUDE: Air barriers, cladding (brick/stone/metal/EIFS/siding/fibre cement), roofing membranes, rigid insulation, concrete/CMU/masonry, paint, window/curtain wall, aluminum panels/mullions, back pans, vertical support systems, thermally broken clip systems.
 
-SCOPE (critical): Materials must come ONLY from the content tied to THAT assembly (same row/section/block as its tag). Never copy materials from another assembly. If an assembly's content has no in-scope materials (e.g. only cladding/window/concrete), output it with ALL material arrays empty. One assembly's content = isolated; do not bleed across.
+CRITICAL RULES:
+1. READ EVERY LINE: Assembly descriptions list materials line by line. Read from FIRST line to LAST line. Do not stop early. Exterior walls (WE*) typically have materials on BOTH sides — exterior sheathing AND interior gypsum board.
+2. GYPSUM BOARD — NEVER MISS: If an assembly has steel studs, furring, or vapor barrier, it almost certainly has gypsum board as interior finish. Scan the FULL text top-to-bottom. The gypsum board line is often the LAST material listed.
+3. MULTIPLE INSULATION TYPES: A single assembly can have multiple insulation products (e.g. rock wool batt inside stud cavity + semi-rigid mineral wool on exterior). Extract each as a SEPARATE insulation entry.
+4. SCOPE: Only extract materials from THAT assembly's own content. Never copy from another assembly.
+5. LAYERS: "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X" → TWO separate entries each with layers=2. No layer count stated → layers=1. Never layers=null for gypsum.
+6. Each material: "raw_text" = exact verbatim text from PDF. Unstated properties = null.
 
-Each material: "raw_text" = exact verbatim from PDF. Unstated properties = null.
+SELF-CHECK before outputting each assembly:
+- Did I read ALL lines of text for this assembly, including the last line?
+- If steel_framing or vapor_barriers is non-empty, did I find gypsum_board? (It's almost always there — re-read the assembly)
+- If this is an exterior wall (WE*), did I capture both exterior sheathing AND interior gypsum board?
+- Did I capture ALL insulation types mentioned (there may be more than one)?
+- If fire_rating is not null/NA, are there gypsum boards? (Fire-rated walls always have gypsum)
 
-LAYERS (critical): Multiple gypsum layers = separate entries (never merge). If PDF says "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X", output TWO separate entries — each with layers=2 (the total layer count from the PDF as an integer). The "layers" field must always reflect the layer count stated in the PDF (1, 2, 3, etc.). If the PDF does not mention a layer count, set layers=1. Never set layers=null for gypsum board or gypsum sheathing.
-
-OUTPUT: JSON only. Structure: assemblies[].assembly_id, fire_rating, stc_rating, materials.{ gypsum_board[], gypsum_sheathing[], steel_framing[], insulation[], plywood[], blocking_and_bracing[], steel_deck[], vapor_barriers[], sealants[], trim_and_accessories[] }. Each item: raw_text, thickness/size/gauge/spacing/type/layers/description/r_value/depth as applicable or null. No assemblies on page → {"assemblies":[]}. Include every visible assembly; empty materials = empty arrays.`;
+OUTPUT: {"assemblies":[{"assembly_id":"string","fire_rating":"string|null","stc_rating":"string|null","materials":{"gypsum_board":[],"gypsum_sheathing":[],"steel_framing":[],"insulation":[],"plywood":[],"blocking_and_bracing":[],"steel_deck":[],"vapor_barriers":[],"sealants":[],"trim_and_accessories":[]}}]}
+Each item: raw_text, thickness, size, gauge, spacing, type, layers, description, r_value, depth as applicable or null.`;
 
 function repairJSON(input: string): string {
   try {
@@ -89,7 +109,8 @@ export async function extractAssembliesFromPDF(
 ): Promise<ExtractionResult> {
   const requestBody = {
     model: "google/gemini-2.5-pro",
-    max_tokens: 32768,
+    max_tokens: 65536,
+    temperature: 0.1,
     messages: [
       {
         role: "user",
@@ -152,10 +173,41 @@ export async function extractAssembliesFromPDF(
     }
   }
 
-  console.log(`[extract] Extracted ${parsed.assemblies?.length ?? 0} assemblies`);
+  const assemblies = (parsed.assemblies ?? []) as Array<{
+    assembly_id?: string;
+    fire_rating?: string | null;
+    materials?: {
+      gypsum_board?: unknown[];
+      steel_framing?: unknown[];
+      vapor_barriers?: unknown[];
+      insulation?: unknown[];
+    };
+  }>;
+
+  console.log(`[extract] Extracted ${assemblies.length} assemblies`);
+
+  // --- Post-extraction validation warnings ---
+  for (const a of assemblies) {
+    const id = a.assembly_id ?? "?";
+    const m = a.materials ?? {};
+    const hasGyp = (m.gypsum_board?.length ?? 0) > 0;
+    const hasStuds = (m.steel_framing?.length ?? 0) > 0;
+    const hasVapor = (m.vapor_barriers?.length ?? 0) > 0;
+    const isFireRated = a.fire_rating && a.fire_rating !== "NA" && a.fire_rating !== "N/A";
+
+    if (hasStuds && !hasGyp) {
+      console.warn(`[extract] WARNING: ${id} has steel_framing but NO gypsum_board — likely missing interior finish`);
+    }
+    if (hasVapor && !hasGyp) {
+      console.warn(`[extract] WARNING: ${id} has vapor_barriers but NO gypsum_board — likely missing interior finish`);
+    }
+    if (isFireRated && !hasGyp) {
+      console.warn(`[extract] WARNING: ${id} is fire-rated (${a.fire_rating}) but NO gypsum_board — fire-rated walls always have gypsum`);
+    }
+  }
 
   return {
-    assemblies: parsed.assemblies ?? [],
+    assemblies,
     truncated: finishReason === "length",
     usage: {
       prompt_tokens: usage.prompt_tokens ?? 0,

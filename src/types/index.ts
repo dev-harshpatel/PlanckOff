@@ -106,7 +106,20 @@ export interface WallAssembly {
   scope?: string; // Pricing scope (e.g., 'Base Bid', 'Alternate 1')
 
   // Assembly Categorization
-  assemblyType?: 'Wall' | 'Ceiling' | 'Soffit' | 'Interior Wall' | 'Exterior Wall' | 'Bulkhead' | 'Hollow Metal Frame' | 'Access Panel';
+  assemblyType?:
+    | "Wall"
+    | "Ceiling"
+    | "Soffit"
+    | "Interior Wall"
+    | "Exterior Wall"
+    | "Interior Walls"
+    | "Exterior Walls"
+    | "Bulkhead"
+    | "BulkHead"
+    | "Hollow Metal Frame"
+    | "HM Frames"
+    | "Access Panel"
+    | "Access Pannel";
   ceilingSubtype?: 'Suspended' | 'Hard Lid' | 'Baffles' | 'Steel Joist';
 
   // Manual Defaults for Prototyping (Used when no takeoff instances exist)

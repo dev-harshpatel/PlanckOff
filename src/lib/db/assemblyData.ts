@@ -148,22 +148,24 @@ export const getLatestMaterialMatch = async (projectId?: string) => {
 };
 
 /**
- * Delete all assembly extraction and material match data for a project
+ * Delete all assembly extraction, material match, takeoff, and final output data for a project
  */
 export const deleteProjectAssemblyData = async (projectId: string) => {
-  const [extractionResult, matchResult] = await Promise.all([
-    supabaseAdmin
-      .from("assembly_extractions")
-      .delete()
-      .eq("project_id", projectId),
-    supabaseAdmin
-      .from("material_matches")
-      .delete()
-      .eq("project_id", projectId),
-  ]);
+  const [extractionResult, matchResult, takeoffResult, finalResult] =
+    await Promise.all([
+      supabaseAdmin
+        .from("assembly_extractions")
+        .delete()
+        .eq("project_id", projectId),
+      supabaseAdmin.from("material_matches").delete().eq("project_id", projectId),
+      supabaseAdmin.from("takeoff_outputs").delete().eq("project_id", projectId),
+      supabaseAdmin.from("final_outputs").delete().eq("project_id", projectId),
+    ]);
 
   if (extractionResult.error) throw extractionResult.error;
   if (matchResult.error) throw matchResult.error;
+  if (takeoffResult.error) throw takeoffResult.error;
+  if (finalResult.error) throw finalResult.error;
 };
 
 /**

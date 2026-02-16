@@ -1,0 +1,1378 @@
+{
+  "assemblies": [
+    {
+      "assembly_id": "WC1",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [],
+        "steel_framing": [],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WC2",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [],
+        "steel_framing": [],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WC3",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "STEEL FURRING TO ALIGN WITH BACKUP WALL ABOVE",
+            "type": "FURRING",
+            "description": "TO ALIGN WITH BACKUP WALL ABOVE",
+            "depth": null,
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [
+          {
+            "raw_text": "6 mil. POLYETHYLENE VAPOUR BARRIER",
+            "thickness": "6 mil",
+            "type": "POLYETHYLENE"
+          }
+        ],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WG1",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [],
+        "steel_framing": [],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WG2",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [],
+        "steel_framing": [],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WE1",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [
+          {
+            "raw_text": "16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 1
+          }
+        ],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STRUCTURAL METAL STUDS",
+            "type": "STRUCTURAL METAL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "ROCK WOOL BATT INSULATION (R-20/3.5 RSI)",
+            "type": "ROCK WOOL BATT",
+            "r_value": "R-20/3.5 RSI",
+            "depth": null
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WE2",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16mm",
+            "type": "TYPE 'X'",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [
+          {
+            "raw_text": "16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 1
+          }
+        ],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STRUCTURAL METAL STUDS",
+            "type": "STRUCTURAL METAL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "ROCK WOOL BATT INSULATION (R-20/3.5 RSI)",
+            "type": "ROCK WOOL BATT",
+            "r_value": "R-20/3.5 RSI",
+            "depth": null
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [
+          {
+            "raw_text": "6 mil POLY VAPOUR BARRIER",
+            "thickness": "6 mil",
+            "type": "POLY"
+          }
+        ],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WE3",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [
+          {
+            "raw_text": "16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 1
+          }
+        ],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STRUCTURAL METAL STUDS",
+            "type": "STRUCTURAL METAL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "ROCK WOOL BATT INSULATION (R-20/3.5 RSI)",
+            "type": "ROCK WOOL BATT",
+            "r_value": "R-20/3.5 RSI",
+            "depth": null
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [
+          {
+            "raw_text": "6 mil POLY VAPOUR BARRIER",
+            "thickness": "6 mil",
+            "type": "POLY"
+          }
+        ],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WE4",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [
+          {
+            "raw_text": "16mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 1
+          }
+        ],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STRUCTURAL METAL STUDS",
+            "type": "STRUCTURAL METAL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "ROCK WOOL BATT INSULATION (R-20/3.5 RSI)",
+            "type": "ROCK WOOL BATT",
+            "r_value": "R-20/3.5 RSI",
+            "depth": null
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [
+          {
+            "raw_text": "6mil POLY VAPOUR BARRIER",
+            "thickness": "6mil",
+            "type": "POLY"
+          }
+        ],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WE5",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [
+          {
+            "raw_text": "2 LAYERS 16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 2
+          }
+        ],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STRUCTURAL METAL STUDS",
+            "type": "STRUCTURAL METAL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "ROCK WOOL BATT INSULATION (R-20/3.5 RSI)",
+            "type": "ROCK WOOL BATT",
+            "r_value": "R-20/3.5 RSI",
+            "depth": null
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WM1",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [
+          {
+            "raw_text": "2 LAYERS 16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GLASS MAT-FACED GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "type": "GLASS MAT-FACED",
+            "layers": 2
+          }
+        ],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          },
+          {
+            "raw_text": "152 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "ROCK WOOL BATT INSULATION (R-20/3.5 RSI)",
+            "type": "ROCK WOOL BATT",
+            "r_value": "R-20/3.5 RSI",
+            "depth": null
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [
+          {
+            "raw_text": "STEEL CROSS BRACING PER STRUCTURAL",
+            "type": "STEEL CROSS BRACING",
+            "description": "PER STRUCTURAL"
+          }
+        ],
+        "steel_deck": [],
+        "vapor_barriers": [
+          {
+            "raw_text": "6 mil POLY VAPOUR BARRIER",
+            "thickness": "6 mil",
+            "type": "POLY"
+          }
+        ],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WM2",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "64 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          },
+          {
+            "raw_text": "64 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [
+          {
+            "raw_text": "STEEL CROSS BRACING PER STRUCTURAL",
+            "type": "STEEL CROSS BRACING",
+            "description": "PER STRUCTURAL"
+          }
+        ],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WEF1",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": null,
+            "type": "TYPE 'X'",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "METAL STUDS",
+            "type": "METAL STUDS",
+            "depth": null,
+            "gauge": null,
+            "spacing": null
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "WEF2",
+      "fire_rating": null,
+      "stc_rating": null,
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P1",
+      "fire_rating": "NA",
+      "stc_rating": "47",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "92 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "92 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "92 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "92 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P2",
+      "fire_rating": "1 HR",
+      "stc_rating": "52",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "92 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "92 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "92 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "92 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P3",
+      "fire_rating": "NA",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P4",
+      "fire_rating": "1 HR",
+      "stc_rating": "52",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P5",
+      "fire_rating": "1 HR",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "102 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "102 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "102 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "102 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P6",
+      "fire_rating": "2 HR",
+      "stc_rating": "56",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "152 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "152 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P7",
+      "fire_rating": "NA",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD",
+            "thickness": "16 mm",
+            "type": null,
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "203 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "203 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P8",
+      "fire_rating": "1 HR",
+      "stc_rating": "61",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD",
+            "thickness": "16 mm",
+            "type": null,
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "64 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          },
+          {
+            "raw_text": "64 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "64 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "64 mm"
+          },
+          {
+            "raw_text": "64 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "64 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [
+          {
+            "raw_text": "6 mil POLY VAPOUR BARRIER",
+            "thickness": "6 mil",
+            "type": "POLY"
+          }
+        ],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "P9",
+      "fire_rating": "2 HR",
+      "stc_rating": "66",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "64 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          },
+          {
+            "raw_text": "64 mm STEEL STUDS AT 400 mm O.C.",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "64 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "64 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [
+          {
+            "raw_text": "STEEL CROSS BRACING PER STRUCTURAL",
+            "type": "STEEL CROSS BRACING",
+            "description": "PER STRUCTURAL"
+          }
+        ],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PF1",
+      "fire_rating": "2 HR",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE 'X'",
+            "thickness": "16 mm",
+            "type": "TYPE 'X'",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "42 mm STEEL STUDS @ 400 mm O.C. MAX",
+            "type": "STEEL STUDS",
+            "depth": "42 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C. MAX"
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PF2",
+      "fire_rating": "NA",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "64 mm STEEL STUDS @ 400 mm O.C. MAX",
+            "type": "STEEL STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C. MAX"
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PF3",
+      "fire_rating": "NA",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE",
+            "thickness": "16 mm",
+            "type": "TYPE",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "92 mm STEEL STUDS @ 400 mm O.C. MAX",
+            "type": "STEEL STUDS",
+            "depth": "92 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C. MAX"
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PF4",
+      "fire_rating": "NA",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STEEL STUDS @ 400 O.C. MAX",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 O.C. MAX"
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PF5",
+      "fire_rating": "NA",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "16mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "152 mm STEEL STUDS @ 400 mm O.C. MAX",
+            "type": "STEEL STUDS",
+            "depth": "152 mm",
+            "gauge": null,
+            "spacing": "400 mm O.C. MAX"
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PS1",
+      "fire_rating": "1 HR",
+      "stc_rating": "35",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "25 mm GYPSUM WALLBOARD SHAFT LINER",
+            "thickness": "25 mm",
+            "type": "SHAFT LINER",
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "64 mm C-H STUDS @ 600 mm O.C.",
+            "type": "C-H STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "600 mm O.C."
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PS2",
+      "fire_rating": "2HR",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "25 mm GYPSUM WALLBOARD SHAFT LINER",
+            "thickness": "25 mm",
+            "type": "SHAFT LINER",
+            "layers": 1
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "64 mm C-H STUDS @ 600 mm O.C.",
+            "type": "C-H STUDS",
+            "depth": "64 mm",
+            "gauge": null,
+            "spacing": "600 mm O.C."
+          }
+        ],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PS3",
+      "fire_rating": "2 HR",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "25 mm GYPSUM WALLBOARD SHAFT LINER",
+            "thickness": "25 mm",
+            "type": "SHAFT LINER",
+            "layers": 1
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          },
+          {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 2
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "102 mm C-H STUDS @ 600 mm O.C.",
+            "type": "C-H STUDS",
+            "depth": "102 mm",
+            "gauge": null,
+            "spacing": "600 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "76 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "76 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PS4",
+      "fire_rating": "2 HR",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [
+          {
+            "raw_text": "25 mm GYPSUM WALLBOARD SHAFT LINER",
+            "thickness": "25 mm",
+            "type": "SHAFT LINER",
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          },
+          {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "TYPE X",
+            "layers": 1
+          }
+        ],
+        "gypsum_sheathing": [],
+        "steel_framing": [
+          {
+            "raw_text": "102 mm C-H STUDS @ 600 mm O.C.",
+            "type": "C-H STUDS",
+            "depth": "102 mm",
+            "gauge": null,
+            "spacing": "600 mm O.C."
+          }
+        ],
+        "insulation": [
+          {
+            "raw_text": "76 mm BATT INSULATION",
+            "type": "BATT",
+            "r_value": null,
+            "depth": "76 mm"
+          }
+        ],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    },
+    {
+      "assembly_id": "PB1",
+      "fire_rating": "2 HR",
+      "stc_rating": "NA",
+      "materials": {
+        "gypsum_board": [],
+        "gypsum_sheathing": [],
+        "steel_framing": [],
+        "insulation": [],
+        "plywood": [],
+        "blocking_and_bracing": [],
+        "steel_deck": [],
+        "vapor_barriers": [],
+        "sealants": [],
+        "trim_and_accessories": []
+      }
+    }
+  ]
+}

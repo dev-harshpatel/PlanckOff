@@ -27,28 +27,45 @@ export const mapAssemblyMaterialData = (
   // Iterate through each extracted material
   costing.materials_costing.forEach((item) => {
     const { extracted_material, matched_materials, matched_labor } = item;
+    const rawText = extracted_material?.raw_text ?? "";
 
-    // Get OC from steel_framing if available
-    const steelFraming = assembly.materials.steel_framing.find(
+    // Get OC from steel_framing if available (assembly_extractions format)
+    // Fall back to extracted_material.spacing when assembly.materials is undefined (final_output format)
+    const steelFraming = assembly.materials?.steel_framing?.find(
       (sf) => sf.raw_text === extracted_material.raw_text,
     );
-    const oc = steelFraming?.spacing || "";
+    const spacingRaw =
+      steelFraming?.spacing ?? extracted_material?.spacing ?? null;
+    const isSteelFraming =
+      !!steelFraming || /FURRING|STUD|TRACK|METAL STUDS/i.test(rawText);
+    const oc =
+      typeof spacingRaw === "string"
+        ? spacingRaw
+        : typeof spacingRaw === "object" && spacingRaw && "value" in spacingRaw
+          ? `${spacingRaw.value ?? ""} mm O.C.`
+          : isSteelFraming
+            ? "16\""
+            : "";
 
-    // Get layers from gypsum_board if available
-    const gypsumBoard = assembly.materials.gypsum_board.find(
+    // Get layers from gypsum_board only (not applicable to steel framing, labor)
+    const gypsumBoard = assembly.materials?.gypsum_board?.find(
       (gb) => gb.raw_text === extracted_material.raw_text,
     );
-    const layering = gypsumBoard?.layers || "";
+    const isGypsum = !!gypsumBoard || /GYPSUM|WALLBOARD|DRYWALL|TYPE X/i.test(rawText);
+    const layering = isGypsum ? (gypsumBoard?.layers ?? extracted_material?.layers ?? "") : "";
+
+    const heightFt = (extracted_material as { height_ft?: number })?.height_ft ?? (assembly as { height_ft?: number })?.height_ft;
+    const hgtStr = typeof heightFt === "number" ? `${heightFt}'` : "";
 
     // Add rows for matched materials
     matched_materials.forEach((material) => {
       rows.push({
         index: rowIndex++,
         assemblyCode: assemblyId,
-        sect: "",
+        sect: material.section ?? "",
         description: material.description,
         code: material.code,
-        hgt: "",
+        hgt: hgtStr,
         oc,
         layering,
       });
@@ -59,10 +76,10 @@ export const mapAssemblyMaterialData = (
       rows.push({
         index: rowIndex++,
         assemblyCode: assemblyId,
-        sect: "",
+        sect: labor.section ?? "",
         description: labor.description,
         code: labor.code,
-        hgt: "",
+        hgt: hgtStr,
         oc,
         layering,
       });
