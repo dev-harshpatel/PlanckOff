@@ -113,7 +113,8 @@ export interface FinalizeResult {
   [key: string]: unknown;
 }
 
-const BATCH_SIZE = 25;
+// Reduced batch size for faster per-batch completion (Strategy 2: Optimization)
+const BATCH_SIZE = 10;
 const MAX_RETRIES = 2;
 
 const callFinalizeBatch = async (
@@ -194,17 +195,26 @@ Output exactly ${takeoffBatch.length} assemblies in {"assemblies": [...]}. One p
 export const finalizeAssembliesWithTakeoff = async (
   materialMatch: FinalizeInput,
   apiKey: string,
+  takeoffData?: unknown[], // Strategy 1: Accept takeoff data as parameter instead of reading from file
 ): Promise<FinalizeResult> => {
   const dataDir = path.join(process.cwd(), "data");
   const promptPath = path.join(process.cwd(), "prompt", "prompt.txt");
 
-  const [takeoffRaw, materialDbRaw, promptRaw] = await Promise.all([
-    readFile(path.join(dataDir, "take_off_data.json"), "utf-8"),
+  // Strategy 1: Use provided takeoff data or fall back to file (for backwards compatibility)
+  let takeoffRows: unknown[] = [];
+  if (takeoffData && Array.isArray(takeoffData)) {
+    takeoffRows = takeoffData;
+  } else {
+    // Fallback: read from file (for legacy calls)
+    const takeoffRaw = await readFile(path.join(dataDir, "take_off_data.json"), "utf-8");
+    takeoffRows = JSON.parse(takeoffRaw) as unknown[];
+  }
+
+  const [materialDbRaw, promptRaw] = await Promise.all([
     readFile(path.join(dataDir, "material-database.json"), "utf-8"),
     readFile(promptPath, "utf-8"),
   ]);
 
-  const takeoffRows = JSON.parse(takeoffRaw) as unknown[];
   const materialDb = JSON.parse(materialDbRaw) as unknown;
   const rows = Array.isArray(takeoffRows) ? takeoffRows : [];
 

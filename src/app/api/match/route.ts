@@ -7,7 +7,9 @@ import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
 export const maxDuration = 180;
 
 export async function POST(req: NextRequest) {
-  console.log("[match] POST request received");
+  console.log("\n" + "-".repeat(70));
+  console.log("[match] POST request received — Sequential Pipeline Step 2/3");
+  console.log("-".repeat(70));
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -89,7 +91,10 @@ export async function POST(req: NextRequest) {
     console.log(`[match] DB: ${savedData?.id}`);
 
     const totalMs = Date.now() - totalStart;
-    console.log(`[match] Success. Phase times — material DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log("-".repeat(70));
+    console.log(`[match] ✅ Success. Phase times — material DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log(`[match] Matched ${result.assemblies.length} assemblies`);
+    console.log("-".repeat(70) + "\n");
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },

@@ -6,7 +6,9 @@ import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblie
 export const maxDuration = 180;
 
 export async function POST(req: NextRequest) {
-  console.log("[extract] POST request received");
+  console.log("\n" + "-".repeat(70));
+  console.log("[extract] POST request received — Sequential Pipeline Step 1/3");
+  console.log("-".repeat(70));
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -66,7 +68,10 @@ export async function POST(req: NextRequest) {
     console.log(`[extract] DB: ${savedData?.id}`);
 
     const totalMs = Date.now() - totalStart;
-    console.log(`[extract] Success. Phase times — extraction: ${(extractMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log("-".repeat(70));
+    console.log(`[extract] ✅ Success. Phase times — extraction: ${(extractMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log(`[extract] Extracted ${result.assemblies.length} assemblies`);
+    console.log("-".repeat(70) + "\n");
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },

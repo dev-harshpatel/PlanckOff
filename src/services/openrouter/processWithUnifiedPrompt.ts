@@ -7,7 +7,8 @@
 import { readFile } from "fs/promises";
 import path from "path";
 
-const BATCH_SIZE = 15;
+// Reduced batch size for faster per-batch completion (Strategy 2: Optimization)
+const BATCH_SIZE = 8;
 const CONCURRENCY = 2;
 const MAX_RETRIES = 2;
 

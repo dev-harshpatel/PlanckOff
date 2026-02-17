@@ -108,6 +108,23 @@ export const getLatestTakeoffOutput = async (projectId?: string) => {
 };
 
 /**
+ * Get takeoff output by ID
+ */
+export const getTakeoffOutputById = async (takeoffOutputId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from("takeoff_outputs")
+    .select("*")
+    .eq("id", takeoffOutputId)
+    .single();
+
+  if (error) {
+    if (error.code !== "PGRST116") throw error;
+    return { data: null, error: null };
+  }
+  return { data, error: null };
+};
+
+/**
  * Get latest final output for a project
  */
 export const getLatestFinalOutput = async (projectId?: string) => {
