@@ -232,23 +232,22 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
                         minWidth: variant === 'default' || variant === 'filter' ? `${MIN_DROPDOWN_WIDTH_PX}px` : undefined,
                     }}
                     className={[
-                        'w-full rounded-lg border transition-all text-left',
+                        'w-full rounded-lg border transition-all text-left overflow-hidden',
                         'focus:outline-none focus:ring-2 focus:ring-emerald-500',
                         'disabled:cursor-not-allowed disabled:opacity-60',
                         'flex items-center gap-2',
                         sizeClasses[size],
                         variantButtonClasses[variant],
-                        Icon ? 'pl-10 pr-9' : 'pr-9',
+                        Icon ? 'pl-10 pr-2' : 'pr-2',
                         error ? 'border-red-300 focus:ring-red-500' : '',
                         className,
                     ].filter(Boolean).join(' ')}
                 >
-                    <span className={selectedOption ? 'truncate' : 'truncate text-slate-400'}>
+                    <span className={['min-w-0 flex-1 truncate text-left', selectedOption ? '' : 'text-slate-400'].filter(Boolean).join(' ')}>
                         {displayLabel}
                     </span>
+                    <ChevronDown className={['w-4 h-4 shrink-0 flex-shrink-0 pointer-events-none transition-transform text-slate-500', isOpen ? 'rotate-180' : ''].join(' ')} aria-hidden />
                 </button>
-
-                <ChevronDown className={['absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-transform', isOpen ? 'rotate-180 text-slate-500' : 'text-slate-400'].join(' ')} />
 
                 {isOpen && (
                     <div

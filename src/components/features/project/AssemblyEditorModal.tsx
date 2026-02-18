@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { WallAssembly, MaterialDefinition, AssemblyComponent } from '@/types';
 import { Trash2, Plus, AppWindow } from 'lucide-react';
 import { DEFAULT_TEMPLATES, AssemblyTemplate } from '@/constants/defaultAssemblies';
-import { Button, CloseButton, IconButton, MaterialSearch, Modal, NumberInput, Select } from '@/components/ui';
+import { Button, CloseButton, IconButton, MaterialSearch, Modal, NumberInput } from '@/components/ui';
 import { FormulaDebugModal } from '@/components/features/project/FormulaDebugModal';
 import { AssemblyEditorSidebar } from './AssemblyEditorSidebar';
 
@@ -59,21 +59,20 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
     // Column Resizing Logic
     const [colWidths, setColWidths] = useState({
         index: 30,
-        sect: 50,
-        desc: 250,
+        sect: 72,
+        desc: 360,
         lab: 90,
         height: 50,
-        oc: 40,
+        oc: 60,
         layers: 50,
         waste: 40,
         qty: 60,
+        seQty: 65,
         uom: 60,
-        formula: 120,
-        matCost: 70,
-        totalMat: 70,
-        labCost: 70,
-        totalLab: 70,
-        total: 100
+        mou: 80,
+        matCost: 90,
+        totalMat: 90,
+        total: 110
     });
     const [resizingCol, setResizingCol] = useState<string | null>(null);
     const [startX, setStartX] = useState(0);
@@ -189,28 +188,26 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                 <thead className="bg-slate-100 text-slate-600 sticky top-0 z-10 shadow-sm border-b border-slate-300 h-8">
                                     <tr>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.index }}>#<Resizer col="index" /></th>
-                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.sect }}>Sect<Resizer col="sect" /></th>
+                                        <th className="relative border-r border-slate-300 text-center px-1 whitespace-nowrap" style={{ width: colWidths.sect }}>Sect<Resizer col="sect" /></th>
                                         <th className="relative border-r border-slate-300 text-left pl-2" style={{ width: colWidths.desc }}>Item / Description<Resizer col="desc" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.lab }}>Code<Resizer col="lab" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.height }}>Hgt<Resizer col="height" /></th>
-                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.oc }}>OC<Resizer col="oc" /></th>
+                                        <th className="relative border-r border-slate-300 text-center px-1" style={{ width: colWidths.oc }}>OC<Resizer col="oc" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.layers }}>Layering<Resizer col="layers" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.waste }}>Wst%<Resizer col="waste" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.qty }}>Qty<Resizer col="qty" /></th>
                                         <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.uom }}>UOM<Resizer col="uom" /></th>
-                                        <th className="relative border-r border-slate-300 text-left pl-2" style={{ width: colWidths.formula }}>Formula Basis<Resizer col="formula" /></th>
-                                        <th className="relative border-r border-slate-300 text-right pr-1" style={{ width: colWidths.matCost }}>Unit Mat<Resizer col="matCost" /></th>
-                                        <th className="relative border-r border-slate-300 text-right pr-1" style={{ width: colWidths.totalMat }}>Tot Mat<Resizer col="totalMat" /></th>
-                                        <th className="relative border-r border-slate-300 text-right pr-1" style={{ width: colWidths.labCost }}>Unit Lab<Resizer col="labCost" /></th>
-                                        <th className="relative border-r border-slate-300 text-right pr-1" style={{ width: colWidths.totalLab }}>Tot Lab<Resizer col="totalLab" /></th>
-                                        <th className="relative text-right pr-2 font-bold" style={{ width: colWidths.total }}>Total<Resizer col="total" /></th>
-                                        <th className="w-8 sticky right-0 bg-slate-100 z-10"></th>
+                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.seQty }}>Se.Qty<Resizer col="seQty" /></th>
+                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.mou }}>MOU<Resizer col="mou" /></th>
+                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.matCost }}>Unit Cost<Resizer col="matCost" /></th>
+                                        <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.totalMat }}>Total Cost<Resizer col="totalMat" /></th>
+                                        <th className="relative border-r border-slate-300 text-center font-bold" style={{ width: colWidths.total }}>Total<Resizer col="total" /></th>
+                                        <th className="w-8 sticky right-0 bg-slate-100 z-10 border-l border-slate-300"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
                                     {assembly.components.map((comp, idx) => {
                                         const details = getRowDetails(comp, assembly, takeoffInstances);
-                                        const isMaterial = !comp.materialName.toLowerCase().includes('labor') && !comp.materialName.toLowerCase().includes('install');
 
                                         // Use section from material_matches (sectionCode) — no inference
                                         const section = comp.sectionCode || "";
@@ -258,15 +255,10 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
 
 
                                         // UOM Options Check
-                                        const hasM2 = details.altUnits?.m2;
-                                        const hasLF = details.altUnits?.lf;
-                                        const hasM = details.altUnits?.m;
-                                        const unitOptions = [details.unit];
-                                        if (hasM2 && !unitOptions.includes('m²')) unitOptions.push('m²');
-                                        if (hasLF && !unitOptions.includes('LF')) unitOptions.push('LF');
-                                        if (hasM && !unitOptions.includes('m')) unitOptions.push('m');
-                                        if (details.unit.includes('ft') && !unitOptions.includes('Pcs')) unitOptions.push('Pcs');
-                                        if (details.unit.includes('sheet') && !unitOptions.includes('SF')) unitOptions.push('SF');
+                                        // Se.Qty: best available alt unit value
+                                        const altU = details.altUnits || {};
+                                        const seQtyVal = altU.sf || altU.lf || altU.m2 || altU.m || null;
+                                        const mouVal = altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
 
                                         return (
                                             <tr
@@ -275,12 +267,12 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                 onDoubleClick={() => setDebugComponent({ comp, vars: details.calculationVars || {} })}
                                             >
                                                 <td className="border-r border-slate-200 text-center bg-slate-50">{idx + 1}</td>
-                                                <td className="border-r border-slate-200 text-center text-slate-500">{section}</td>
+                                                <td className="border-r border-slate-200 text-center text-slate-500 px-1 whitespace-nowrap">{section}</td>
 
-                                                {/* Item / Description - Cyan Highlight */}
+                                                {/* Item / Description */}
                                                 <td className="border-r border-slate-200 relative p-0">
                                                     <div
-                                                        className={`w-full h-full px-2 flex items-center cursor-pointer ${isMaterial ? 'bg-cyan-200' : 'bg-white'}`}
+                                                        className="w-full h-full px-2 flex items-center cursor-pointer hover:bg-slate-50"
                                                         onClick={() => { setRowSearchOpen(comp.id); setRowSearchQuery(''); }}
                                                     >
                                                         <span className="truncate">{comp.materialName}</span>
@@ -326,8 +318,8 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                     })()}
                                                 </td>
 
-                                                {/* Inputs - Yellow Highlight */}
-                                                <td className="border-r border-slate-200 text-center bg-yellow-200 p-0">
+                                                {/* Inputs */}
+                                                <td className="border-r border-slate-200 text-center p-0">
                                                     <NumberInput
                                                         cellMode
                                                         className="w-full h-full bg-transparent text-center outline-none"
@@ -338,7 +330,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                         placeholder={heightVal}
                                                     />
                                                 </td>
-                                                <td className="border-r border-slate-200 text-center bg-yellow-200 p-0">
+                                                <td className="border-r border-slate-200 text-center px-1">
                                                     {comp.usage.includes('Vertical') ? (
                                                         <input
                                                             className="w-full h-full bg-transparent text-center outline-none"
@@ -354,7 +346,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                         ocVal
                                                     )}
                                                 </td>
-                                                <td className="border-r border-slate-200 text-center bg-yellow-200 p-0">
+                                                <td className="border-r border-slate-200 text-center p-0">
                                                     {isGypsumComponent ? (
                                                         <NumberInput
                                                             cellMode
@@ -372,7 +364,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                 </td>
 
                                                 {/* Waste Factor */}
-                                                <td className="border-r border-slate-200 text-center bg-yellow-200 p-0">
+                                                <td className="border-r border-slate-200 text-center p-0">
                                                     <NumberInput cellMode
                                                         className="w-full h-full bg-transparent text-center outline-none"
                                                         value={comp.wasteFactor}
@@ -383,7 +375,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                 </td>
 
                                                 {/* Qty Column - Editable for Fixed Qty */}
-                                                <td className={`border-r border-slate-200 text-center font-bold px-1 p-0 ${comp.usage === 'Fixed Qty' ? 'bg-yellow-200' : ''}`}>
+                                                <td className="border-r border-slate-200 text-center font-bold px-1 p-0">
                                                     {comp.usage === 'Fixed Qty' ? (
                                                         <NumberInput cellMode
                                                             className="w-full h-full bg-transparent text-center outline-none font-bold"
@@ -396,59 +388,42 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                     )}
                                                 </td>
 
-                                                {/* UOM Dropdown */}
-                                                <td className="border-r border-slate-200 text-center p-0">
-                                                    <Select
-                                                        containerClassName="w-full"
-                                                        options={Array.from(new Set(unitOptions)).map((unit) => ({
-                                                            value: unit,
-                                                            label: getUnitSuffix(unit),
-                                                        }))}
-                                                        size="xs"
-                                                        value={comp.selectedUnit || details.unit}
-                                                        variant="ghost"
-                                                        className="h-full px-1 pr-7 text-center text-[10px] leading-none focus:ring-0"
-                                                        onValueChange={(nextValue) => handleUpdateComponent(assembly.id, comp.id, 'selectedUnit', nextValue)}
-                                                        aria-label="Unit of measure"
-                                                    />
+                                                {/* UOM */}
+                                                <td className="border-r border-slate-200 text-center px-1 font-medium">
+                                                    {getUnitSuffix(comp.selectedUnit || details.unit)}
                                                 </td>
 
-                                                {/* Formula Basis */}
-                                                <td className="border-r border-slate-200 text-xs px-2 text-slate-600 truncate" title={details.formulaDescription}>
-                                                    {details.formulaDescription}
+                                                {/* Se.Qty */}
+                                                <td className="border-r border-slate-200 text-center px-1 text-slate-600">
+                                                    {seQtyVal != null ? seQtyVal.toFixed(seQtyVal < 10 ? 2 : 0) : '-'}
                                                 </td>
 
-                                                {/* Costs - Green Highlight */}
-                                                <td className="border-r border-slate-200 text-right pr-1 bg-green-300 font-medium p-0">
+                                                {/* MOU */}
+                                                <td className="border-r border-slate-200 text-center px-1 text-slate-600 truncate" title={details.unit}>
+                                                    {details.unit}
+                                                </td>
+
+                                                {/* Unit Cost */}
+                                                <td className="border-r border-slate-200 text-center font-medium p-0">
                                                     <NumberInput cellMode
-                                                        className="w-full h-full bg-transparent text-right pr-1 outline-none font-medium"
+                                                        className="w-full h-full bg-transparent text-center outline-none font-medium"
                                                         value={comp.overrideMatCost}
                                                         onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'overrideMatCost', val)}
                                                         placeholder={details.unitPrice ? details.unitPrice.toFixed(2) : '-'}
                                                     />
                                                 </td>
-                                                <td className="border-r border-slate-200 text-right pr-1 bg-green-50 font-medium">
+
+                                                {/* Total Cost */}
+                                                <td className="border-r border-slate-200 text-center font-medium">
                                                     {details.materialTotal.toFixed(0)}
                                                 </td>
 
-                                                <td className="border-r border-slate-200 text-right pr-1 bg-green-300 font-medium p-0">
-                                                    <NumberInput cellMode
-                                                        className="w-full h-full bg-transparent text-right pr-1 outline-none font-medium"
-                                                        value={comp.overrideLaborCost}
-                                                        onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'overrideLaborCost', val)}
-                                                        placeholder={details.laborUnitPrice ? details.laborUnitPrice.toFixed(2) : '-'}
-                                                    />
-                                                </td>
-                                                <td className="border-r border-slate-200 text-right pr-1 bg-green-50 font-medium">
-                                                    {details.laborTotal.toFixed(0)}
-                                                </td>
-
-                                                {/* Total - Bright Green */}
-                                                <td className="text-right pr-2 font-bold bg-green-500 text-slate-900 border-r border-slate-200">
+                                                {/* Row Total */}
+                                                <td className="text-center font-bold bg-slate-50 text-slate-800 border-r border-slate-200">
                                                     {(details.materialTotal + details.laborTotal).toFixed(0)}
                                                 </td>
 
-                                                <td className="text-center">
+                                                <td className="text-center sticky right-0 bg-white border-l border-slate-200">
                                                     <IconButton
                                                         icon={Trash2}
                                                         variant="danger"
@@ -463,11 +438,11 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
 
                                     {/* Footer Totals Row */}
                                     <tr className="bg-slate-800 text-white font-bold h-8 border-t-2 border-slate-900">
-                                        <td colSpan={15} className="text-right px-4 uppercase text-xs tracking-wider">Total</td>
-                                        <td className="text-right px-2 bg-green-600 text-white border-l border-slate-700">
+                                        <td colSpan={14} className="text-right px-4 uppercase text-xs tracking-wider">Total</td>
+                                        <td className="text-center px-2 text-white border-l border-slate-700">
                                             {totalCost.toFixed(0)}
                                         </td>
-                                        <td></td>
+                                        <td className="sticky right-0 bg-slate-800"></td>
                                     </tr>
                                 </tbody>
                             </table>

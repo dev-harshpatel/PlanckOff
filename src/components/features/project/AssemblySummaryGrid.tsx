@@ -217,7 +217,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans text-xs">
       {/* Header */}
       <div className="flex-none bg-white border-b border-slate-200 font-bold text-slate-600 flex items-center px-2 py-2 sticky top-0 z-10 shadow-sm">
-        <div className="w-12 px-1">Code</div>
+        <div className="min-w-[5.5rem] w-[5.5rem] shrink-0 px-1">Code</div>
         <div className="flex-1 px-2 min-w-0">Description</div>
         <div className="w-14 text-right px-1">Qty</div>
         <div className="w-10 text-right px-1 text-[10px] text-slate-400">
@@ -263,7 +263,8 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                                 `}
                   >
                     <div
-                      className={`w-12 px-1 truncate font-medium ${selectedAssemblyId === row.id ? "text-blue-100" : "text-slate-500"}`}
+                      className={`min-w-[5.5rem] w-[5.5rem] shrink-0 px-1 font-medium whitespace-nowrap ${selectedAssemblyId === row.id ? "text-blue-100" : "text-slate-500"}`}
+                      title={row.code}
                     >
                       {row.code}
                     </div>

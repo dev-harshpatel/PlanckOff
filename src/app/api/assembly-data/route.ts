@@ -30,20 +30,21 @@ export async function GET(req: NextRequest) {
       assemblyRecord = byId.data;
     }
 
-    // Prefer material_matches; fall back to final_output when material_matches is empty (process-pipeline)
+    // Prefer final_output when present (has height_ft, total_length per assembly for UI).
+    // Fall back to material_matches when no final output (e.g. before finalize step).
     let materialData: { assemblies?: unknown[] };
     let materialFilename: string;
 
-    if (materialResult.data) {
-      const rawMaterial = materialResult.data.data;
-      materialData =
-        typeof rawMaterial === "string" ? JSON.parse(rawMaterial) : rawMaterial;
-      materialFilename = materialResult.data.filename;
-    } else if (finalResult.data) {
+    if (finalResult.data) {
       const rawFinal = finalResult.data.data;
       materialData =
         typeof rawFinal === "string" ? JSON.parse(rawFinal) : rawFinal;
       materialFilename = finalResult.data.filename;
+    } else if (materialResult.data) {
+      const rawMaterial = materialResult.data.data;
+      materialData =
+        typeof rawMaterial === "string" ? JSON.parse(rawMaterial) : rawMaterial;
+      materialFilename = materialResult.data.filename;
     } else {
       materialData = { assemblies: [] };
       materialFilename = "";

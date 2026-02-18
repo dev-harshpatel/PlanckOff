@@ -179,9 +179,122 @@ export const mapJsonToWallAssemblies = (
 };
 
 /**
+ * Build a stable composite id for final output assemblies (one per height).
+ * e.g. "P1@9.7", "P1@10", "WEF1@15"
+ */
+export const getFinalOutputAssemblyKey = (
+  assemblyId: string,
+  heightFt: number,
+): string => `${assemblyId}@${Number(heightFt)}`;
+
+/**
+ * Maps final_output assemblies to WallAssembly[] (one per assembly per height).
+ * Use when materialData is from final output (each entry has height_ft, total_length).
+ */
+export const mapFinalOutputToWallAssemblies = (
+  costingData: (MaterialCosting | FinalOutputAssembly)[],
+): WallAssembly[] => {
+  const assemblies: WallAssembly[] = [];
+
+  costingData.forEach((costing) => {
+    const ext = costing as FinalOutputAssembly;
+    const hasFinalFormat =
+      typeof ext.height_ft === "number" && typeof ext.total_length === "number";
+    if (!hasFinalFormat) return;
+
+    const assemblyId = ext.assembly_id;
+    const heightFt = ext.height_ft as number;
+    const totalLength = ext.total_length as number;
+    const compositeId = getFinalOutputAssemblyKey(assemblyId, heightFt);
+
+    const components: AssemblyComponent[] = [];
+    let componentIdx = 0;
+
+    (ext.materials_costing ?? []).forEach((item) => {
+      const { extracted_material, matched_materials, matched_labor } = item;
+      if (!extracted_material?.raw_text) return;
+
+      const rawText = extracted_material.raw_text;
+      const spacingRaw = extracted_material?.spacing ?? null;
+      const spacingValue = resolveSpacingValue(spacingRaw);
+      const isSteelFraming =
+        /FURRING|STUD|TRACK|METAL STUDS/i.test(rawText) ||
+        /FURRING|STUD|TRACK|METAL STUDS/i.test(
+          String(extracted_material?.type ?? ""),
+        );
+      const spacingDisplay =
+        typeof spacingRaw === "string"
+          ? spacingRaw
+          : spacingValue != null
+            ? `${spacingValue} mm O.C.`
+            : isSteelFraming
+              ? "16\""
+              : "";
+
+      const isGypsumBoard = /GYPSUM|WALLBOARD|DRYWALL|TYPE X/i.test(rawText);
+      const layers = isGypsumBoard
+        ? extracted_material?.layers ?? undefined
+        : undefined;
+
+      let usage: string = "Coverage (1 Layer)";
+      if (spacingValue != null && spacingValue > 0) {
+        const spacingInches = Math.round(spacingValue / 25.4);
+        usage = `Vertical @ ${spacingInches}" OC`;
+      } else if (isSteelFraming && !spacingRaw && !spacingValue) {
+        usage = 'Vertical @ 16" OC';
+      } else if (layers && layers > 1) {
+        usage = `Coverage (${layers} Layers)`;
+      }
+
+      (matched_materials ?? []).forEach((material) => {
+        components.push({
+          id: `${compositeId}-mat-${componentIdx++}`,
+          materialName: material.description,
+          usage,
+          wasteFactor: 0.05,
+          materialCost: material.unit_cost,
+          overrideLayers: layers ?? undefined,
+          overrideHeight: heightFt,
+          materialCode: material.code,
+          sectionCode: material.section ?? "",
+          ocSpacing: spacingDisplay || undefined,
+        });
+      });
+      (matched_labor ?? []).forEach((labor) => {
+        components.push({
+          id: `${compositeId}-lab-${componentIdx++}`,
+          materialName: labor.description,
+          usage,
+          wasteFactor: 0,
+          materialCost: labor.unit_cost,
+          overrideLayers: undefined,
+          overrideHeight: heightFt,
+          materialCode: labor.code,
+          sectionCode: labor.section ?? "",
+          ocSpacing: spacingDisplay || undefined,
+        });
+      });
+    });
+
+    const assemblyType = normalizeAssemblyType(ext.assembly_type ?? "");
+
+    assemblies.push({
+      id: compositeId,
+      code: compositeId,
+      description: `Assembly ${assemblyId} (${heightFt}' : ${totalLength} LF)`,
+      components,
+      assemblyType,
+      defaultLength: totalLength,
+      defaultHeight: heightFt,
+    });
+  });
+
+  return assemblies;
+};
+
+/**
  * Maps final_output assemblies to TakeoffInstance records for the Takeoff Schedule.
- * Only processes assemblies that have height_ft and total_length (final_output format).
- * Logs columns with missing data to console.
+ * Keys by composite id (e.g. P1@9.7) when height_ft is present so each assembly-height has its own takeoffs.
  */
 export const mapFinalOutputToTakeoffs = (
   assemblies: (MaterialCosting | FinalOutputAssembly)[],
@@ -197,34 +310,33 @@ export const mapFinalOutputToTakeoffs = (
     if (!hasFinalFormat) return;
 
     const assemblyId = ext.assembly_id;
+    const heightFt = ext.height_ft ?? 0;
+    const compositeKey = getFinalOutputAssemblyKey(assemblyId, heightFt);
     const level = ext.height_category ?? "";
     const description = `Assembly ${assemblyId}`;
     const length = ext.total_length ?? 0;
-    const height = ext.height_ft ?? 0;
     const ceilingArea = ext.ceiling_area ?? undefined;
     const perimeter = ext.area_parementer ?? undefined;
 
     if (!level) missingColumns.push(`level (assembly ${assemblyId})`);
     if (length === 0) missingColumns.push(`length (assembly ${assemblyId})`);
-    if (height === 0) missingColumns.push(`height (assembly ${assemblyId})`);
+    if (heightFt === 0) missingColumns.push(`height (assembly ${assemblyId})`);
 
     const instance: TakeoffInstance = {
-      id: "",
+      id: `fo-${compositeKey}`,
       level,
       description,
       quantity: 1,
       length,
-      height,
+      height: heightFt,
       ceilingArea,
       perimeter,
       lengthUnit: "LF",
       areaUnit: "SF",
     };
 
-    if (!result[assemblyId]) result[assemblyId] = [];
-    const idx = result[assemblyId].length;
-    instance.id = `fo-${assemblyId}-${idx}`;
-    result[assemblyId].push(instance);
+    if (!result[compositeKey]) result[compositeKey] = [];
+    result[compositeKey].push(instance);
   });
 
   if (missingColumns.length > 0) {

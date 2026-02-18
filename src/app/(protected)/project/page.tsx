@@ -18,7 +18,10 @@ import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
 import { identifyWallAssemblies } from "@/services/gemini/client";
 import { useApp } from "@/context/AppContext";
-import { mapJsonToWallAssemblies } from "@/lib/utils/assemblyJsonMapper";
+import {
+  mapFinalOutputToWallAssemblies,
+  mapJsonToWallAssemblies,
+} from "@/lib/utils/assemblyJsonMapper";
 
 function ProjectContent() {
   const router = useRouter();
@@ -130,11 +133,22 @@ function ProjectContent() {
         setAssemblyData(assemblyDataArray);
         setMaterialCostingData(costingDataArray);
 
-        const mappedAssemblies = mapJsonToWallAssemblies(
-          assemblyDataArray,
-          costingDataArray,
-        );
-        const newAssemblyIds = new Set(assemblyDataArray.map((a) => a.assembly_id));
+        const hasFinalOutputFormat =
+          costingDataArray.length > 0 &&
+          costingDataArray.every(
+            (a) =>
+              typeof (a as { height_ft?: number }).height_ft === "number" &&
+              typeof (a as { total_length?: number }).total_length === "number",
+          );
+
+        const mappedAssemblies = hasFinalOutputFormat
+          ? mapFinalOutputToWallAssemblies(costingDataArray)
+          : mapJsonToWallAssemblies(
+              assemblyDataArray,
+              costingDataArray,
+            );
+
+        const newAssemblyIds = new Set(mappedAssemblies.map((a) => a.id));
         setAssemblies((prev) => [
           ...prev.filter((a) => !newAssemblyIds.has(a.id)),
           ...mappedAssemblies,
