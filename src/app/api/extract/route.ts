@@ -3,7 +3,8 @@ import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
 // import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
-export const maxDuration = 180;
+// Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   console.log("\n" + "-".repeat(70));

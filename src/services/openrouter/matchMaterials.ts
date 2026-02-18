@@ -116,7 +116,10 @@ export async function matchMaterialsToDatabase(
   extraction: { assemblies: unknown[] },
   materialDb: Record<string, unknown>[],
   apiKey: string,
+  routeStartMs: number = Date.now(),
 ): Promise<MatchResult> {
+  const elapsed = () => ((Date.now() - routeStartMs) / 1000).toFixed(2);
+
   const trimmedDb = trimDatabaseForMatch(materialDb);
 
   // Pre-filter: strip out materials with null/empty raw_text from each assembly
@@ -145,21 +148,24 @@ export async function matchMaterialsToDatabase(
   const assemblies = cleanedAssemblies;
   const totalBatches = Math.ceil(assemblies.length / BATCH_SIZE);
 
-  console.log(`[match] Processing ${assemblies.length} assemblies in ${totalBatches} batch(es) (null materials pre-filtered)`);
+  console.log(`[match] matchMaterialsToDatabase entered — ${assemblies.length} assemblies, ${totalBatches} batch(es) (elapsed ${elapsed()}s)`);
 
   const allMatched: unknown[] = [];
   let totalPromptTokens = 0;
   let totalCompletionTokens = 0;
 
   for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+    const batchStartMs = Date.now();
+    const batchNum = batchIdx + 1;
+
     const batchAssemblies = assemblies.slice(
       batchIdx * BATCH_SIZE,
       (batchIdx + 1) * BATCH_SIZE,
     );
 
-    const userMessage = `EXTRACTED ASSEMBLIES — Batch ${batchIdx + 1}/${totalBatches}:\n${JSON.stringify({ assemblies: batchAssemblies })}\n\nMATERIAL & LABOR DATABASE:\n${JSON.stringify(trimmedDb)}`;
+    const userMessage = `EXTRACTED ASSEMBLIES — Batch ${batchNum}/${totalBatches}:\n${JSON.stringify({ assemblies: batchAssemblies })}\n\nMATERIAL & LABOR DATABASE:\n${JSON.stringify(trimmedDb)}`;
 
-    console.log(`[match] Batch ${batchIdx + 1}/${totalBatches} — ${batchAssemblies.length} assemblies, ${userMessage.length.toLocaleString()} chars`);
+    console.log(`[match] Batch ${batchNum}/${totalBatches} — START at ${new Date().toISOString()} (elapsed ${elapsed()}s) — sending request to OpenRouter (${batchAssemblies.length} assemblies, ${userMessage.length.toLocaleString()} chars)`);
 
     const requestBody = {
       model: MODEL,
@@ -182,16 +188,17 @@ export async function matchMaterialsToDatabase(
         body: JSON.stringify(requestBody),
       });
 
-      console.log(`[match] Batch ${batchIdx + 1} — attempt ${attempt}, status: ${response.status}`);
+      const apiResponseMs = ((Date.now() - batchStartMs) / 1000).toFixed(2);
+      console.log(`[match] Batch ${batchNum}/${totalBatches} — API responded in ${apiResponseMs}s (attempt ${attempt}, status: ${response.status}, elapsed ${elapsed()}s)`);
 
       if (!response.ok) {
         const err = await response.text();
         if (attempt < MAX_BATCH_RETRIES && response.status >= 500) {
-          console.log(`[match] Batch ${batchIdx + 1} — retrying after 5xx...`);
+          console.log(`[match] Batch ${batchNum} — retrying after 5xx...`);
           continue;
         }
-        console.error(`[match] Batch ${batchIdx + 1} — OpenRouter API error:`, response.status, err.slice(0, 500));
-        throw new Error(`OpenRouter API error (batch ${batchIdx + 1}): ${err}`);
+        console.error(`[match] Batch ${batchNum} — OpenRouter API error:`, response.status, err.slice(0, 500));
+        throw new Error(`OpenRouter API error (batch ${batchNum}): ${err}`);
       }
 
       const data = (await response.json()) as {
@@ -215,22 +222,23 @@ export async function matchMaterialsToDatabase(
       } catch {
         try {
           parsed = JSON.parse(repairJSON(cleaned)) as { assemblies?: unknown[] };
-          console.log(`[match] Batch ${batchIdx + 1} — repaired successfully`);
+          console.log(`[match] Batch ${batchNum} — repaired successfully`);
           break;
         } catch (repairErr) {
-          console.error(`[match] Batch ${batchIdx + 1} — JSON parse/repair failed (attempt ${attempt}):`, repairErr);
+          console.error(`[match] Batch ${batchNum} — JSON parse/repair failed (attempt ${attempt}):`, repairErr);
           if (attempt >= MAX_BATCH_RETRIES) continue;
         }
       }
     }
 
     if (!parsed?.assemblies) {
-      console.error(`[match] Batch ${batchIdx + 1} — skipped (parse failed)`);
+      console.error(`[match] Batch ${batchNum} — skipped (parse failed)`);
       continue;
     }
 
-    console.log(`[match] Batch ${batchIdx + 1} — ${parsed.assemblies.length} assemblies matched`);
+    const batchMs = ((Date.now() - batchStartMs) / 1000).toFixed(2);
     allMatched.push(...parsed.assemblies);
+    console.log(`[match] Batch ${batchNum}/${totalBatches} — DONE in ${batchMs}s (total matched so far: ${allMatched.length}, elapsed ${elapsed()}s)`);
   }
 
   console.log(`[match] Total matched: ${allMatched.length} assemblies`);

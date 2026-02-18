@@ -4,7 +4,8 @@ import { saveMaterialMatch } from "@/lib/db/assemblyData";
 import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
 // import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
-export const maxDuration = 180;
+// Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s. Without Fluid Compute, Pro max 300s.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   console.log("\n" + "-".repeat(70));
@@ -20,7 +21,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const totalStart = Date.now();
+  const logElapsed = (label: string) =>
+    console.log(`[match] ${label} (elapsed ${((Date.now() - totalStart) / 1000).toFixed(2)}s)`);
+
   try {
+    console.log(`[match] START at ${new Date().toISOString()} (Vercel maxDuration: ${maxDuration}s)`);
+
     let body: { extraction?: { assemblies?: unknown[] }; extractionId?: string; projectId?: string };
     try {
       body = await req.json();
@@ -32,6 +39,7 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+    logElapsed("Request body parsed");
 
     const { extraction, extractionId, projectId } = body;
     if (!extraction?.assemblies) {
@@ -42,7 +50,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const totalStart = Date.now();
     let dbLoadMs = 0;
 
     let database: Record<string, unknown>[];
@@ -51,6 +58,7 @@ export async function POST(req: NextRequest) {
       database = await getMaterialDatabase();
       dbLoadMs = Date.now() - dbLoadStart;
       console.log(`[match] Loaded material database: ${database.length} entries — ${(dbLoadMs / 1000).toFixed(2)}s`);
+      logElapsed("Material DB load complete");
     } catch (readErr) {
       const msg = readErr instanceof Error ? readErr.message : "Unknown error";
       console.error("[match] Failed to load material database:", msg);
@@ -61,19 +69,23 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[match] Starting material matching for ${extraction.assemblies.length} assemblies, extractionId: ${extractionId ?? "none"}`);
+    logElapsed("About to call matchMaterialsToDatabase (OpenRouter batches)");
     const matchStart = Date.now();
     const result = await matchMaterialsToDatabase(
       { assemblies: extraction.assemblies },
       database,
       apiKey,
+      totalStart,
     );
     const matchMs = Date.now() - matchStart;
     console.log(`[match] Matched ${result.assemblies.length} assemblies — ${(matchMs / 1000).toFixed(2)}s`);
+    logElapsed("matchMaterialsToDatabase returned");
 
     const timestamp = Date.now();
     const filename = `material-match-${timestamp}.json`;
     const extractionIdStr = extractionId ?? "";
 
+    logElapsed("About to save material match to DB");
     const { data: savedData, error: saveError } = await saveMaterialMatch(
       { assemblies: result.assemblies },
       filename,
@@ -105,7 +117,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     const stack = e instanceof Error ? e.stack : undefined;
-    console.error("[match] Error:", message);
+    console.error(`[match] Error at elapsed ${((Date.now() - totalStart) / 1000).toFixed(2)}s:`, message);
     if (stack) console.error("[match] Stack:", stack);
     return NextResponse.json({ error: message }, { status: 500 });
   }
