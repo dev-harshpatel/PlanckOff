@@ -103,9 +103,65 @@ function trimDatabaseForMatch(db: Record<string, unknown>[]): TrimmedDbEntry[] {
   }));
 }
 
+/** Collect keywords from a batch of assemblies for optional DB filtering (e.g. raw_text, categories). */
+function getBatchKeywords(assemblies: unknown[]): Set<string> {
+  const keywords = new Set<string>();
+  const pushWords = (s: string) =>
+    s.split(/\s+/).forEach((w) => {
+      const t = w.replace(/\W/g, "").toLowerCase();
+      if (t.length >= 2) keywords.add(t);
+    });
+  for (const a of assemblies) {
+    const ass = a as { materials?: Record<string, unknown[]> };
+    if (!ass.materials) continue;
+    for (const items of Object.values(ass.materials)) {
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        const raw = (item as { raw_text?: string }).raw_text;
+        if (raw && typeof raw === "string") pushWords(raw);
+      }
+    }
+    const cat = (a as { assembly_id?: string }).assembly_id;
+    if (cat && typeof cat === "string") pushWords(cat);
+  }
+  return keywords;
+}
+
+/** Optionally reduce DB to rows that might match this batch (saves tokens, keeps quality). */
+function filterDbForBatch(db: TrimmedDbEntry[], batchAssemblies: unknown[]): TrimmedDbEntry[] {
+  const keywords = getBatchKeywords(batchAssemblies);
+  if (keywords.size === 0) return db;
+  const include = (row: TrimmedDbEntry): boolean => {
+    const parts = [
+      row.code,
+      row.section,
+      row.type,
+      row.description,
+      row.category,
+      row.manufacturer,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .replace(/\W/g, " ");
+    const rowWords = new Set(parts.split(/\s+/).filter((w) => w.length >= 2));
+    for (const kw of keywords) {
+      if (rowWords.has(kw)) return true;
+      for (const rw of rowWords) {
+        if (rw.includes(kw) || kw.includes(rw)) return true;
+      }
+    }
+    return false;
+  };
+  const filtered = db.filter(include);
+  if (filtered.length < db.length * 0.5) return db;
+  return filtered;
+}
+
 const MAX_BATCH_RETRIES = 2;
 const BATCH_SIZE = 15;
 const MODEL = "google/gemini-2.5-flash";
+/** When true, send a smaller DB per batch (saves tokens, no cache benefit). When false, send full DB first for prompt-cache hits on batches 2+. */
+const USE_PER_BATCH_DB_FILTER = false;
 
 export interface MatchResult {
   assemblies: unknown[];
@@ -163,9 +219,13 @@ export async function matchMaterialsToDatabase(
       (batchIdx + 1) * BATCH_SIZE,
     );
 
-    const userMessage = `EXTRACTED ASSEMBLIES — Batch ${batchNum}/${totalBatches}:\n${JSON.stringify({ assemblies: batchAssemblies })}\n\nMATERIAL & LABOR DATABASE:\n${JSON.stringify(trimmedDb)}`;
+    const dbForBatch = USE_PER_BATCH_DB_FILTER
+      ? filterDbForBatch(trimmedDb, batchAssemblies)
+      : trimmedDb;
+    const userMessage =
+      `MATERIAL & LABOR DATABASE (use only these entries):\n${JSON.stringify(dbForBatch)}\n\nEXTRACTED ASSEMBLIES — Batch ${batchNum}/${totalBatches}:\n${JSON.stringify({ assemblies: batchAssemblies })}`;
 
-    console.log(`[match] Batch ${batchNum}/${totalBatches} — START at ${new Date().toISOString()} (elapsed ${elapsed()}s) — sending request to OpenRouter (${batchAssemblies.length} assemblies, ${userMessage.length.toLocaleString()} chars)`);
+    console.log(`[match] Batch ${batchNum}/${totalBatches} — START at ${new Date().toISOString()} (elapsed ${elapsed()}s) — sending request to OpenRouter (${batchAssemblies.length} assemblies, DB rows: ${dbForBatch.length}, ${userMessage.length.toLocaleString()} chars)`);
 
     const requestBody = {
       model: MODEL,
