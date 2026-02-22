@@ -349,9 +349,13 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                     >
                                                         <span className="truncate">{comp.materialName}</span>
                                                     </div>
-                                                    {/* Material Search */}
+                                                    {/* Material Search: show only Materials for Mat. rows, only Labor for LABOR rows (from spec_database) */}
                                                     <MaterialSearch
-                                                        materials={materials}
+                                                        materials={
+                                                            getIsLaborRow(comp)
+                                                                ? materials.filter((m) => m.category === "Labor")
+                                                                : materials.filter((m) => m.category !== "Labor")
+                                                        }
                                                         onSelect={(mat) => handleMaterialSelect(assembly.id, comp.id, mat)}
                                                         isOpen={rowSearchOpen === comp.id}
                                                         onClose={() => setRowSearchOpen(null)}
