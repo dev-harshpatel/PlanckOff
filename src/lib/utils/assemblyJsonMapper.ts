@@ -6,22 +6,22 @@ interface FinalOutputAssembly extends MaterialCosting {
   assembly_type?: string;
   height_ft?: number;
   height_category?: string;
+  level?: string;
   total_length?: number;
   ceiling_area?: number | null;
   area_parementer?: number | null;
 }
 
 /** Normalize assembly_type from takeoff to match category dropdown values */
-const normalizeAssemblyType = (
-  raw: string,
-): WallAssembly["assemblyType"] => {
+const normalizeAssemblyType = (raw: string): WallAssembly["assemblyType"] => {
   const lower = String(raw || "").toLowerCase();
   if (lower.includes("ceiling")) return "Ceiling";
   if (lower.includes("exterior")) return "Exterior Walls";
   if (lower.includes("interior")) return "Interior Walls";
   if (lower.includes("bulkhead")) return "BulkHead";
   if (lower.includes("access")) return "Access Pannel";
-  if (lower.includes("hm") || lower.includes("hollow metal")) return "HM Frames";
+  if (lower.includes("hm") || lower.includes("hollow metal"))
+    return "HM Frames";
   if (lower === "wall") return "Interior Walls";
   return (raw as WallAssembly["assemblyType"]) || "Interior Walls";
 };
@@ -95,7 +95,7 @@ export const mapJsonToWallAssemblies = (
             : spacingValue != null
               ? `${spacingValue} mm O.C.`
               : isSteelFraming
-                ? "16\""
+                ? '16"'
                 : "";
 
         // Get layers from gypsum_board if available (assembly_extractions format)
@@ -107,7 +107,7 @@ export const mapJsonToWallAssemblies = (
         const isGypsumBoard =
           !!gypsumBoard || /GYPSUM|WALLBOARD|DRYWALL|TYPE X/i.test(rawText);
         const layers = isGypsumBoard
-          ? gypsumBoard?.layers ?? extracted_material?.layers ?? undefined
+          ? (gypsumBoard?.layers ?? extracted_material?.layers ?? undefined)
           : undefined;
 
         // Determine usage based on material type
@@ -228,12 +228,12 @@ export const mapFinalOutputToWallAssemblies = (
           : spacingValue != null
             ? `${spacingValue} mm O.C.`
             : isSteelFraming
-              ? "16\""
+              ? '16"'
               : "";
 
       const isGypsumBoard = /GYPSUM|WALLBOARD|DRYWALL|TYPE X/i.test(rawText);
       const layers = isGypsumBoard
-        ? extracted_material?.layers ?? undefined
+        ? (extracted_material?.layers ?? undefined)
         : undefined;
 
       let usage: string = "Coverage (1 Layer)";
@@ -300,7 +300,6 @@ export const mapFinalOutputToTakeoffs = (
   assemblies: (MaterialCosting | FinalOutputAssembly)[],
 ): Record<string, TakeoffInstance[]> => {
   const result: Record<string, TakeoffInstance[]> = {};
-  const missingColumns: string[] = [];
 
   assemblies.forEach((asm) => {
     const ext = asm as FinalOutputAssembly;
@@ -312,15 +311,11 @@ export const mapFinalOutputToTakeoffs = (
     const assemblyId = ext.assembly_id;
     const heightFt = ext.height_ft ?? 0;
     const compositeKey = getFinalOutputAssemblyKey(assemblyId, heightFt);
-    const level = ext.height_category ?? "";
+    const level = ext.level ?? "";
     const description = `Assembly ${assemblyId}`;
     const length = ext.total_length ?? 0;
     const ceilingArea = ext.ceiling_area ?? undefined;
     const perimeter = ext.area_parementer ?? undefined;
-
-    if (!level) missingColumns.push(`level (assembly ${assemblyId})`);
-    if (length === 0) missingColumns.push(`length (assembly ${assemblyId})`);
-    if (heightFt === 0) missingColumns.push(`height (assembly ${assemblyId})`);
 
     const instance: TakeoffInstance = {
       id: `fo-${compositeKey}`,
@@ -338,13 +333,6 @@ export const mapFinalOutputToTakeoffs = (
     if (!result[compositeKey]) result[compositeKey] = [];
     result[compositeKey].push(instance);
   });
-
-  if (missingColumns.length > 0) {
-    console.warn(
-      "[Takeoff] Columns with missing/unmapped data:",
-      [...new Set(missingColumns)],
-    );
-  }
 
   return result;
 };

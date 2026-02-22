@@ -11,6 +11,7 @@ import { withRoleAuth } from "@/lib/auth";
 import {
   bulkUpsertMaterials,
   createMaterial,
+  deleteAllMaterials,
   getAllMaterials,
 } from "@/lib/db/materials";
 import { MaterialDefinition } from "@/types";
@@ -39,6 +40,38 @@ export const GET = withRoleAuth(
       });
     } catch (error) {
       console.error("Materials API error:", error);
+      return NextResponse.json(
+        { success: false, error: "Internal server error" },
+        { status: 500 },
+      );
+    }
+  },
+);
+
+/**
+ * DELETE /api/materials
+ * Delete ALL materials from the database (for Replace All import)
+ */
+export const DELETE = withRoleAuth(
+  ["Administrator", "Team Lead"],
+  async () => {
+    try {
+      const { error } = await deleteAllMaterials();
+
+      if (error) {
+        console.error("Failed to delete all materials:", error);
+        return NextResponse.json(
+          { success: false, error: "Failed to delete materials" },
+          { status: 500 },
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "All materials deleted",
+      });
+    } catch (error) {
+      console.error("Materials DELETE API error:", error);
       return NextResponse.json(
         { success: false, error: "Internal server error" },
         { status: 500 },

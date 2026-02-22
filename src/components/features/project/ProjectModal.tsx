@@ -37,7 +37,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         dueDate: '',
         status: 'Working Project Progress' as ProjectSummary['status'],
         assignedTo: '',
-        location: ''
+        location: '',
+        province: ''
     });
 
     useEffect(() => {
@@ -51,7 +52,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 dueDate: projectToEdit.dueDate ? formatDateForInput(projectToEdit.dueDate) : '',
                 status: projectToEdit.status,
                 assignedTo: assignedMember?.id || '',
-                location: projectToEdit.location || ''
+                location: projectToEdit.location || '',
+                province: projectToEdit.province || ''
             });
         } else {
             // Reset form for new project
@@ -62,7 +64,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 dueDate: '',
                 status: 'Working Project Progress',
                 assignedTo: teamMembers.length > 0 ? teamMembers[0].id : '',
-                location: ''
+                location: '',
+                province: ''
             });
         }
     }, [projectToEdit, isOpen, teamMembers]);
@@ -108,6 +111,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         if (!formData.location.trim()) {
             missingFields.push('Project Location');
         }
+        if (!formData.province.trim()) {
+            missingFields.push('Province');
+        }
         if (!formData.dueDate) {
             missingFields.push('Due Date');
         }
@@ -145,7 +151,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             dueDate: formatDateForDisplay(formData.dueDate),
             status: formData.status,
             assignedTo: selectedMember?.name || '',
-            location: formData.location.trim()
+            location: formData.location.trim(),
+            province: formData.province.trim()
         };
 
         onSubmit(projectData);
@@ -199,9 +206,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                             icon={MapPin}
                             type="text"
                             required
-                            placeholder="e.g. New York, NY"
+                            placeholder="e.g. Toronto"
                             value={formData.location}
                             onChange={e => setFormData({ ...formData, location: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            label="Province"
+                            icon={MapPin}
+                            type="text"
+                            required
+                            placeholder="e.g. Ontario"
+                            value={formData.province}
+                            onChange={e => setFormData({ ...formData, province: e.target.value })}
                         />
                     </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { WallAssembly, TakeoffInstance } from '@/types';
 import { Plus, Trash2, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { ConfirmModal, Select } from '@/components/ui';
@@ -126,35 +126,6 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
 
         return filtered;
     }, [assemblies, takeoffs, filterType, filterLevel, filterText, sortCol, sortDir]);
-
-    // Log columns with missing/unmapped data for debugging
-    useEffect(() => {
-        const missing: Record<string, Set<string>> = {};
-        flatList.forEach((row) => {
-            const label = row.assembly.code;
-            if (!row.assembly.assemblyType) (missing["type"] ??= new Set()).add(label);
-            if (!row.instance.level) (missing["level"] ??= new Set()).add(label);
-            if (!row.instance.description) (missing["description"] ??= new Set()).add(label);
-            if (row.instance.length == null || row.instance.length === 0)
-                (missing["length"] ??= new Set()).add(label);
-            if (row.instance.height == null || row.instance.height === 0)
-                (missing["height"] ??= new Set()).add(label);
-            const area =
-                row.instance.ceilingArea ??
-                (row.instance.length ?? 0) * (row.instance.height ?? 0);
-            if (area === 0) (missing["area"] ??= new Set()).add(label);
-            const isCeiling = row.assembly.assemblyType?.includes("Ceiling");
-            if (isCeiling && (row.instance.perimeter == null || row.instance.perimeter === 0))
-                (missing["perimeter"] ??= new Set()).add(label);
-        });
-        if (Object.keys(missing).length > 0) {
-            const summary: Record<string, string[]> = {};
-            Object.entries(missing).forEach(([col, codes]) => {
-                summary[col] = Array.from(codes);
-            });
-            console.warn("[TakeoffSchedule] Columns with missing data:", summary);
-        }
-    }, [flatList]);
 
     const handleSort = (col: string) => {
         if (sortCol === col) {

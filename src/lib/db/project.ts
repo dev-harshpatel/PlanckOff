@@ -32,6 +32,7 @@ export async function getAllProjects(): Promise<{
     projectNumber: project.project_number,
     assignedTo: project.assigned_to,
     location: project.location,
+    province: project.province,
   })) as ProjectSummary[];
 
   return { data: transformedData || null, error };
@@ -60,6 +61,7 @@ export async function getProjectById(id: string): Promise<{
         projectNumber: data.project_number,
         assignedTo: data.assigned_to,
         location: data.location,
+        province: data.province,
       }
     : null;
 
@@ -77,6 +79,7 @@ export async function createProject(params: {
   projectNumber?: string;
   assignedTo?: string;
   location?: string;
+  province?: string;
   createdBy: string;
 }): Promise<{
   data: ProjectSummary | null;
@@ -92,6 +95,7 @@ export async function createProject(params: {
       project_number: params.projectNumber || `P-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
       assigned_to: params.assignedTo,
       location: params.location,
+      province: params.province,
       created_by: params.createdBy,
     })
     .select('*')
@@ -107,6 +111,7 @@ export async function createProject(params: {
         projectNumber: data.project_number,
         assignedTo: data.assigned_to,
         location: data.location,
+        province: data.province,
       }
     : null;
 
@@ -126,6 +131,7 @@ export async function updateProject(
     projectNumber: string;
     assignedTo: string;
     location: string;
+    province: string;
   }>
 ): Promise<{
   data: ProjectSummary | null;
@@ -140,6 +146,7 @@ export async function updateProject(
   if (updates.projectNumber !== undefined) dbUpdates.project_number = updates.projectNumber;
   if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo;
   if (updates.location !== undefined) dbUpdates.location = updates.location;
+  if (updates.province !== undefined) dbUpdates.province = updates.province;
 
   const { data, error } = await supabaseAdmin
     .from(TABLES.PROJECTS)
@@ -158,6 +165,7 @@ export async function updateProject(
         projectNumber: data.project_number,
         assignedTo: data.assigned_to,
         location: data.location,
+        province: data.province,
       }
     : null;
 
@@ -200,6 +208,7 @@ export async function getProjectsByStatus(status: ProjectSummary['status']): Pro
     projectNumber: project.project_number,
     assignedTo: project.assigned_to,
     location: project.location,
+    province: project.province,
   })) as ProjectSummary[];
 
   return { data: transformedData || null, error };
@@ -227,6 +236,7 @@ export async function getProjectsByAssignee(assignedTo: string): Promise<{
     projectNumber: project.project_number,
     assignedTo: project.assigned_to,
     location: project.location,
+    province: project.province,
   })) as ProjectSummary[];
 
   return { data: transformedData || null, error };

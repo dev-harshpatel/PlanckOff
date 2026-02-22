@@ -18,6 +18,8 @@ interface AssemblyEditorSidebarProps {
     onLoadTemplate?: (template: AssemblyTemplate) => void;
     templates?: AssemblyTemplate[];
     totalCost: number;
+    totalLaborCost: number;
+    totalMaterialCost: number;
 }
 
 export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
@@ -31,7 +33,9 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
     onSelectHeight,
     onLoadTemplate,
     templates = [],
-    totalCost
+    totalCost,
+    totalLaborCost,
+    totalMaterialCost,
 }) => {
     const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
 
@@ -285,11 +289,25 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                             </span>
                         )}
                     </div>
-                    <div className="border-t border-blue-800 pt-2 flex justify-between items-baseline">
-                        <span className="text-xs font-bold opacity-70 uppercase">Total Cost</span>
-                        <span className="text-2xl font-bold text-emerald-400">
-                            ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </span>
+                    <div className="border-t border-blue-800 pt-2 space-y-1.5">
+                        <div className="flex justify-between items-baseline">
+                            <span className="text-xs font-bold opacity-70 uppercase">Total Cost</span>
+                            <span className="text-2xl font-bold text-emerald-400">
+                                ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-baseline text-[11px]">
+                            <span className="opacity-80 uppercase">Total cost of Material</span>
+                            <span className="font-semibold text-cyan-300">
+                                ${totalMaterialCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-baseline text-[11px]">
+                            <span className="opacity-80 uppercase">Total cost of Labour</span>
+                            <span className="font-semibold text-amber-300">
+                                ${totalLaborCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

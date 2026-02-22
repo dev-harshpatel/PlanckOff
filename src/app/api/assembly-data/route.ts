@@ -5,7 +5,12 @@ import {
   getLatestAssemblyExtraction,
   getLatestMaterialMatch,
 } from "@/lib/db/assemblyData";
-import { getLatestFinalOutput } from "@/lib/db/pipelineOutputs";
+import {
+  getLatestFinalOutput,
+  getLatestTakeoffOutput,
+  getTakeoffOutputById,
+} from "@/lib/db/pipelineOutputs";
+import { getProjectById } from "@/lib/db/project";
 
 /**
  * GET /api/assembly-data?projectId=xxx
@@ -40,6 +45,56 @@ export async function GET(req: NextRequest) {
       materialData =
         typeof rawFinal === "string" ? JSON.parse(rawFinal) : rawFinal;
       materialFilename = finalResult.data.filename;
+
+      // Enrich assemblies with level from raw takeoff records if missing
+      const assemblies = (materialData.assemblies || []) as Record<string, unknown>[];
+      const needsLevel = assemblies.some(
+        (a) => !a.level && typeof a.height_ft === "number",
+      );
+      if (needsLevel) {
+        // Prefer the linked takeoff output, fall back to latest for project
+        const takeoffResult = finalResult.data.takeoff_output_id
+          ? await getTakeoffOutputById(finalResult.data.takeoff_output_id)
+          : await getLatestTakeoffOutput(projectId);
+
+        if (takeoffResult.data) {
+          const rawTakeoff = takeoffResult.data.data;
+          const takeoffRows = Array.isArray(rawTakeoff) ? rawTakeoff : [];
+
+          // Build map: "wall_type|height" → Set of unique level strings
+          const levelMap = new Map<string, Set<string>>();
+          for (const row of takeoffRows as Record<string, unknown>[]) {
+            if (!row.wall_type || row.level == null) continue;
+            const levelStr = String(row.level).trim();
+            if (!levelStr) continue;
+            const height = parseFloat(String(row.height ?? 0));
+            const key = `${String(row.wall_type).trim()}|${height}`;
+            if (!levelMap.has(key)) levelMap.set(key, new Set());
+            levelMap.get(key)!.add(levelStr);
+          }
+
+          materialData.assemblies = assemblies.map((a) => {
+            if (a.level) return a;
+            const key = `${a.assembly_id}|${a.height_ft}`;
+            const levels = levelMap.get(key);
+            return levels && levels.size > 0
+              ? { ...a, level: Array.from(levels).join(", ") }
+              : a;
+          });
+        }
+      }
+      // Enrich assemblies with project_location / project_province from the project record
+      if (projectId) {
+        const { data: project } = await getProjectById(projectId);
+        if (project && (project.location || project.province)) {
+          const enrichedAssemblies = (materialData.assemblies || []) as Record<string, unknown>[];
+          materialData.assemblies = enrichedAssemblies.map((a) => ({
+            ...a,
+            project_location: project.location ?? a.project_location ?? null,
+            project_province: project.province ?? a.project_province ?? null,
+          }));
+        }
+      }
     } else if (materialResult.data) {
       const rawMaterial = materialResult.data.data;
       materialData =

@@ -32,8 +32,6 @@ export const Reports: React.FC<ReportsProps> = ({
     setActiveReportTab,
     onCloseReport
 }) => {
-    console.log("Reports Component Rendered", { assemblyCount: assemblies.length });
-
     // Configuration
     const [config, setConfig] = useState<ProposalConfig>({
         clientName: 'Client Name',

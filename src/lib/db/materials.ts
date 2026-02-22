@@ -25,12 +25,21 @@ const transformToMaterial = (row: any): MaterialDefinition => ({
   manufacturer: row.manufacturer,
   description: row.description,
   matCost: parseFloat(row.mat_cost),
+  unitCost: row.unit_cost != null ? parseFloat(row.unit_cost) : undefined,
   per: row.per,
   priceUpdated: row.price_updated,
   category: row.category,
   width: row.width,
   gauge: row.gauge,
   flange: row.flange,
+  sheetBagBox: row.sheet_bag_box ?? undefined,
+  size: row.size ?? undefined,
+  screwSpacing: row.screw_spacing ?? undefined,
+  formulaQty: row.formula_qty ?? undefined,
+  formulaSecQty: row.formula_sec_qty ?? undefined,
+  formulaCeilQty: row.formula_ceil_qty ?? undefined,
+  formulaCeilSecQty: row.formula_ceil_sec_qty ?? undefined,
+  note: row.note ?? undefined,
   productivity: row.productivity ? parseFloat(row.productivity) : undefined,
   hourlyRate: row.hourly_rate ? parseFloat(row.hourly_rate) : undefined,
 });
@@ -47,14 +56,23 @@ const transformToDbRow = (material: MaterialDefinition) => ({
   manufacturer: material.manufacturer,
   description: material.description,
   mat_cost: material.matCost,
+  unit_cost: material.unitCost ?? null,
   per: material.per,
   price_updated: material.priceUpdated || new Date().toLocaleDateString(),
   category: material.category,
-  width: material.width,
-  gauge: material.gauge,
-  flange: material.flange,
-  productivity: material.productivity,
-  hourly_rate: material.hourlyRate,
+  width: material.width ?? null,
+  gauge: material.gauge ?? null,
+  flange: material.flange ?? null,
+  sheet_bag_box: material.sheetBagBox ?? null,
+  size: material.size ?? null,
+  screw_spacing: material.screwSpacing ?? null,
+  formula_qty: material.formulaQty ?? null,
+  formula_sec_qty: material.formulaSecQty ?? null,
+  formula_ceil_qty: material.formulaCeilQty ?? null,
+  formula_ceil_sec_qty: material.formulaCeilSecQty ?? null,
+  note: material.note ?? null,
+  productivity: material.productivity ?? null,
+  hourly_rate: material.hourlyRate ?? null,
 });
 
 /**
@@ -170,9 +188,18 @@ export async function updateMaterial(
   if (updates.priceUpdated !== undefined)
     dbUpdates.price_updated = updates.priceUpdated;
   if (updates.category !== undefined) dbUpdates.category = updates.category;
+  if (updates.unitCost !== undefined) dbUpdates.unit_cost = updates.unitCost;
   if (updates.width !== undefined) dbUpdates.width = updates.width;
   if (updates.gauge !== undefined) dbUpdates.gauge = updates.gauge;
   if (updates.flange !== undefined) dbUpdates.flange = updates.flange;
+  if (updates.sheetBagBox !== undefined) dbUpdates.sheet_bag_box = updates.sheetBagBox;
+  if (updates.size !== undefined) dbUpdates.size = updates.size;
+  if (updates.screwSpacing !== undefined) dbUpdates.screw_spacing = updates.screwSpacing;
+  if (updates.formulaQty !== undefined) dbUpdates.formula_qty = updates.formulaQty;
+  if (updates.formulaSecQty !== undefined) dbUpdates.formula_sec_qty = updates.formulaSecQty;
+  if (updates.formulaCeilQty !== undefined) dbUpdates.formula_ceil_qty = updates.formulaCeilQty;
+  if (updates.formulaCeilSecQty !== undefined) dbUpdates.formula_ceil_sec_qty = updates.formulaCeilSecQty;
+  if (updates.note !== undefined) dbUpdates.note = updates.note;
   if (updates.productivity !== undefined)
     dbUpdates.productivity = updates.productivity;
   if (updates.hourlyRate !== undefined)
@@ -235,6 +262,20 @@ export async function deleteMaterial(code: string): Promise<{
     .from(TABLES.MATERIALS)
     .delete()
     .eq("code", code);
+
+  return { error };
+}
+
+/**
+ * Delete ALL materials from the database
+ */
+export async function deleteAllMaterials(): Promise<{
+  error: { message: string; code: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from(TABLES.MATERIALS)
+    .delete()
+    .not("code", "is", null);
 
   return { error };
 }

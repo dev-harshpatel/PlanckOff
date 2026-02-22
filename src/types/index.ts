@@ -1,23 +1,36 @@
 export interface MaterialDefinition {
   code: string;           // Replaces id
   section: string;        // CSI MasterFormat (e.g., 09 20 00)
-  matCostCode: string;    // Material Category Code
+  matCostCode: string;    // Material Category Code / CostCode
   laborCostCode: string;  // Labor Code
   type: string;           // Division/Trade
   manufacturer: string;   // Vendor (or Role for Labor)
   description: string;    // Replaces name
-  matCost: number;        // Replaces price (or Labor Rate)
-  per: string;            // Pricing Unit (e.g., "1,000 LF", "1 EA", "1 HR")
+  matCost: number;        // Cost (base price)
+  unitCost?: number;      // Unit cost (cost per individual unit)
+  per: string;            // Unit / Pricing Unit (e.g., "1,000 LF", "1 EA", "1 HR")
   priceUpdated: string;   // Date
 
   // Technical Specs
   width?: string;         // e.g., 3-5/8", 6"
   gauge?: string;         // e.g., 20ga, 33mil
   flange?: string;        // e.g., 1-1/4", 1-5/8", 2"
+  sheetBagBox?: string;   // Sheet / Bag / Box quantity
+  size?: string;          // Size spec
+  screwSpacing?: string;  // Screw spacing
+
+  // Formulas (shown in modal, not in table)
+  formulaQty?: string;        // Wall: Formula for Qty
+  formulaSecQty?: string;     // Wall: Formula for Sec. Qty
+  formulaCeilQty?: string;    // Ceiling: Formula for Qty
+  formulaCeilSecQty?: string; // Ceiling: Formula for Sec. Qty
+
+  // Notes
+  note?: string;
 
   // Helper for app logic
   category: 'Framing' | 'Drywall' | 'Insulation' | 'Finishing' | 'Ceiling' | 'Labor' | 'Other';
-  productivity?: number; // Units/Hour (for Labor items)
+  productivity?: number; // Production rate / Units per Hour (for Labor items)
   hourlyRate?: number; // Base Hourly Rate (e.g. $65)
 }
 
@@ -91,6 +104,8 @@ export interface AssemblyComponent {
   overrideQuantity?: number;
   overrideMatCost?: number;
   overrideLaborCost?: number;
+  /** Production rate (per unit) from spec_database when material is matched */
+  productivityFromDb?: number;
   // Fields from JSON import
   materialCode?: string; // Code from matched_materials or matched_labor
   sectionCode?: string; // Section code (e.g., "09200")
@@ -206,6 +221,7 @@ export interface ProjectSummary {
   projectNumber: string;
   assignedTo?: string; // User ID or Name
   location?: string;
+  province?: string;
   pricingConfig?: ProposalConfig;
 }
 

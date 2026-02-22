@@ -73,7 +73,7 @@ export const PUT = withAuth(async (request, { user }, params) => {
     }
 
     const body = await request.json();
-    const { name, company, status, dueDate, projectNumber, assignedTo, location } = body;
+    const { name, company, status, dueDate, projectNumber, assignedTo, location, province } = body;
 
     // Validate status if provided
     const validStatuses = ['Working Project Progress', 'Under Review', 'Submitted', 'Hold', 'Archive'];
@@ -101,6 +101,7 @@ export const PUT = withAuth(async (request, { user }, params) => {
       projectNumber,
       assignedTo,
       location,
+      province,
     });
 
     if (error) {

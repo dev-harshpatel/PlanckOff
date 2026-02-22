@@ -20,6 +20,7 @@ export const normalizeExcelHeaders = (
       "matcostcode",
       "mat cost code",
       "material cost code",
+      "costcode",
       "cost code",
     ],
     laborCostCode: ["laborcostcode", "labor cost code", "labour cost code"],
@@ -34,6 +35,10 @@ export const normalizeExcelHeaders = (
       "cost",
       "unit price",
     ],
+    unitCost: [
+      "unitcost",
+      "unit cost",
+    ],
     per: ["per", "unit", "uom", "unit of measure"],
     priceUpdated: [
       "priceupdated",
@@ -41,11 +46,34 @@ export const normalizeExcelHeaders = (
       "date updated",
       "last updated",
     ],
-    category: ["category", "type", "material type", "mat type"],
+    category: ["category", "material type", "mat type"],
     width: ["width", "w"],
     gauge: ["gauge", "ga", "thickness"],
     flange: ["flange", "fl"],
-    productivity: ["productivity", "prod", "units per hour", "u/hr"],
+    sheetBagBox: [
+      "sheet/bag/box",
+      "sheetbagbox",
+      "sheet bag box",
+      "sheets",
+      "bags",
+      "boxes",
+      "sheet/bag/box size", // "Sheet/bag/Box  size" combined column
+    ],
+    size: ["size", "sz"],
+    screwSpacing: [
+      "screw_spacing",
+      "screwspacing",
+      "screw spacing",
+    ],
+    productivity: [
+      "productivity",
+      "prod",
+      "units per hour",
+      "u/hr",
+      "production rate (pre unit)",
+      "productionrate",
+      "production rate",
+    ],
     hourlyRate: [
       "hourlyrate",
       "hourly rate",
@@ -53,6 +81,35 @@ export const normalizeExcelHeaders = (
       "labor rate",
       "labour rate",
     ],
+    formulaQty: [
+      "formula for qty",
+      "formulaqty",
+      "formula qty",
+      "formulaforqty",
+    ],
+    formulaSecQty: [
+      "formula for sec. qty",
+      "formula for sec qty",
+      "formulasecqty",
+      "formula sec qty",
+      "formulaforsecqty",
+    ],
+    // Ceiling formula columns — "Formula" (unique name) and the deduplicated
+    // second "Formula for Sec. Qty 2" (from the import deduplication step)
+    formulaCeilQty: [
+      "formula",
+      "ceiling formula",
+      "ceiling formula for qty",
+      "formulaceilqty",
+    ],
+    formulaCeilSecQty: [
+      "formula for sec. qty 2",   // deduplicated second occurrence
+      "formulaforsecqty2",
+      "ceiling formula for sec. qty",
+      "ceiling formula for sec qty",
+      "formulaceilsecqty",
+    ],
+    note: ["note", "notes", "comment", "comments", "remarks"],
   };
 
   headers.forEach((header) => {
@@ -110,55 +167,36 @@ export const validateMaterialData = (
     return { material: null, errors };
   }
 
+  // Helper to parse optional numeric field
+  const parseOptionalNumeric = (key: string): number | undefined => {
+    let val = getMappedValue(key);
+    if (val === undefined || val === null || val === "") return undefined;
+    if (typeof val === "string") val = parseFloat(val.replace(/[$,]/g, ""));
+    else val = parseFloat(val);
+    return isNaN(val) ? undefined : val;
+  };
+
+  // Helper to get optional string field
+  const getOptionalString = (key: string): string | undefined => {
+    const val = getMappedValue(key);
+    if (val === undefined || val === null || val === "") return undefined;
+    return val.toString().trim();
+  };
+
   // Parse matCost
   let matCost = getMappedValue("matCost") || 0;
   if (typeof matCost === "string") {
     matCost = parseFloat(matCost.replace(/[$,]/g, "")) || 0;
   }
   matCost = parseFloat(matCost);
+  if (isNaN(matCost)) matCost = 0;
 
-  if (isNaN(matCost)) {
-    errors.push("Invalid material cost - must be a number");
-    matCost = 0;
-  }
-
-  // Parse optional numeric fields
-  let productivity = getMappedValue("productivity");
-  if (
-    productivity !== undefined &&
-    productivity !== null &&
-    productivity !== ""
-  ) {
-    productivity = parseFloat(productivity);
-    if (isNaN(productivity)) {
-      errors.push("Invalid productivity - must be a number");
-      productivity = undefined;
-    }
-  } else {
-    productivity = undefined;
-  }
-
-  let hourlyRate = getMappedValue("hourlyRate");
-  if (hourlyRate !== undefined && hourlyRate !== null && hourlyRate !== "") {
-    if (typeof hourlyRate === "string") {
-      hourlyRate = parseFloat(hourlyRate.replace(/[$,]/g, "")) || undefined;
-    }
-    hourlyRate = parseFloat(hourlyRate);
-    if (isNaN(hourlyRate)) {
-      errors.push("Invalid hourly rate - must be a number");
-      hourlyRate = undefined;
-    }
-  } else {
-    hourlyRate = undefined;
-  }
+  const unitCost = parseOptionalNumeric("unitCost");
+  const productivity = parseOptionalNumeric("productivity");
+  const hourlyRate = parseOptionalNumeric("hourlyRate");
 
   // Normalize category
   const normalizedCategory = normalizeCategory(category.toString().trim());
-
-  // Get width, gauge, flange values
-  const widthValue = getMappedValue("width");
-  const gaugeValue = getMappedValue("gauge");
-  const flangeValue = getMappedValue("flange");
 
   // Build material object
   const material: MaterialDefinition = {
@@ -167,32 +205,24 @@ export const validateMaterialData = (
     matCostCode: (getMappedValue("matCostCode") || "GEN").toString().trim(),
     laborCostCode: (getMappedValue("laborCostCode") || "").toString().trim(),
     type: (getMappedValue("type") || "Material").toString().trim(),
-    manufacturer: (getMappedValue("manufacturer") || "Generic")
-      .toString()
-      .trim(),
+    manufacturer: (getMappedValue("manufacturer") || "Generic").toString().trim(),
     description: description.toString().trim(),
     matCost,
-    per: (getMappedValue("per") || inferUnitFromCategory(normalizedCategory))
-      .toString()
-      .trim(),
-    priceUpdated: (
-      getMappedValue("priceUpdated") || new Date().toLocaleDateString()
-    )
-      .toString()
-      .trim(),
+    unitCost,
+    per: (getMappedValue("per") || inferUnitFromCategory(normalizedCategory)).toString().trim(),
+    priceUpdated: (getMappedValue("priceUpdated") || new Date().toLocaleDateString()).toString().trim(),
     category: normalizedCategory,
-    width:
-      widthValue !== undefined && widthValue !== null && widthValue !== ""
-        ? widthValue.toString().trim()
-        : undefined,
-    gauge:
-      gaugeValue !== undefined && gaugeValue !== null && gaugeValue !== ""
-        ? gaugeValue.toString().trim()
-        : undefined,
-    flange:
-      flangeValue !== undefined && flangeValue !== null && flangeValue !== ""
-        ? flangeValue.toString().trim()
-        : undefined,
+    width: getOptionalString("width"),
+    gauge: getOptionalString("gauge"),
+    flange: getOptionalString("flange"),
+    sheetBagBox: getOptionalString("sheetBagBox"),
+    size: getOptionalString("size"),
+    screwSpacing: getOptionalString("screwSpacing"),
+    formulaQty: getOptionalString("formulaQty"),
+    formulaSecQty: getOptionalString("formulaSecQty"),
+    formulaCeilQty: getOptionalString("formulaCeilQty"),
+    formulaCeilSecQty: getOptionalString("formulaCeilSecQty"),
+    note: getOptionalString("note"),
     productivity,
     hourlyRate,
   };

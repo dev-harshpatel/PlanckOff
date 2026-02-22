@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeftRight,
@@ -23,10 +23,18 @@ import {
   mapJsonToWallAssemblies,
 } from "@/lib/utils/assemblyJsonMapper";
 
+const REPORT_TABS = ["materials", "labor", "markups", "proposal", "bidding"] as const;
+type ReportTab = (typeof REPORT_TABS)[number];
+
+const isReportTab = (t: string | null): t is ReportTab =>
+  t != null && REPORT_TABS.includes(t as ReportTab);
+
 function ProjectContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("id");
+  const tabFromUrl = searchParams.get("tab");
 
   const { materials, setMaterials } = useApp();
 
@@ -37,6 +45,30 @@ function ProjectContent() {
   const [activeReportTab, setActiveReportTab] = useState<
     "proposal" | "bidding" | "markups" | "materials" | "labor"
   >("proposal");
+
+  // Sync report view from URL so refresh keeps Materials/Labor tab
+  useEffect(() => {
+    if (!isReportTab(tabFromUrl)) return;
+    setShowReport(true);
+    setActiveReportTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  const openReportTab = (tab: ReportTab) => {
+    setShowReport(true);
+    setActiveReportTab(tab);
+    const params = new URLSearchParams();
+    if (projectId) params.set("id", projectId);
+    params.set("tab", tab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const closeReport = () => {
+    setShowReport(false);
+    const params = new URLSearchParams();
+    if (projectId) params.set("id", projectId);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
   const [displayUnit, setDisplayUnit] = useState<"imperial" | "metric">(
     "imperial",
   );
@@ -91,6 +123,23 @@ function ProjectContent() {
 
     fetchProject();
   }, [projectId]);
+
+  // Load materials (spec_database) when on project page so Unit Cost lookups in assembly modal have data
+  useEffect(() => {
+    const loadMaterials = async () => {
+      if (materials.length > 0) return;
+      try {
+        const response = await fetch("/api/materials", { credentials: "include" });
+        const data = await response.json();
+        if (data.success && Array.isArray(data.materials)) {
+          setMaterials(data.materials);
+        }
+      } catch (err) {
+        console.error("[Project] Failed to load materials:", err);
+      }
+    };
+    loadMaterials();
+  }, [materials.length, setMaterials]);
 
   // Load assembly and material costing data when projectId is in URL
   useEffect(() => {
@@ -265,12 +314,8 @@ function ProjectContent() {
 
             <button
               onClick={() => {
-                if (showReport && activeReportTab === "materials") {
-                  setShowReport(false);
-                } else {
-                  setShowReport(true);
-                  setActiveReportTab("materials");
-                }
+                if (showReport && activeReportTab === "materials") closeReport();
+                else openReportTab("materials");
               }}
               className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2
                 ${
@@ -284,12 +329,8 @@ function ProjectContent() {
 
             <button
               onClick={() => {
-                if (showReport && activeReportTab === "labor") {
-                  setShowReport(false);
-                } else {
-                  setShowReport(true);
-                  setActiveReportTab("labor");
-                }
+                if (showReport && activeReportTab === "labor") closeReport();
+                else openReportTab("labor");
               }}
               className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2
                 ${
@@ -303,12 +344,8 @@ function ProjectContent() {
 
             <button
               onClick={() => {
-                if (showReport && activeReportTab === "markups") {
-                  setShowReport(false);
-                } else {
-                  setShowReport(true);
-                  setActiveReportTab("markups");
-                }
+                if (showReport && activeReportTab === "markups") closeReport();
+                else openReportTab("markups");
               }}
               className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2
                 ${
@@ -328,12 +365,9 @@ function ProjectContent() {
                   showReport &&
                   (activeReportTab === "proposal" ||
                     activeReportTab === "bidding")
-                ) {
-                  setShowReport(false);
-                } else {
-                  setShowReport(true);
-                  setActiveReportTab("proposal");
-                }
+                )
+                  closeReport();
+                else openReportTab("proposal");
               }}
               className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2
                 ${
@@ -383,11 +417,11 @@ function ProjectContent() {
           onUpdateMaterials={setMaterials}
           onAnalyze={handleAnalyze}
           isAnalyzing={state === AppState.ANALYZING}
-          viewMode="project"
+          viewMode={showReport ? "report" : "project"}
           displayUnit={displayUnit}
           activeReportTab={activeReportTab}
           setActiveReportTab={setActiveReportTab}
-          onCloseReport={() => setShowReport(false)}
+          onCloseReport={closeReport}
           assemblyData={assemblyData}
           materialCostingData={materialCostingData}
           projectId={projectId}

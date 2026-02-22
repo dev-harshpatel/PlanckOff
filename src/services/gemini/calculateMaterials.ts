@@ -407,6 +407,12 @@ export const calculateMaterials = (
                 break;
         }
 
+        // Align with assembly modal Code column: LAB- code or material category Labor → Labor tab
+        const isLaborComponent =
+            (comp.materialCode != null && comp.materialCode.startsWith('LAB-')) ||
+            availableMaterials.find((m) => m.code === comp.materialCode)?.category === 'Labor';
+        if (isLaborComponent) category = 'Labor';
+
         if (quantity > 0) {
             mats.push({
                 category,

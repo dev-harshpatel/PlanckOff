@@ -929,22 +929,26 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
           if (cat === "Labor") {
             return {
               ...c,
+              materialCode: material.code,
               materialName: material.description,
               usage: usage,
               materialCost: 0,
               overrideLaborCost: material.matCost, // Assign to Labor
               overrideMatCost: undefined,
+              productivityFromDb: material.productivity,
             };
           }
 
           // Standard Material
           return {
             ...c,
+            materialCode: material.code,
             materialName: material.description,
             usage: usage,
             materialCost: material.matCost,
             overrideLaborCost: undefined, // Clear any previous labor override
             overrideMatCost: undefined,
+            productivityFromDb: material.productivity,
           };
         });
 

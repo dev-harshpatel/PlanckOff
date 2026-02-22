@@ -13,6 +13,7 @@ import {
   getTakeoffOutputById,
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
+import { getProjectById } from "@/lib/db/project";
 import {
   type MaterialMatchInput,
   mergeTakeoffWithMaterialMatch,
@@ -159,6 +160,18 @@ export async function POST(req: NextRequest) {
         takeoffData,
       );
       result = { assemblies: aiResult.assemblies ?? [] };
+    }
+
+    // Enrich each assembly with project_location and project_province from the project record
+    if (projectId) {
+      const { data: project } = await getProjectById(projectId);
+      if (project && (project.location || project.province)) {
+        result.assemblies = result.assemblies.map((a) => ({
+          ...(a as Record<string, unknown>),
+          project_location: project.location ?? (a as Record<string, unknown>).project_location ?? null,
+          project_province: project.province ?? (a as Record<string, unknown>).project_province ?? null,
+        }));
+      }
     }
 
     const timestamp = Date.now();

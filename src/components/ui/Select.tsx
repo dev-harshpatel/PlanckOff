@@ -238,16 +238,17 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
                         'flex items-center gap-2',
                         sizeClasses[size],
                         variantButtonClasses[variant],
-                        Icon ? 'pl-10 pr-2' : 'pr-2',
+                        Icon ? 'pl-10 pr-10' : 'pr-10',
                         error ? 'border-red-300 focus:ring-red-500' : '',
                         className,
                     ].filter(Boolean).join(' ')}
                 >
-                    <span className={['min-w-0 flex-1 truncate text-left', selectedOption ? '' : 'text-slate-400'].filter(Boolean).join(' ')}>
+                    <span className={['min-w-0 flex-1 truncate', selectedOption ? '' : 'text-slate-400'].filter(Boolean).join(' ')}>
                         {displayLabel}
                     </span>
-                    <ChevronDown className={['w-4 h-4 shrink-0 flex-shrink-0 pointer-events-none transition-transform text-slate-500', isOpen ? 'rotate-180' : ''].join(' ')} aria-hidden />
                 </button>
+
+                <ChevronDown className={['absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 shrink-0 pointer-events-none transition-transform text-slate-500', isOpen ? 'rotate-180' : ''].join(' ')} aria-hidden />
 
                 {isOpen && (
                     <div

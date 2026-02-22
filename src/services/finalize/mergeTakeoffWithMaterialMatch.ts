@@ -39,6 +39,7 @@ interface AggregatedTakeoffGroup {
   ceiling_area: number;
   area_parementer: number;
   is_ceiling: boolean;
+  levels: string[];
 }
 
 /** Final output assembly — same shape as saved final_output JSON */
@@ -51,6 +52,7 @@ export interface FinalOutputAssembly {
   framing_category?: string | null;
   height_category: string;
   height_ft: number;
+  level?: string;
   materials_costing: MaterialsCostingItem[];
   project_location?: string | null;
   project_province?: string | null;
@@ -109,6 +111,7 @@ const aggregateTakeoff = (rows: TakeoffRawRecord[]): AggregatedTakeoffGroup[] =>
       ceiling_area: number;
       area_parementer: number;
       is_ceiling: boolean;
+      levels: string[];
     }
   >();
 
@@ -125,11 +128,15 @@ const aggregateTakeoff = (rows: TakeoffRawRecord[]): AggregatedTakeoffGroup[] =>
     const ceilingArea = isCeiling ? toNumber(row.ceiling_area) : 0;
     const areaParementer = toNumber(row.area_parementer);
 
+    const levelStr = row.level != null ? String(row.level).trim() : "";
     const existing = keyToGroup.get(key);
     if (existing) {
       existing.total_length += wallLength;
       existing.ceiling_area += ceilingArea;
       existing.area_parementer += areaParementer;
+      if (levelStr && !existing.levels.includes(levelStr)) {
+        existing.levels.push(levelStr);
+      }
     } else {
       keyToGroup.set(key, {
         assembly_id: assemblyId,
@@ -139,6 +146,7 @@ const aggregateTakeoff = (rows: TakeoffRawRecord[]): AggregatedTakeoffGroup[] =>
         ceiling_area: ceilingArea,
         area_parementer: areaParementer,
         is_ceiling: isCeiling,
+        levels: levelStr ? [levelStr] : [],
       });
     }
   }
@@ -192,6 +200,8 @@ export const mergeTakeoffWithMaterialMatch = (
 
   for (const group of groups) {
     const match = matchById.get(group.assembly_id);
+    const level = group.levels.join(", ");
+
     if (!match) {
       assemblies.push({
         assembly_id: group.assembly_id,
@@ -202,6 +212,7 @@ export const mergeTakeoffWithMaterialMatch = (
         framing_category: null,
         height_category: group.height_category,
         height_ft: group.height_ft,
+        level,
         materials_costing: [],
         project_location: null,
         project_province: null,
@@ -229,6 +240,7 @@ export const mergeTakeoffWithMaterialMatch = (
       framing_category: match.framing_category ?? null,
       height_category: group.height_category,
       height_ft: group.height_ft,
+      level,
       materials_costing,
       project_location: match.project_location ?? null,
       project_province: match.project_province ?? null,
