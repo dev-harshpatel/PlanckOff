@@ -2,11 +2,14 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Calculator,
+  CalendarDays,
   Database,
   Download,
-  FileText,
   Loader2,
+  Package,
   Plus,
+  Ruler,
   Save,
   Trash2,
   Upload,
@@ -18,6 +21,7 @@ import {
   CloseButton,
   ConfirmModal,
   IconButton,
+  Input,
   Modal,
   ModalBody,
   ModalFooter,
@@ -37,164 +41,651 @@ interface DatabaseManagerProps {
   onClose?: () => void;
 }
 
-// ─── Formula Modal ────────────────────────────────────────────────────────────
+/**
+ * Normalizes any date-like value (Excel serial, "M/D/YYYY", ISO, etc.) to "YYYY-MM-DD"
+ * for use with <input type="date">.
+ */
+const normalizeToISODate = (raw: string): string => {
+  if (!raw) return "";
+  const trimmed = raw.trim();
 
-interface FormulaModalProps {
+  if (/^\d+$/.test(trimmed) && parseInt(trimmed) > 30000) {
+    const utcDays = parseInt(trimmed) - 25569;
+    const d = new Date(utcDays * 86400 * 1000);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+  }
+
+  return "";
+};
+
+// ─── Stable Date Field (defined outside modal to avoid remounting) ────────────
+
+const DateField: React.FC<{
+  value: string | undefined;
+  onChange: (val: string | undefined) => void;
+  disabled?: boolean;
+}> = ({ value, onChange, disabled = false }) => {
+  const dateValue = normalizeToISODate(value ?? "");
+  const formattedDisplay = dateValue
+    ? new Date(dateValue + "T00:00:00").toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "No date set";
+
+  const inputStyles = [
+    "w-full rounded-lg px-3 py-2.5 text-sm transition-all border cursor-pointer",
+    "focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400",
+    disabled
+      ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+      : "bg-white border-slate-200 text-slate-700 hover:border-slate-300",
+  ].join(" ");
+
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+        <CalendarDays className="w-3 h-3" />
+        Price Updated
+      </label>
+      <input
+        type="date"
+        className={inputStyles}
+        value={dateValue}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value || undefined)}
+      />
+      <div className="text-[10px] text-slate-400">{formattedDisplay}</div>
+    </div>
+  );
+};
+
+// ─── Material Detail Modal ────────────────────────────────────────────────────
+
+interface MaterialDetailModalProps {
   material: MaterialDefinition | null;
   onClose: () => void;
-  onSave: (
-    code: string,
-    formulaQty: string,
-    formulaSecQty: string,
-    formulaCeilQty: string,
-    formulaCeilSecQty: string,
-  ) => void;
+  onSave: (updated: MaterialDefinition) => void;
+  onDelete: (code: string) => void;
 }
 
-const FormulaModal: React.FC<FormulaModalProps> = ({ material, onClose, onSave }) => {
-  const [activeTab, setActiveTab] = useState<"wall" | "ceiling">("wall");
-  const [formulaQty, setFormulaQty] = useState("");
-  const [formulaSecQty, setFormulaSecQty] = useState("");
-  const [formulaCeilQty, setFormulaCeilQty] = useState("");
-  const [formulaCeilSecQty, setFormulaCeilSecQty] = useState("");
+type TabType = "general" | "specs" | "formulas";
+
+const TAB_CONFIG: {
+  id: TabType;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+}[] = [
+  { id: "general", label: "General", icon: Package },
+  { id: "specs", label: "Specifications", icon: Ruler },
+  { id: "formulas", label: "Formulas", icon: Calculator },
+];
+
+const MaterialDetailModal: React.FC<MaterialDetailModalProps> = ({
+  material,
+  onClose,
+  onSave,
+  onDelete,
+}) => {
+  const [formData, setFormData] = useState<MaterialDefinition | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("general");
 
   useEffect(() => {
     if (material) {
-      setFormulaQty(material.formulaQty ?? "");
-      setFormulaSecQty(material.formulaSecQty ?? "");
-      setFormulaCeilQty(material.formulaCeilQty ?? "");
-      setFormulaCeilSecQty(material.formulaCeilSecQty ?? "");
-      setActiveTab("wall");
+      setFormData({ ...material });
+      setActiveTab("general");
     }
   }, [material]);
 
-  if (!material) return null;
+  if (!material || !formData) return null;
+
+  const handleFieldChange = (
+    field: keyof MaterialDefinition,
+    value: string | number | undefined,
+  ) => {
+    setFormData((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
 
   const handleSave = () => {
-    onSave(material.code, formulaQty, formulaSecQty, formulaCeilQty, formulaCeilSecQty);
+    if (!formData) return;
+
+    const hasNonDateChanges = (Object.keys(formData) as (keyof MaterialDefinition)[]).some(
+      (key) => key !== "priceUpdated" && formData[key] !== material[key],
+    );
+    const dateWasManuallyChanged = formData.priceUpdated !== material.priceUpdated;
+
+    const toSave = hasNonDateChanges && !dateWasManuallyChanged
+      ? { ...formData, priceUpdated: new Date().toISOString().slice(0, 10) }
+      : formData;
+
+    onSave(toSave);
     onClose();
   };
 
-  const FormulaField = ({
+  const handleDelete = () => {
+    onDelete(material.code);
+    onClose();
+  };
+
+  const Field = ({
     label,
-    value,
-    onChange,
-    placeholder,
+    field,
+    type = "text",
+    disabled = false,
+    placeholder = "",
+    rows,
+    isFormula = false,
   }: {
     label: string;
-    value: string;
-    onChange: (v: string) => void;
-    placeholder: string;
-  }) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-        {label}
-      </label>
-      <textarea
-        className="w-full h-28 border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
+    field: keyof MaterialDefinition;
+    type?: "text" | "number" | "textarea";
+    disabled?: boolean;
+    placeholder?: string;
+    rows?: number;
+    isFormula?: boolean;
+  }) => {
+    const value = formData[field];
+    const displayValue =
+      value !== undefined && value !== null ? String(value) : "";
+
+    const baseInputStyles = `
+      w-full rounded-lg px-3 py-2.5 text-sm transition-all
+      border focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400
+      ${
+        disabled
+          ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+          : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+      }
+    `;
+
+    const formulaStyles = `
+      w-full rounded-lg px-3 py-2.5 text-xs transition-all font-mono leading-relaxed
+      bg-slate-900 text-emerald-300 border border-slate-700 
+      placeholder-slate-500
+      focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500
+      resize-none
+    `;
+
+    if (type === "textarea") {
+      return (
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {label}
+          </label>
+          <textarea
+            className={
+              isFormula ? formulaStyles : `${baseInputStyles} resize-none`
+            }
+            value={displayValue}
+            placeholder={placeholder}
+            rows={rows ?? 3}
+            disabled={disabled}
+            onChange={(e) =>
+              handleFieldChange(field, e.target.value || undefined)
+            }
+            spellCheck={false}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          {label}
+        </label>
+        <input
+          type={type}
+          className={baseInputStyles}
+          value={displayValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (type === "number") {
+              handleFieldChange(
+                field,
+                val === "" ? undefined : parseFloat(val),
+              );
+            } else {
+              handleFieldChange(field, val || undefined);
+            }
+          }}
+        />
+      </div>
+    );
+  };
 
   return (
     <Modal
       isOpen={!!material}
       onClose={onClose}
-      title={`Formulas — ${material.code}`}
-      size="lg"
+      size="xl"
+      closeOnOverlayClick={false}
+      showCloseButton={false}
     >
-      <ModalBody>
-        <p className="text-sm text-slate-500 mb-4">{material.description}</p>
-
-        {/* Tabs: Wall / Ceiling */}
-        <div className="flex border-b border-slate-200 mb-5">
-          {(["wall", "ceiling"] as const).map((tab) => (
-            <button
-              key={tab}
-              className={`px-6 py-2 text-sm font-medium border-b-2 transition-colors capitalize ${
-                activeTab === tab
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
+      {/* Custom Dark Header */}
+      <div className="bg-slate-900 text-white px-5 py-4 flex items-start justify-between rounded-t-xl">
+        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40">
+              <Package className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-bold text-white">
+                Material Details
+              </span>
+              <span className="text-[10px] font-mono bg-slate-700 text-emerald-300 px-2 py-0.5 rounded border border-slate-600 shrink-0">
+                {material.code}
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 truncate ml-[42px] max-w-md">
+            {material.description}
+          </p>
         </div>
 
-        {activeTab === "wall" && (
-          <div className="space-y-4">
-            <FormulaField
-              label="Formula for Qty"
-              value={formulaQty}
-              onChange={setFormulaQty}
-              placeholder="e.g. Length * Height * (1 + Wastage) * layer"
-            />
-            <FormulaField
-              label="Formula for Sec. Qty"
-              value={formulaSecQty}
-              onChange={setFormulaSecQty}
-              placeholder="e.g. (Length * Height * (1 + Wastage) * layer) / sheet area"
-            />
+        {/* Category Badge + Close */}
+        <div className="flex items-center gap-3 shrink-0 ml-4">
+          <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/30 uppercase tracking-wide">
+            {material.category || "Uncategorized"}
+          </span>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="bg-slate-50 border-b border-slate-200 px-5">
+        <div className="flex items-center gap-1">
+          {TAB_CONFIG.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-all
+                  border-b-2 -mb-px
+                  ${
+                    isActive
+                      ? "border-emerald-500 text-emerald-600 bg-white/60"
+                      : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/40"
+                  }
+                `}
+              >
+                <Icon
+                  className={`w-3.5 h-3.5 ${isActive ? "text-emerald-500" : "text-slate-400"}`}
+                />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content Body */}
+      <div className="p-5 bg-slate-50 max-h-[60vh] overflow-y-auto">
+        {activeTab === "general" && (
+          <div className="space-y-5">
+            {/* Identification Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-4 bg-emerald-500 rounded-full" />
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Identification
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Code" field="code" disabled />
+                <Field label="Section" field="section" placeholder="09 22 16" />
+                <Field
+                  label="Cost Code"
+                  field="matCostCode"
+                  placeholder="METAL FRAMING"
+                />
+                <Field
+                  label="Labor Code"
+                  field="laborCostCode"
+                  placeholder="103"
+                />
+                <Field label="Type" field="type" placeholder="Division 09" />
+                <Field
+                  label="Manufacturer"
+                  field="manufacturer"
+                  placeholder="Generic"
+                />
+              </div>
+              <div className="mt-4">
+                <Field
+                  label="Description"
+                  field="description"
+                  placeholder="Material description"
+                />
+              </div>
+            </div>
+
+            {/* Pricing Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-4 bg-amber-500 rounded-full" />
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Pricing & Units
+                </h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <Field
+                  label="Mat Cost"
+                  field="matCost"
+                  type="number"
+                  placeholder="0.00"
+                />
+                <Field
+                  label="Unit Cost"
+                  field="unitCost"
+                  type="number"
+                  placeholder="0.00"
+                />
+                <Field label="Unit (Per)" field="per" placeholder="1 EA" />
+                <Field label="Category" field="category" disabled />
+                {/* Rendered inline (not via Field) so the native date picker stays open across re-renders */}
+                <DateField
+                  value={formData.priceUpdated}
+                  onChange={(val) => handleFieldChange("priceUpdated", val)}
+                />
+              </div>
+            </div>
+
+            {/* Labor Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-4 bg-blue-500 rounded-full" />
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Labor & Productivity
+                </h3>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <Field
+                  label="Productivity"
+                  field="productivity"
+                  type="number"
+                  placeholder="0"
+                />
+                <Field
+                  label="Hourly Rate"
+                  field="hourlyRate"
+                  type="number"
+                  placeholder="0.00"
+                />
+                <Field
+                  label="Cover Per Hour"
+                  field="coverPerHour"
+                  type="number"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-4 bg-slate-400 rounded-full" />
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Notes
+                </h3>
+              </div>
+              <Field
+                label="Additional Notes"
+                field="note"
+                type="textarea"
+                placeholder="Enter any additional notes..."
+                rows={2}
+              />
+            </div>
           </div>
         )}
 
-        {activeTab === "ceiling" && (
-          <div className="space-y-4">
-            <FormulaField
-              label="Formula"
-              value={formulaCeilQty}
-              onChange={setFormulaCeilQty}
-              placeholder="e.g. (Ceiling Area) * (1 + Wastage)"
-            />
-            <FormulaField
-              label="Formula for Sec. Qty"
-              value={formulaCeilSecQty}
-              onChange={setFormulaCeilSecQty}
-              placeholder="e.g. ((Ceiling Area) * (1 + Wastage)) / sheet area"
-            />
+        {activeTab === "specs" && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-4 bg-purple-500 rounded-full" />
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                Physical Specifications
+              </h3>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <Field label="Width" field="width" placeholder='3-5/8"' />
+              <Field label="Gauge" field="gauge" placeholder="20ga" />
+              <Field label="Flange" field="flange" placeholder='1-5/8"' />
+              <Field label="Size" field="size" placeholder='5/8"' />
+              <Field
+                label="Screw Spacing"
+                field="screwSpacing"
+                placeholder='12"'
+              />
+              <Field
+                label="Sheet/Bag/Box Size"
+                field="sheetBagBox"
+                placeholder="4x8"
+              />
+              <Field
+                label="Sheet/Bag/Box Units"
+                field="sheetBagBoxSizeUnits"
+                placeholder="SHEET"
+              />
+              <Field
+                label="Area / Length Cover"
+                field="lengthCover"
+                placeholder="450"
+              />
+              <Field
+                label="Cover Units"
+                field="lengthCoverUnits"
+                placeholder="SF"
+              />
+            </div>
           </div>
         )}
-      </ModalBody>
-      <ModalFooter>
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
+
+        {activeTab === "formulas" && (
+          <div className="space-y-5">
+            {/* Wall Formulas */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-emerald-500 rounded-full" />
+                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                    Wall Formulas
+                  </h3>
+                </div>
+                <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200">
+                  For wall assemblies
+                </span>
+              </div>
+              <div className="space-y-4">
+                <div className="flex gap-3 items-stretch">
+                  <div className="flex-1 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Formula for Qty
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-xs transition-all font-mono leading-relaxed bg-slate-900 text-emerald-300 border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 resize-none"
+                      value={formData.formulaQty || ""}
+                      placeholder="e.g. Length * Height * (1 + Wastage) * layer"
+                      rows={2}
+                      onChange={(e) => handleFieldChange("formulaQty", e.target.value || undefined)}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="w-20 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      MOU
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-sm transition-all border focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 bg-white border-slate-200 text-slate-700 hover:border-slate-300 resize-none text-center"
+                      value={formData.mouWall || ""}
+                      placeholder="SF"
+                      onChange={(e) => handleFieldChange("mouWall", e.target.value || undefined)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 items-stretch">
+                  <div className="flex-1 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Formula for Sec. Qty
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-xs transition-all font-mono leading-relaxed bg-slate-900 text-emerald-300 border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 resize-none"
+                      value={formData.formulaSecQty || ""}
+                      placeholder="e.g. (Length * Height * (1 + Wastage) * layer) / sheet area"
+                      rows={2}
+                      onChange={(e) => handleFieldChange("formulaSecQty", e.target.value || undefined)}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="w-20 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      MOU
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-sm transition-all border focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 bg-white border-slate-200 text-slate-700 hover:border-slate-300 resize-none text-center"
+                      value={formData.mouWallSec || ""}
+                      placeholder="EA"
+                      onChange={(e) => handleFieldChange("mouWallSec", e.target.value || undefined)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Ceiling Formulas */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-sky-500 rounded-full" />
+                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                    Ceiling Formulas
+                  </h3>
+                </div>
+                <span className="text-[9px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200">
+                  For ceiling assemblies
+                </span>
+              </div>
+              <div className="space-y-4">
+                <div className="flex gap-3 items-stretch">
+                  <div className="flex-1 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Ceiling Formula for Qty
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-xs transition-all font-mono leading-relaxed bg-slate-900 text-emerald-300 border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 resize-none"
+                      value={formData.formulaCeilQty || ""}
+                      placeholder="e.g. (Ceiling Area) * (1 + Wastage)"
+                      rows={2}
+                      onChange={(e) => handleFieldChange("formulaCeilQty", e.target.value || undefined)}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="w-20 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      MOU
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-sm transition-all border focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 bg-white border-slate-200 text-slate-700 hover:border-slate-300 resize-none text-center"
+                      value={formData.mouCeil || ""}
+                      placeholder="SF"
+                      onChange={(e) => handleFieldChange("mouCeil", e.target.value || undefined)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 items-stretch">
+                  <div className="flex-1 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Ceiling Formula for Sec. Qty
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-xs transition-all font-mono leading-relaxed bg-slate-900 text-emerald-300 border border-slate-700 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-500 resize-none"
+                      value={formData.formulaCeilSecQty || ""}
+                      placeholder="e.g. ((Ceiling Area) * (1 + Wastage)) / sheet area"
+                      rows={2}
+                      onChange={(e) => handleFieldChange("formulaCeilSecQty", e.target.value || undefined)}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="w-20 flex flex-col">
+                    <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      MOU
+                    </label>
+                    <textarea
+                      className="flex-1 w-full rounded-lg px-3 py-2.5 text-sm transition-all border focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 bg-white border-slate-200 text-slate-700 hover:border-slate-300 resize-none text-center"
+                      value={formData.mouCeilSec || ""}
+                      placeholder="EA"
+                      onChange={(e) => handleFieldChange("mouCeilSec", e.target.value || undefined)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Formula Tips */}
+            <div className="px-3 py-2.5 bg-blue-50 rounded-lg border border-blue-100 text-[10px] text-blue-600">
+              <span className="font-bold">Tip:</span> Use variables like{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">Length</code>
+              ,{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">Height</code>
+              ,{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">
+                Wastage
+              </code>
+              ,{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">layer</code>,{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">
+                sheet area
+              </code>
+              ,{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">
+                Ceiling Area
+              </code>{" "}
+              — operators:{" "}
+              <code className="font-mono bg-blue-100 px-1 rounded">
+                + - * / ( )
+              </code>
+              . MOU = Measure of Unit (output unit, e.g. SF, EA, LF)
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-slate-200 bg-white flex items-center justify-between rounded-b-xl">
+        <Button variant="danger" size="sm" icon={Trash2} onClick={handleDelete}>
+          Delete
         </Button>
-        <Button variant="primary" icon={Save} onClick={handleSave}>
-          Save Formulas
-        </Button>
-      </ModalFooter>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" size="sm" icon={Save} onClick={handleSave}>
+            Save Changes
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 };
-
-// ─── Inline cell input ────────────────────────────────────────────────────────
-
-const CellInput = ({
-  value,
-  onChange,
-  type = "text",
-  placeholder = "-",
-  className = "",
-}: {
-  value: string | number;
-  onChange: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-  className?: string;
-}) => (
-  <input
-    type={type}
-    className={`w-full bg-transparent border-none text-sm text-slate-600 focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1 ${className}`}
-    value={value}
-    placeholder={placeholder}
-    onChange={(e) => onChange(e.target.value)}
-  />
-);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -211,20 +702,19 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
 
-  // Track modified rows
-  const [modifiedRows, setModifiedRows] = useState<Set<string>>(new Set());
-  const [savingRows, setSavingRows] = useState<Set<string>>(new Set());
-  const [isSavingBulk, setIsSavingBulk] = useState(false);
+  // Detail modal state
+  const [selectedMaterial, setSelectedMaterial] =
+    useState<MaterialDefinition | null>(null);
 
   // Delete confirmation state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [materialToDelete, setMaterialToDelete] = useState<{ code: string; name: string } | null>(null);
+  const [materialToDelete, setMaterialToDelete] = useState<{
+    code: string;
+    name: string;
+  } | null>(null);
 
   // Calc productivity confirmation state
   const [isCalcProdModalOpen, setIsCalcProdModalOpen] = useState(false);
-
-  // Formula modal state
-  const [formulaMaterial, setFormulaMaterial] = useState<MaterialDefinition | null>(null);
 
   // Import mode modal state
   const [isImportModeModalOpen, setIsImportModeModalOpen] = useState(false);
@@ -252,6 +742,41 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
     return ["All", ...cats];
   }, [materials]);
 
+  // Filtered materials by category and search
+  const filteredDbMaterials = useMemo(() => {
+    return materials.filter((m) => {
+      const matchSearch =
+        m.description.toLowerCase().includes(dbSearch.toLowerCase()) ||
+        m.code.toLowerCase().includes(dbSearch.toLowerCase());
+      const matchCat = dbCategory === "All" || m.category === dbCategory;
+      return matchSearch && matchCat;
+    });
+  }, [materials, dbCategory, dbSearch]);
+
+  // Determine which optional columns to hide (all empty for current filtered set)
+  const visibleOptionalColumns = useMemo(() => {
+    const optionalFields: (keyof MaterialDefinition)[] = [
+      "size",
+      "screwSpacing",
+      "width",
+      "gauge",
+      "flange",
+      "hourlyRate",
+      "sheetBagBox",
+    ];
+
+    const visible: Record<string, boolean> = {};
+    optionalFields.forEach((field) => {
+      const hasAnyValue = filteredDbMaterials.some((m) => {
+        const val = m[field];
+        return val !== undefined && val !== null && val !== "";
+      });
+      visible[field] = hasAnyValue;
+    });
+
+    return visible;
+  }, [filteredDbMaterials]);
+
   // Load materials from database on mount
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -272,33 +797,23 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
     fetchMaterials();
   }, []);
 
-  const markModified = (code: string) =>
-    setModifiedRows((prev) => new Set(prev).add(code));
-
-  const handleUpdateMaterial = (code: string, field: keyof MaterialDefinition, value: any) => {
-    const updated = materials.map((m) => {
-      if (m.code !== code) return m;
-      const next = { ...m, [field]: value };
-      if (m.category === "Labor" && (field === "hourlyRate" || field === "productivity")) {
-        const r = field === "hourlyRate" ? value : next.hourlyRate;
-        const p = field === "productivity" ? value : next.productivity;
-        if (r && p) next.matCost = parseFloat((r / p).toFixed(2));
-        else next.matCost = 0;
-      }
-      return next;
-    });
-    onUpdateMaterials(updated);
-    markModified(code);
-  };
-
-  const handleUpdateNewMaterial = (field: keyof MaterialDefinition, value: any) => {
+  const handleUpdateNewMaterial = (
+    field: keyof MaterialDefinition,
+    value: string | number | undefined,
+  ) => {
     setNewMaterial((prev) => {
       const next = { ...prev, [field]: value };
-      if (next.category === "Labor" && (field === "hourlyRate" || field === "productivity")) {
+      if (
+        next.category === "Labor" &&
+        (field === "hourlyRate" || field === "productivity")
+      ) {
         const r = field === "hourlyRate" ? value : next.hourlyRate;
         const p = field === "productivity" ? value : next.productivity;
-        if (r && p) next.matCost = parseFloat((r / p).toFixed(2));
-        else next.matCost = 0;
+        if (typeof r === "number" && typeof p === "number" && r && p) {
+          next.matCost = parseFloat((r / p).toFixed(2));
+        } else {
+          next.matCost = 0;
+        }
       }
       return next;
     });
@@ -315,15 +830,17 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
       manufacturer: newMaterial.manufacturer || "Generic",
       description: newMaterial.description || "New Material",
       matCost: newMaterial.matCost || 0,
-      per: newMaterial.per || (
-        newMaterial.category === "Drywall" || newMaterial.category === "Insulation"
+      per:
+        newMaterial.per ||
+        (newMaterial.category === "Drywall" ||
+        newMaterial.category === "Insulation"
           ? "1,000 SF"
           : newMaterial.category === "Framing"
             ? "1 LF"
-            : "1 EA"
-      ),
-      priceUpdated: newMaterial.priceUpdated || new Date().toLocaleDateString(),
-      category: (newMaterial.category as any) || "Other",
+            : "1 EA"),
+      priceUpdated: newMaterial.priceUpdated || new Date().toISOString().slice(0, 10),
+      category:
+        (newMaterial.category as MaterialDefinition["category"]) || "Other",
       width: newMaterial.width,
       gauge: newMaterial.gauge,
       flange: newMaterial.flange,
@@ -343,8 +860,13 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
         toast.success("Material Added", "Material saved to database.");
         const nextCat = dbCategory === "All" ? "Framing" : dbCategory;
         setNewMaterial({
-          category: nextCat as any,
-          per: nextCat === "Drywall" || nextCat === "Insulation" ? "1,000 SF" : nextCat === "Framing" ? "1 LF" : "1 EA",
+          category: nextCat as MaterialDefinition["category"],
+          per:
+            nextCat === "Drywall" || nextCat === "Insulation"
+              ? "1,000 SF"
+              : nextCat === "Framing"
+                ? "1 LF"
+                : "1 EA",
           matCost: 0,
           section: "00 00 00",
           manufacturer: "",
@@ -362,19 +884,22 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
     }
   };
 
-  const handleSaveInline = async (code: string) => {
-    const material = materials.find((m) => m.code === code);
-    if (!material) return;
+  const handleSaveMaterial = async (updated: MaterialDefinition) => {
     try {
-      setSavingRows((prev) => new Set(prev).add(code));
-      const response = await fetch(`/api/materials/${encodeURIComponent(code)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updates: material }),
-      });
+      const response = await fetch(
+        `/api/materials/${encodeURIComponent(updated.code)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates: updated }),
+        },
+      );
       const data = await response.json();
       if (data.success) {
-        setModifiedRows((prev) => { const next = new Set(prev); next.delete(code); return next; });
+        const updatedMaterials = materials.map((m) =>
+          m.code === updated.code ? updated : m,
+        );
+        onUpdateMaterials(updatedMaterials);
         toast.success("Saved", "Material updated successfully.");
       } else {
         toast.error("Save Failed", data.error || "Failed to save material.");
@@ -382,33 +907,6 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
     } catch (error) {
       console.error("Failed to save material:", error);
       toast.error("Save Failed", "An unexpected error occurred.");
-    } finally {
-      setSavingRows((prev) => { const next = new Set(prev); next.delete(code); return next; });
-    }
-  };
-
-  const handleSaveModified = async () => {
-    if (modifiedRows.size === 0) return;
-    try {
-      setIsSavingBulk(true);
-      const modifiedMaterials = materials.filter((m) => modifiedRows.has(m.code));
-      const response = await fetch("/api/materials", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ materials: modifiedMaterials, mode: "upsert" }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setModifiedRows(new Set());
-        toast.success("Saved", `Successfully saved ${modifiedMaterials.length} materials.`);
-      } else {
-        toast.error("Save Failed", data.error || "Failed to save materials.");
-      }
-    } catch (error) {
-      console.error("Failed to save materials:", error);
-      toast.error("Save Failed", "An unexpected error occurred.");
-    } finally {
-      setIsSavingBulk(false);
     }
   };
 
@@ -420,13 +918,26 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
   const confirmDeleteMaterial = async () => {
     if (!materialToDelete) return;
     try {
-      const response = await fetch(`/api/materials/${encodeURIComponent(materialToDelete.code)}`, { method: "DELETE" });
+      const response = await fetch(
+        `/api/materials/${encodeURIComponent(materialToDelete.code)}`,
+        {
+          method: "DELETE",
+        },
+      );
       const data = await response.json();
       if (data.success) {
-        onUpdateMaterials(materials.filter((m) => m.code !== materialToDelete.code));
-        toast.success("Material Deleted", `"${materialToDelete.name}" has been removed.`);
+        onUpdateMaterials(
+          materials.filter((m) => m.code !== materialToDelete.code),
+        );
+        toast.success(
+          "Material Deleted",
+          `"${materialToDelete.name}" has been removed.`,
+        );
       } else {
-        toast.error("Delete Failed", data.error || "Failed to delete material.");
+        toast.error(
+          "Delete Failed",
+          data.error || "Failed to delete material.",
+        );
       }
     } catch (error) {
       console.error("Failed to delete material:", error);
@@ -436,32 +947,9 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
     setMaterialToDelete(null);
   };
 
-  const handleDeleteMaterial = (code: string) => {
+  const handleDeleteFromModal = (code: string) => {
     const material = materials.find((m) => m.code === code);
     openDeleteModal(code, material?.description || "Unknown");
-  };
-
-  const handleSaveFormulas = (
-    code: string,
-    formulaQty: string,
-    formulaSecQty: string,
-    formulaCeilQty: string,
-    formulaCeilSecQty: string,
-  ) => {
-    const updated = materials.map((m) =>
-      m.code === code
-        ? {
-            ...m,
-            formulaQty: formulaQty || undefined,
-            formulaSecQty: formulaSecQty || undefined,
-            formulaCeilQty: formulaCeilQty || undefined,
-            formulaCeilSecQty: formulaCeilSecQty || undefined,
-          }
-        : m,
-    );
-    onUpdateMaterials(updated);
-    markModified(code);
-    toast.success("Formulas Updated", "Formulas saved. Click Save to persist to database.");
   };
 
   const handleExportDatabase = () => {
@@ -477,7 +965,9 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
     }
   };
 
-  const handleImportDatabase = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportDatabase = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsImporting(true);
@@ -487,79 +977,97 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
       const workbook = read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
 
-      // Parse as raw rows first so we can auto-detect the header row
-      const rawRows = utils.sheet_to_json(worksheet, { header: 1, defval: "" }) as any[][];
+      const rawRows = utils.sheet_to_json(worksheet, {
+        header: 1,
+        defval: "",
+      }) as unknown[][];
 
       if (rawRows.length === 0) {
         toast.error("Import Failed", "The Excel file is empty.");
         return;
       }
 
-      // Find the header row: scan first 5 rows, pick the one with the most
-      // recognisable column name hits
-      const knownKeywords = ["code", "description", "category", "cost", "unit", "manufacturer", "section", "note", "formula", "gauge", "width", "flange", "size"];
+      const knownKeywords = [
+        "code",
+        "description",
+        "category",
+        "cost",
+        "unit",
+        "manufacturer",
+        "section",
+        "note",
+        "formula",
+        "gauge",
+        "width",
+        "flange",
+        "size",
+      ];
       let headerRowIndex = 0;
       let maxMatches = 0;
       for (let i = 0; i < Math.min(5, rawRows.length); i++) {
-        const cells = rawRows[i].map((c: any) => String(c ?? "").toLowerCase().trim());
-        const matches = knownKeywords.filter((kw) => cells.some((cell) => cell.includes(kw))).length;
+        const cells = rawRows[i].map((c) =>
+          String(c ?? "")
+            .toLowerCase()
+            .trim(),
+        );
+        const matches = knownKeywords.filter((kw) =>
+          cells.some((cell) => cell.includes(kw)),
+        ).length;
         if (matches > maxMatches) {
           maxMatches = matches;
           headerRowIndex = i;
         }
       }
 
-      // Extract non-empty headers from detected header row, keeping their column index.
-      // Deduplicate: when the same header appears more than once (e.g. "Formula for Sec. Qty"
-      // appears for both Wall and Ceiling columns), append " 2", " 3", etc. so each column
-      // gets a unique key in the jsonData object and the normalizer can map them separately.
       const rawHeaderRow = rawRows[headerRowIndex];
       const headers: string[] = [];
       const headerIndices: number[] = [];
       const headerSeenCount: Record<string, number> = {};
-      rawHeaderRow.forEach((h: any, i: number) => {
+
+      rawHeaderRow.forEach((h, i) => {
         const str = String(h ?? "").trim();
         if (str !== "") {
           const lower = str.toLowerCase();
           const seen = headerSeenCount[lower] ?? 0;
           headerSeenCount[lower] = seen + 1;
-          // First occurrence keeps original name; subsequent ones get " 2", " 3", etc.
           const uniqueHeader = seen > 0 ? `${str} ${seen + 1}` : str;
           headers.push(uniqueHeader);
           headerIndices.push(i);
         }
       });
 
-      // Build data rows (everything after the header row, skip blanks)
-      const dataRows = rawRows.slice(headerRowIndex + 1).filter((row: any[]) =>
-        row.some((cell) => cell !== null && cell !== undefined && cell !== ""),
-      );
+      const dataRows = rawRows
+        .slice(headerRowIndex + 1)
+        .filter((row) =>
+          row.some(
+            (cell) => cell !== null && cell !== undefined && cell !== "",
+          ),
+        );
 
       if (dataRows.length === 0) {
         toast.error("Import Failed", "No data rows found in the file.");
         return;
       }
 
-      // Convert raw rows to key→value objects using the detected headers
-      const jsonData: Record<string, any>[] = dataRows.map((row: any[]) => {
-        const obj: Record<string, any> = {};
+      const jsonData: Record<string, unknown>[] = dataRows.map((row) => {
+        const obj: Record<string, unknown> = {};
         headerIndices.forEach((colIndex, i) => {
           obj[headers[i]] = row[colIndex] ?? "";
         });
         return obj;
       });
 
-      // Normalize headers to standard field keys
       const headerMap = normalizeExcelHeaders(headers);
 
-      // Validate required columns
       const requiredFields = ["code", "description", "category"];
       const hasRequiredFields = requiredFields.every((field) =>
         Object.values(headerMap).includes(field),
       );
 
       if (!hasRequiredFields) {
-        const missing = requiredFields.filter((field) => !Object.values(headerMap).includes(field));
+        const missing = requiredFields.filter(
+          (field) => !Object.values(headerMap).includes(field),
+        );
         const detected = headers.slice(0, 12).join(", ");
         toast.error(
           "Import Failed",
@@ -568,19 +1076,27 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
         return;
       }
 
-      const { validMaterials, invalidRows } = validateMaterialsBatch(jsonData, headerMap);
+      const { validMaterials, invalidRows } = validateMaterialsBatch(
+        jsonData,
+        headerMap,
+      );
 
       if (validMaterials.length === 0) {
-        toast.error("Import Failed", `All ${invalidRows.length} rows have validation errors.`);
+        toast.error(
+          "Import Failed",
+          `All ${invalidRows.length} rows have validation errors.`,
+        );
         return;
       }
 
-      // Store parsed data and open the mode-selection dialog
       setImportPendingData({ validMaterials, invalidRows });
       setIsImportModeModalOpen(true);
     } catch (err) {
       console.error("Import failed", err);
-      toast.error("Import Failed", "Failed to read the file. Make sure it's a valid .xlsx or .csv.");
+      toast.error(
+        "Import Failed",
+        "Failed to read the file. Make sure it's a valid .xlsx or .csv.",
+      );
     } finally {
       setIsImporting(false);
       e.target.value = "";
@@ -599,7 +1115,10 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
         const delRes = await fetch("/api/materials", { method: "DELETE" });
         const delData = await delRes.json();
         if (!delData.success) {
-          toast.error("Replace Failed", delData.error || "Failed to delete existing materials.");
+          toast.error(
+            "Replace Failed",
+            delData.error || "Failed to delete existing materials.",
+          );
           return;
         }
       }
@@ -616,19 +1135,23 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
           onUpdateMaterials(validMaterials);
         } else {
           const existingCodesMap = new Map(materials.map((m) => [m.code, m]));
-          const newMats = validMaterials.filter((v) => !existingCodesMap.has(v.code));
+          const newMats = validMaterials.filter(
+            (v) => !existingCodesMap.has(v.code),
+          );
           const merged = materials.map((existing) => {
-            const updated = validMaterials.find((v) => v.code === existing.code);
+            const updated = validMaterials.find(
+              (v) => v.code === existing.code,
+            );
             return updated || existing;
           });
           onUpdateMaterials([...merged, ...newMats]);
         }
 
-        setModifiedRows(new Set());
-
-        const action = mode === "replace" ? "Replaced database with" : "Imported";
+        const action =
+          mode === "replace" ? "Replaced database with" : "Imported";
         let msg = `${action} ${validMaterials.length} materials.`;
-        if (invalidRows.length > 0) msg += ` ${invalidRows.length} rows skipped.`;
+        if (invalidRows.length > 0)
+          msg += ` ${invalidRows.length} rows skipped.`;
         toast.success("Import Complete", msg);
       } else {
         toast.error("Import Failed", data.error || "Failed to save materials.");
@@ -650,37 +1173,21 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
       return m;
     });
     onUpdateMaterials(updated);
-    toast.success("Calculation Complete", "Productivity values have been updated.");
+    toast.success(
+      "Calculation Complete",
+      "Productivity values have been updated.",
+    );
     setIsCalcProdModalOpen(false);
   };
-
-  const filteredDbMaterials = materials.filter((m) => {
-    const matchSearch =
-      m.description.toLowerCase().includes(dbSearch.toLowerCase()) ||
-      m.code.toLowerCase().includes(dbSearch.toLowerCase());
-    const matchCat = dbCategory === "All" || m.category === dbCategory;
-    return matchSearch && matchCat;
-  });
 
   if (isLoading) {
     return (
       <div className="flex flex-col h-full bg-white items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
         <p className="text-slate-500 mt-3">Loading materials...</p>
       </div>
     );
   }
-
-  // ─── Column cell helper for existing rows ────────────────────────────────
-  const cell = (m: MaterialDefinition, field: keyof MaterialDefinition, type = "text") => (
-    <input
-      type={type}
-      className="w-full bg-transparent border-none text-sm text-slate-600 focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1"
-      value={(m[field] as string | number) ?? ""}
-      placeholder="-"
-      onChange={(e) => handleUpdateMaterial(m.code, field, type === "number" ? parseFloat(e.target.value) : e.target.value)}
-    />
-  );
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -688,14 +1195,18 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
       <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Database className="w-6 h-6 text-blue-600" /> Material Database
+            <Database className="w-6 h-6 text-emerald-600" /> Material Database
           </h2>
           <p className="text-sm text-slate-500 mt-1">
             Master catalog with {materials.length} items.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" icon={Download} onClick={handleExportDatabase}>
+          <Button
+            variant="secondary"
+            icon={Upload}
+            onClick={handleExportDatabase}
+          >
             Export
           </Button>
           <input
@@ -708,14 +1219,22 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
           />
           <Button
             variant="secondary"
-            icon={Upload}
+            icon={Download}
             onClick={() => importInputRef.current?.click()}
             disabled={isImporting || isCommittingImport}
             isLoading={isImporting || isCommittingImport}
           >
-            {isCommittingImport ? "Saving..." : isImporting ? "Reading..." : "Import"}
+            {isCommittingImport
+              ? "Saving..."
+              : isImporting
+                ? "Reading..."
+                : "Import"}
           </Button>
-          <Button variant="secondary" icon={Database} onClick={() => setIsCalcProdModalOpen(true)}>
+          <Button
+            variant="secondary"
+            icon={Database}
+            onClick={() => setIsCalcProdModalOpen(true)}
+          >
             Calc Prod
           </Button>
           {onClose && <CloseButton onClick={onClose} size="md" />}
@@ -735,15 +1254,21 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
                 setDbCategory(cat);
                 setNewMaterial((prev) => ({
                   ...prev,
-                  category: cat === "All" ? (categories[1] as any) : (cat as any),
+                  category:
+                    cat === "All"
+                      ? (categories[1] as MaterialDefinition["category"])
+                      : (cat as MaterialDefinition["category"]),
                   per:
-                    cat === "Drywall" || cat === "Insulation" ? "1,000 SF"
-                      : cat === "Framing" ? "1 LF" : "1 EA",
+                    cat === "Drywall" || cat === "Insulation"
+                      ? "1,000 SF"
+                      : cat === "Framing"
+                        ? "1 LF"
+                        : "1 EA",
                 }));
               }}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                 dbCategory === cat
-                  ? "bg-blue-100 text-blue-700"
+                  ? "bg-emerald-100 text-emerald-700"
                   : "text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -763,12 +1288,11 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
                 placeholder="Search by code, description, or manufacturer..."
               />
             </div>
-            {modifiedRows.size > 0 && (
-              <Button variant="primary" icon={Save} onClick={handleSaveModified} disabled={isSavingBulk} isLoading={isSavingBulk}>
-                Save ({modifiedRows.size})
-              </Button>
-            )}
-            <Button variant="primary" icon={Plus} onClick={() => setIsAddingMat(true)}>
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={() => setIsAddingMat(true)}
+            >
               Add New Item
             </Button>
           </div>
@@ -778,175 +1302,428 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
             <table className="text-left" style={{ minWidth: "max-content" }}>
               <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">Code</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">Section</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">Cost Code</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">Labor Code</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">Type</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-36">Manufacturer</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 min-w-64">Description</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28 text-right">Cost</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28 text-right">Unit Cost</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">Unit</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">Prod. Rate</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">Price Updated</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">Category</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">Sheet/Bag/Box</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">Size</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">Screw Spacing</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">Width</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">Gauge</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">Flange</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">Hourly Rate</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 min-w-48">Note</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24"></th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">
+                    Code
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                    Section
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">
+                    Cost Code
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-32">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-36">
+                    Manufacturer
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 min-w-64">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28 text-right">
+                    Cost
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28 text-right">
+                    Unit Cost
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">
+                    Unit
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                    Prod. Rate
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                    Category
+                  </th>
+                  {visibleOptionalColumns.sheetBagBox && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                      Sheet/Bag/Box
+                    </th>
+                  )}
+                  {visibleOptionalColumns.size && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">
+                      Size
+                    </th>
+                  )}
+                  {visibleOptionalColumns.screwSpacing && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                      Screw Spacing
+                    </th>
+                  )}
+                  {visibleOptionalColumns.width && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">
+                      Width
+                    </th>
+                  )}
+                  {visibleOptionalColumns.gauge && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">
+                      Gauge
+                    </th>
+                  )}
+                  {visibleOptionalColumns.flange && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">
+                      Flange
+                    </th>
+                  )}
+                  {visibleOptionalColumns.hourlyRate && (
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                      Hourly Rate
+                    </th>
+                  )}
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-20"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {/* Add new row */}
                 {isAddingMat && (
-                  <tr className="bg-blue-50 animate-in fade-in duration-300">
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="Code" disabled value="Auto" /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="09 22 16" value={newMaterial.section ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, section: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="GEN" value={newMaterial.matCostCode ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, matCostCode: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="LAB" value={newMaterial.laborCostCode ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, laborCostCode: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="Material" value={newMaterial.type ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, type: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="Manufacturer" value={newMaterial.manufacturer ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, manufacturer: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="Description" value={newMaterial.description ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, description: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input type="number" className="w-full text-sm border border-blue-300 rounded px-2 py-1 text-right" placeholder="0" value={newMaterial.matCost ?? ""} onChange={(e) => handleUpdateNewMaterial("matCost", parseFloat(e.target.value))} /></td>
-                    <td className="px-4 py-2"><input type="number" className="w-full text-sm border border-blue-300 rounded px-2 py-1 text-right" placeholder="0" value={newMaterial.unitCost ?? ""} onChange={(e) => handleUpdateNewMaterial("unitCost", parseFloat(e.target.value))} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="1 EA" value={newMaterial.per ?? ""} onChange={(e) => handleUpdateNewMaterial("per", e.target.value)} /></td>
-                    <td className="px-4 py-2"><input type="number" className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="100" value={newMaterial.productivity ?? ""} onChange={(e) => handleUpdateNewMaterial("productivity", parseFloat(e.target.value))} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="MM/DD/YYYY" value={newMaterial.priceUpdated ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, priceUpdated: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" disabled value={newMaterial.category ?? ""} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="50" value={newMaterial.sheetBagBox ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, sheetBagBox: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder='5/8"' value={newMaterial.size ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, size: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder='12"' value={newMaterial.screwSpacing ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, screwSpacing: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder='3-5/8"' value={newMaterial.width ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, width: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="20ga" value={newMaterial.gauge ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, gauge: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder='1-5/8"' value={newMaterial.flange ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, flange: e.target.value })} /></td>
-                    <td className="px-4 py-2"><input type="number" className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="$65" value={newMaterial.hourlyRate ?? ""} onChange={(e) => handleUpdateNewMaterial("hourlyRate", parseFloat(e.target.value))} /></td>
-                    <td className="px-4 py-2"><input className="w-full text-sm border border-blue-300 rounded px-2 py-1" placeholder="Note..." value={newMaterial.note ?? ""} onChange={(e) => setNewMaterial({ ...newMaterial, note: e.target.value })} /></td>
+                  <tr className="bg-emerald-50 animate-in fade-in duration-300">
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="Code"
+                        disabled
+                        value="Auto"
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="09 22 16"
+                        value={newMaterial.section ?? ""}
+                        onChange={(e) =>
+                          setNewMaterial({
+                            ...newMaterial,
+                            section: e.target.value,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="GEN"
+                        value={newMaterial.matCostCode ?? ""}
+                        onChange={(e) =>
+                          setNewMaterial({
+                            ...newMaterial,
+                            matCostCode: e.target.value,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="Material"
+                        value={newMaterial.type ?? ""}
+                        onChange={(e) =>
+                          setNewMaterial({
+                            ...newMaterial,
+                            type: e.target.value,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="Manufacturer"
+                        value={newMaterial.manufacturer ?? ""}
+                        onChange={(e) =>
+                          setNewMaterial({
+                            ...newMaterial,
+                            manufacturer: e.target.value,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="Description"
+                        value={newMaterial.description ?? ""}
+                        onChange={(e) =>
+                          setNewMaterial({
+                            ...newMaterial,
+                            description: e.target.value,
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1 text-right"
+                        placeholder="0"
+                        value={newMaterial.matCost ?? ""}
+                        onChange={(e) =>
+                          handleUpdateNewMaterial(
+                            "matCost",
+                            parseFloat(e.target.value),
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1 text-right"
+                        placeholder="0"
+                        value={newMaterial.unitCost ?? ""}
+                        onChange={(e) =>
+                          handleUpdateNewMaterial(
+                            "unitCost",
+                            parseFloat(e.target.value),
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="1 EA"
+                        value={newMaterial.per ?? ""}
+                        onChange={(e) =>
+                          handleUpdateNewMaterial("per", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="100"
+                        value={newMaterial.productivity ?? ""}
+                        onChange={(e) =>
+                          handleUpdateNewMaterial(
+                            "productivity",
+                            parseFloat(e.target.value),
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        disabled
+                        value={newMaterial.category ?? ""}
+                      />
+                    </td>
+                    {visibleOptionalColumns.sheetBagBox && (
+                      <td className="px-4 py-2">-</td>
+                    )}
+                    {visibleOptionalColumns.size && (
+                      <td className="px-4 py-2">-</td>
+                    )}
+                    {visibleOptionalColumns.screwSpacing && (
+                      <td className="px-4 py-2">-</td>
+                    )}
+                    {visibleOptionalColumns.width && (
+                      <td className="px-4 py-2">-</td>
+                    )}
+                    {visibleOptionalColumns.gauge && (
+                      <td className="px-4 py-2">-</td>
+                    )}
+                    {visibleOptionalColumns.flange && (
+                      <td className="px-4 py-2">-</td>
+                    )}
+                    {visibleOptionalColumns.hourlyRate && (
+                      <td className="px-4 py-2">-</td>
+                    )}
                     <td className="px-4 py-2 text-right">
                       <div className="flex gap-1 justify-end">
-                        <IconButton icon={Save} variant="success" onClick={handleAddMaterial} tooltip="Save material" />
-                        <IconButton icon={X} variant="default" onClick={() => setIsAddingMat(false)} tooltip="Cancel" />
+                        <IconButton
+                          icon={Save}
+                          variant="success"
+                          onClick={handleAddMaterial}
+                          tooltip="Save material"
+                        />
+                        <IconButton
+                          icon={X}
+                          variant="default"
+                          onClick={() => setIsAddingMat(false)}
+                          tooltip="Cancel"
+                        />
                       </div>
                     </td>
                   </tr>
                 )}
 
-                {/* Existing rows */}
-                {filteredDbMaterials.map((m) => {
-                  const isModified = modifiedRows.has(m.code);
-                  const isSaving = savingRows.has(m.code);
-
-                  return (
-                    <tr
-                      key={m.code}
-                      className={`group transition-colors ${isModified ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-slate-50"}`}
-                    >
-                      <td className="px-4 py-3 text-sm font-mono text-slate-500">{m.code}</td>
-                      <td className="px-4 py-3">{cell(m, "section")}</td>
-                      <td className="px-4 py-3">{cell(m, "matCostCode")}</td>
-                      <td className="px-4 py-3">{cell(m, "laborCostCode")}</td>
-                      <td className="px-4 py-3">{cell(m, "type")}</td>
-                      <td className="px-4 py-3">{cell(m, "manufacturer")}</td>
-                      <td className="px-4 py-3">
-                        <input
-                          className="w-full bg-transparent border-none text-sm text-slate-800 font-medium focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1"
-                          value={m.description}
-                          onChange={(e) => handleUpdateMaterial(m.code, "description", e.target.value)}
+                {/* Existing rows - READ ONLY */}
+                {filteredDbMaterials.map((m) => (
+                  <tr
+                    key={m.code}
+                    className="group transition-colors hover:bg-slate-50 cursor-pointer"
+                    onClick={() => setSelectedMaterial(m)}
+                  >
+                    <td className="px-4 py-3 text-sm font-mono text-slate-500">
+                      {m.code}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {m.section || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {m.matCostCode || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {m.type || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {m.manufacturer || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-800 font-medium">
+                      {m.description}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-800 text-right">
+                      {m.matCost != null
+                        ? `$${m.matCost.toLocaleString()}`
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 text-right">
+                      {m.unitCost != null
+                        ? `$${m.unitCost.toLocaleString()}`
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {m.per || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {m.productivity != null ? m.productivity : "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                        {m.category}
+                      </span>
+                    </td>
+                    {visibleOptionalColumns.sheetBagBox && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.sheetBagBox || "-"}
+                      </td>
+                    )}
+                    {visibleOptionalColumns.size && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.size || "-"}
+                      </td>
+                    )}
+                    {visibleOptionalColumns.screwSpacing && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.screwSpacing || "-"}
+                      </td>
+                    )}
+                    {visibleOptionalColumns.width && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.width || "-"}
+                      </td>
+                    )}
+                    {visibleOptionalColumns.gauge && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.gauge || "-"}
+                      </td>
+                    )}
+                    {visibleOptionalColumns.flange && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.flange || "-"}
+                      </td>
+                    )}
+                    {visibleOptionalColumns.hourlyRate && (
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {m.hourlyRate != null ? `$${m.hourlyRate}` : "-"}
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
+                      <div
+                        className="flex gap-1 justify-end"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <IconButton
+                          icon={Trash2}
+                          variant="danger"
+                          size="sm"
+                          onClick={() => handleDeleteFromModal(m.code)}
+                          className="opacity-0 group-hover:opacity-100 transition-all"
+                          tooltip="Delete material"
                         />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input type="number" className="w-full bg-transparent border-none text-sm text-slate-800 text-right focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1" value={m.matCost} onChange={(e) => handleUpdateMaterial(m.code, "matCost", parseFloat(e.target.value))} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input type="number" className="w-full bg-transparent border-none text-sm text-slate-600 text-right focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1" value={m.unitCost ?? ""} placeholder="-" onChange={(e) => handleUpdateMaterial(m.code, "unitCost", parseFloat(e.target.value))} />
-                      </td>
-                      <td className="px-4 py-3">{cell(m, "per")}</td>
-                      <td className="px-4 py-3">
-                        <input type="number" className="w-full bg-transparent border-none text-sm text-slate-600 focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1" value={m.productivity ?? ""} placeholder="-" onChange={(e) => handleUpdateMaterial(m.code, "productivity", parseFloat(e.target.value))} />
-                      </td>
-                      <td className="px-4 py-3">{cell(m, "priceUpdated")}</td>
-                      <td className="px-4 py-3"><span className="text-sm text-slate-600">{m.category}</span></td>
-                      <td className="px-4 py-3">{cell(m, "sheetBagBox")}</td>
-                      <td className="px-4 py-3">{cell(m, "size")}</td>
-                      <td className="px-4 py-3">{cell(m, "screwSpacing")}</td>
-                      <td className="px-4 py-3">{cell(m, "width")}</td>
-                      <td className="px-4 py-3">{cell(m, "gauge")}</td>
-                      <td className="px-4 py-3">{cell(m, "flange")}</td>
-                      <td className="px-4 py-3">
-                        <input type="number" className="w-full bg-transparent border-none text-sm text-slate-600 focus:bg-white focus:ring-1 focus:ring-blue-200 rounded px-1 -ml-1" value={m.hourlyRate ?? ""} placeholder="-" onChange={(e) => handleUpdateMaterial(m.code, "hourlyRate", parseFloat(e.target.value))} />
-                      </td>
-                      <td className="px-4 py-3">{cell(m, "note")}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1 justify-end">
-                          {(m.formulaQty || m.formulaSecQty || m.formulaCeilQty || m.formulaCeilSecQty) && (
-                            <IconButton
-                              icon={FileText}
-                              variant="default"
-                              size="sm"
-                              onClick={() => setFormulaMaterial(m)}
-                              tooltip="View/Edit Formulas"
-                              className="text-blue-600"
-                            />
-                          )}
-                          {isModified && (
-                            <IconButton icon={Save} variant="success" size="sm" onClick={() => handleSaveInline(m.code)} disabled={isSaving} tooltip={isSaving ? "Saving..." : "Save changes"} />
-                          )}
-                          <IconButton icon={Trash2} variant="danger" size="sm" onClick={() => handleDeleteMaterial(m.code)} className="opacity-0 group-hover:opacity-100 transition-all" tooltip="Delete material" />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
+      {/* Material Detail Modal */}
+      <MaterialDetailModal
+        material={selectedMaterial}
+        onClose={() => setSelectedMaterial(null)}
+        onSave={handleSaveMaterial}
+        onDelete={handleDeleteFromModal}
+      />
+
       {/* Import Mode Modal */}
       <Modal
         isOpen={isImportModeModalOpen}
-        onClose={() => { setIsImportModeModalOpen(false); setImportPendingData(null); }}
+        onClose={() => {
+          setIsImportModeModalOpen(false);
+          setImportPendingData(null);
+        }}
         title="Import Materials"
         size="md"
       >
         <ModalBody>
           <p className="text-sm text-slate-600 mb-1">
-            <span className="font-semibold text-slate-800">{importPendingData?.validMaterials.length ?? 0} materials</span> ready to import.
+            <span className="font-semibold text-slate-800">
+              {importPendingData?.validMaterials.length ?? 0} materials
+            </span>{" "}
+            ready to import.
             {(importPendingData?.invalidRows.length ?? 0) > 0 && (
-              <span className="text-amber-600 ml-1">({importPendingData?.invalidRows.length} rows skipped due to errors)</span>
+              <span className="text-amber-600 ml-1">
+                ({importPendingData?.invalidRows.length} rows skipped due to
+                errors)
+              </span>
             )}
           </p>
-          <p className="text-sm text-slate-500 mb-6">How would you like to import?</p>
+          <p className="text-sm text-slate-500 mb-6">
+            How would you like to import?
+          </p>
 
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => handleImportCommit("merge")}
               disabled={isCommittingImport}
-              className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+              className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 rounded-xl hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
             >
-              <span className="text-sm font-semibold text-slate-800">Merge</span>
-              <span className="text-xs text-slate-500">Add new items and update existing ones. Keeps materials not in the file.</span>
+              <span className="text-sm font-semibold text-slate-800">
+                Merge
+              </span>
+              <span className="text-xs text-slate-500">
+                Add new items and update existing ones. Keeps materials not in
+                the file.
+              </span>
             </button>
             <button
               onClick={() => handleImportCommit("replace")}
               disabled={isCommittingImport}
               className="flex flex-col items-start gap-2 p-4 border-2 border-slate-200 rounded-xl hover:border-red-400 hover:bg-red-50 transition-all text-left"
             >
-              <span className="text-sm font-semibold text-slate-800">Replace All</span>
-              <span className="text-xs text-slate-500">Delete all existing materials and replace with the imported data.</span>
+              <span className="text-sm font-semibold text-slate-800">
+                Replace All
+              </span>
+              <span className="text-xs text-slate-500">
+                Delete all existing materials and replace with the imported
+                data.
+              </span>
             </button>
           </div>
         </ModalBody>
         <ModalFooter>
           <Button
             variant="secondary"
-            onClick={() => { setIsImportModeModalOpen(false); setImportPendingData(null); }}
+            onClick={() => {
+              setIsImportModeModalOpen(false);
+              setImportPendingData(null);
+            }}
             disabled={isCommittingImport}
           >
             Cancel
@@ -954,17 +1731,13 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
         </ModalFooter>
       </Modal>
 
-      {/* Formula Modal */}
-      <FormulaModal
-        material={formulaMaterial}
-        onClose={() => setFormulaMaterial(null)}
-        onSave={handleSaveFormulas}
-      />
-
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => { setIsDeleteModalOpen(false); setMaterialToDelete(null); }}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setMaterialToDelete(null);
+        }}
         onConfirm={confirmDeleteMaterial}
         title="Delete Material"
         message={`Are you sure you want to delete "${materialToDelete?.name}"? This action cannot be undone.`}

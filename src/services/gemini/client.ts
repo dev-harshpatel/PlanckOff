@@ -129,10 +129,10 @@ export function evaluateMath(expression: string, vars: Record<string, number>): 
     if (typeof result === 'number' && isFinite(result)) {
       return result;
     }
-    console.warn(`Evaluation of formula "${expression}" did not result in a valid number. Got:`, result);
-    return 0;
+    // Return NaN (not 0) so callers can distinguish "evaluation failed" from "result is zero"
+    return NaN;
   } catch (e) {
-    console.warn('Math Eval Error for expression:', expression, 'Error:', e);
-    return 0;
+    // Return NaN so evaluateMaterialFormula returns null instead of a misleading 0
+    return NaN;
   }
 }

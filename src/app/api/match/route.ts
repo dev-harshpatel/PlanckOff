@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
 import { saveMaterialMatch } from "@/lib/db/assemblyData";
 import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
-// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s. Without Fluid Compute, Pro max 300s.
 export const maxDuration = 300;
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     // const localPath = await writeJsonToLocal("material_match", {
     //   assemblies: result.assemblies,
     // });
-    console.log(`[match] DB: ${savedData?.id}`);
+    console.log(`[match] DB: ${savedData?.id} | Local: (disabled)`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

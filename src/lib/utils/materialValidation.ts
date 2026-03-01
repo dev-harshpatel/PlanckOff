@@ -6,6 +6,43 @@
 import { MaterialDefinition } from "@/types";
 
 /**
+ * Converts an Excel serial date number to a YYYY-MM-DD string.
+ * Excel epoch is 1900-01-01 (with the known Lotus 123 leap-year bug for dates after Feb 28 1900).
+ */
+const excelSerialToDate = (serial: number): string => {
+  const utcDays = Math.floor(serial) - 25569;
+  const date = new Date(utcDays * 86400 * 1000);
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Normalizes a priceUpdated value from Excel — could be a serial number,
+ * a date string like "2/12/2024", or already ISO formatted.
+ */
+export const normalizePriceUpdatedDate = (raw: string | number | undefined | null): string => {
+  if (raw == null || raw === "") return new Date().toISOString().slice(0, 10);
+
+  const str = String(raw).trim();
+
+  if (/^\d+$/.test(str) && parseInt(str) > 30000) {
+    return excelSerialToDate(parseInt(str));
+  }
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  return new Date().toISOString().slice(0, 10);
+};
+
+/**
  * Normalize Excel headers to standard keys (case-insensitive)
  */
 export const normalizeExcelHeaders = (
@@ -57,7 +94,35 @@ export const normalizeExcelHeaders = (
       "sheets",
       "bags",
       "boxes",
-      "sheet/bag/box size", // "Sheet/bag/Box  size" combined column
+      "sheet/bag/box size",
+      "sheet/bag/box/roll size",
+      "sheetbagboxsize",  // JSON: sheetBagBoxSize
+    ],
+    sheetBagBoxSizeUnits: [
+      "sheetbagboxsizeunits",
+      "sheet/bag/box units",
+      "sheet bag box units",
+      "sheet/bag/box size units",
+      "sheet units",
+      "bag units",
+      "box units",
+    ],
+    lengthCover: [
+      "lengthcover",
+      "length cover",
+      "area/length cover",
+      "area/ length cover",
+      "area length cover",
+      "coverage",
+      "cover area",
+    ],
+    lengthCoverUnits: [
+      "lengthcoverunits",
+      "length cover units",
+      "area/length cover units",
+      "area/ length cover units",
+      "coverage units",
+      "cover units",
     ],
     size: ["size", "sz"],
     screwSpacing: [
@@ -70,9 +135,11 @@ export const normalizeExcelHeaders = (
       "prod",
       "units per hour",
       "u/hr",
+      "production rate (per unit)",
       "production rate (pre unit)",
       "productionrate",
       "production rate",
+      "productionRate",
     ],
     hourlyRate: [
       "hourlyrate",
@@ -81,11 +148,22 @@ export const normalizeExcelHeaders = (
       "labor rate",
       "labour rate",
     ],
+    coverPerHour: [
+      "coverperhour",
+      "cover per hour",
+      "coverage per hour",
+      "coverage/hr",
+      "coverage per hr",
+      "area/ length cover",
+    ],
+    // Wall formulas
     formulaQty: [
       "formula for qty",
       "formulaqty",
       "formula qty",
       "formulaforqty",
+      "wall formula for qty",
+      "formulaforwall",     // JSON: FormulaForWall
     ],
     formulaSecQty: [
       "formula for sec. qty",
@@ -93,38 +171,114 @@ export const normalizeExcelHeaders = (
       "formulasecqty",
       "formula sec qty",
       "formulaforsecqty",
+      "wall formula for sec. qty",
+      "wall formula for sec qty",
+      "formulaforsecqtywall",  // JSON: formulaForSecQtyWall
     ],
-    // Ceiling formula columns — "Formula" (unique name) and the deduplicated
-    // second "Formula for Sec. Qty 2" (from the import deduplication step)
+    // Ceiling formulas
     formulaCeilQty: [
       "formula",
       "ceiling formula",
       "ceiling formula for qty",
       "formulaceilqty",
+      "formulaforceiling",    // JSON: formulaForCeiling
     ],
     formulaCeilSecQty: [
-      "formula for sec. qty 2",   // deduplicated second occurrence
+      "formula for sec. qty 2",
       "formulaforsecqty2",
       "ceiling formula for sec. qty",
       "ceiling formula for sec qty",
       "formulaceilsecqty",
+      "formulaforsecqtyceiling",  // JSON: formulaForSecQtyCeiling
+    ],
+    // MOU / UOM fields - output unit for each formula
+    // Excel sheet uses "Wall UOM", "Wall Sec. UOM", "Ceiling UOM", "Ceiling Sec. UOM"
+    mouWall: [
+      "walluom",                 // Excel: "Wall UOM"
+      "wall uom",
+      "mouforwall",              // JSON key: mouForWall
+      "mou for wall",
+      "mou wall",
+      "mouwall",
+      "wall mou",
+    ],
+    mouWallSec: [
+      "wallsecuom",              // Excel: "Wall Sec. UOM"
+      "wall sec uom",
+      "wall sec. uom",
+      "mouformulaforsecqty",     // JSON key: mouFormulaForSecQty
+      "mou for sec qty",
+      "mou wall sec",
+      "mouwallsec",
+      "wall sec mou",
+    ],
+    mouCeil: [
+      "ceilinguom",              // Excel: "Ceiling UOM"
+      "ceiling uom",
+      "mouforceiling",           // JSON key: mouForCeiling
+      "mou for ceiling",
+      "mou ceiling",
+      "mouceiling",
+      "mouceil",
+      "ceiling mou",
+    ],
+    mouCeilSec: [
+      "ceilingsecuom",           // Excel: "Ceiling Sec. UOM"
+      "ceiling sec uom",
+      "ceiling sec. uom",
+      "mouformulaforsecqtyceiling",  // JSON key: mouFormulaForSecQtyCeiling
+      "mou ceiling sec",
+      "mouceilsec",
+      "ceiling sec mou",
     ],
     note: ["note", "notes", "comment", "comments", "remarks"],
   };
+
+  // Track the previously mapped field so we can resolve ambiguous "Units" columns
+  // by checking what column they follow (positional disambiguation).
+  let prevMappedField = "";
 
   headers.forEach((header) => {
     const normalizedHeader = header
       .toLowerCase()
       .trim()
-      .replace(/[_\s]+/g, "");
+      .replace(/[^a-z0-9]/g, "");
 
+    // Handle duplicate "Units" columns by looking at the preceding column.
+    // The import deduplicates headers as "Units", "Units 2", etc.,
+    // so we match both "units" and "units2", "units3", etc.
+    if (/^units\d*$/.test(normalizedHeader) || normalizedHeader === "unit") {
+      if (
+        prevMappedField === "sheetBagBox" &&
+        !Object.values(headerMap).includes("sheetBagBoxSizeUnits")
+      ) {
+        headerMap[header] = "sheetBagBoxSizeUnits";
+        prevMappedField = "sheetBagBoxSizeUnits";
+        return;
+      }
+      if (
+        prevMappedField === "lengthCover" &&
+        !Object.values(headerMap).includes("lengthCoverUnits")
+      ) {
+        headerMap[header] = "lengthCoverUnits";
+        prevMappedField = "lengthCoverUnits";
+        return;
+      }
+    }
+
+    let matched = false;
     for (const [standardKey, variations] of Object.entries(fieldMapping)) {
       if (
-        variations.some((v) => normalizedHeader === v.replace(/[_\s]+/g, ""))
+        variations.some((v) => normalizedHeader === v.replace(/[^a-z0-9]/g, ""))
       ) {
         headerMap[header] = standardKey;
+        prevMappedField = standardKey;
+        matched = true;
         break;
       }
+    }
+    if (!matched) {
+      prevMappedField = "";
     }
   });
 
@@ -183,17 +337,26 @@ export const validateMaterialData = (
     return val.toString().trim();
   };
 
-  // Parse matCost
-  let matCost = getMappedValue("matCost") || 0;
-  if (typeof matCost === "string") {
-    matCost = parseFloat(matCost.replace(/[$,]/g, "")) || 0;
-  }
-  matCost = parseFloat(matCost);
-  if (isNaN(matCost)) matCost = 0;
-
   const unitCost = parseOptionalNumeric("unitCost");
   const productivity = parseOptionalNumeric("productivity");
   const hourlyRate = parseOptionalNumeric("hourlyRate");
+  const coverPerHour = parseOptionalNumeric("coverPerHour");
+
+  // Parse matCost, falling back to unitCost when explicit matCost column is missing
+  let matCostRaw = getMappedValue("matCost");
+  if (matCostRaw === undefined || matCostRaw === null || matCostRaw === "") {
+    matCostRaw = unitCost ?? 0;
+  }
+
+  let matCost: number;
+  if (typeof matCostRaw === "string") {
+    matCost = parseFloat(matCostRaw.replace(/[$,]/g, "")) || 0;
+  } else {
+    matCost = parseFloat(String(matCostRaw));
+  }
+  if (isNaN(matCost)) {
+    matCost = unitCost ?? 0;
+  }
 
   // Normalize category
   const normalizedCategory = normalizeCategory(category.toString().trim());
@@ -210,21 +373,29 @@ export const validateMaterialData = (
     matCost,
     unitCost,
     per: (getMappedValue("per") || inferUnitFromCategory(normalizedCategory)).toString().trim(),
-    priceUpdated: (getMappedValue("priceUpdated") || new Date().toLocaleDateString()).toString().trim(),
+    priceUpdated: normalizePriceUpdatedDate(getMappedValue("priceUpdated")),
     category: normalizedCategory,
     width: getOptionalString("width"),
     gauge: getOptionalString("gauge"),
     flange: getOptionalString("flange"),
     sheetBagBox: getOptionalString("sheetBagBox"),
+    sheetBagBoxSizeUnits: getOptionalString("sheetBagBoxSizeUnits"),
     size: getOptionalString("size"),
     screwSpacing: getOptionalString("screwSpacing"),
+    lengthCover: getOptionalString("lengthCover"),
+    lengthCoverUnits: getOptionalString("lengthCoverUnits"),
     formulaQty: getOptionalString("formulaQty"),
     formulaSecQty: getOptionalString("formulaSecQty"),
     formulaCeilQty: getOptionalString("formulaCeilQty"),
     formulaCeilSecQty: getOptionalString("formulaCeilSecQty"),
+    mouWall: getOptionalString("mouWall"),
+    mouWallSec: getOptionalString("mouWallSec"),
+    mouCeil: getOptionalString("mouCeil"),
+    mouCeilSec: getOptionalString("mouCeilSec"),
     note: getOptionalString("note"),
     productivity,
     hourlyRate,
+    coverPerHour,
   };
 
   return { material, errors };

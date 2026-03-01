@@ -43,8 +43,11 @@ export const LaborView: React.FC<LaborViewProps> = ({ items, priceMap }) => {
     const formatCurrency = (val: number) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const totalLaborCost = filteredItems.reduce((acc, item) => {
-        const price = priceMap[item.item] || { cost: 0, per: 1 };
-        return acc + (item.quantity * (price.cost / price.per));
+        const unitCost = item.overridePrice ?? (() => {
+            const price = priceMap[item.item] || { cost: 0, per: 1 };
+            return price.per ? price.cost / price.per : price.cost;
+        })();
+        return acc + (item.quantity * unitCost);
     }, 0);
 
 
@@ -136,16 +139,19 @@ export const LaborView: React.FC<LaborViewProps> = ({ items, priceMap }) => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
                         {filteredItems.map((item, idx) => {
-                            const price = priceMap[item.item] || { cost: 0, per: 1 };
-                            const unitCost = price.cost / price.per;
+                            const unitCost = item.overridePrice ?? (() => {
+                                const price = priceMap[item.item] || { cost: 0, per: 1 };
+                                return price.per ? price.cost / price.per : price.cost;
+                            })();
                             const total = item.quantity * unitCost;
+                            const costCode = item.costCode ?? item.laborCode ?? '—';
 
                             return (
                                 <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
-                                    <td className="p-2 pl-3 font-mono text-slate-500">{item.costCode}</td>
+                                    <td className="p-2 pl-3 font-mono text-slate-500">{costCode}</td>
                                     <td className="p-2 font-medium text-slate-800">{item.item}</td>
                                     <td className="p-2 text-slate-600">{item.conditionType}</td>
-                                    <td className="p-2 text-right font-medium">{item.quantity.toLocaleString(undefined, { maximumFractionDigits: 1 })}</td>
+                                    <td className="p-2 text-right font-medium">{item.quantity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td className="p-2 text-center text-slate-500">{item.unit === 'EA' ? 'Hrs' : item.unit}</td>
                                     <td className="p-2 text-right text-slate-500">Open Shop</td>
                                     <td className="p-2 text-right text-slate-600">${formatCurrency(unitCost)}</td>

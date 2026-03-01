@@ -18,6 +18,7 @@ export interface MaterialMatchAssembly {
   assembly_type?: string | null;
   fire_rating?: string | null;
   framing_category?: string | null;
+  project_country?: string | null;
   project_location?: string | null;
   project_province?: string | null;
   selected_gauge?: string | null;
@@ -54,6 +55,7 @@ export interface FinalOutputAssembly {
   height_ft: number;
   level?: string;
   materials_costing: MaterialsCostingItem[];
+  project_country?: string | null;
   project_location?: string | null;
   project_province?: string | null;
   review_notes: string | null;
@@ -66,6 +68,8 @@ export interface FinalOutputAssembly {
 export interface FinalOutputResult {
   assemblies: FinalOutputAssembly[];
 }
+
+// ─── Height Categories ─────────────────────────────────────────────────────────
 
 const HEIGHT_CATEGORIES: Array<{ max: number; label: string }> = [
   { max: 10, label: "up to 10'" },
@@ -81,6 +85,140 @@ const getHeightCategory = (heightFt: number): string => {
   }
   return HEIGHT_CATEGORIES[HEIGHT_CATEGORIES.length - 1].label;
 };
+
+// ─── Height Segmentation ───────────────────────────────────────────────────────
+
+interface HeightSegment {
+  height_ft: number;
+  category: string;
+}
+
+/**
+ * Split wall height H (ft) into labor segments per business rules:
+ *   H ≤ 12      → 1 segment: H @ "(Walls < 12 ft)"
+ *   12 < H ≤ 24 → 2 segments: 12 + (H-12)
+ *   H > 24      → 3 segments: 12 + 12 + (H-24)
+ */
+const getHeightSegments = (H: number): HeightSegment[] => {
+  if (H <= 12) {
+    return [{ height_ft: H, category: "(Walls < 12 ft)" }];
+  } else if (H <= 24) {
+    return [
+      { height_ft: 12, category: "(Walls < 12 ft)" },
+      { height_ft: H - 12, category: "(High 12 ft to 24 ft)" },
+    ];
+  } else {
+    return [
+      { height_ft: 12, category: "(Walls < 12 ft)" },
+      { height_ft: 12, category: "(High 12 ft to 24 ft)" },
+      { height_ft: H - 24, category: "(High Above 24 ft)" },
+    ];
+  }
+};
+
+/** Keywords in DB labor descriptions that identify each height segment */
+const SEGMENT_KEYWORDS: Record<string, string> = {
+  "(Walls < 12 ft)": "< 12ft",
+  "(High 12 ft to 24 ft)": "12ft to 24",
+  "(High Above 24 ft)": "> 24",
+};
+
+const matchesSegment = (description: string, category: string): boolean => {
+  const keyword = SEGMENT_KEYWORDS[category];
+  return !!keyword && description.includes(keyword);
+};
+
+/**
+ * A labor item is height-segmentable if its description contains "< 12ft"
+ * (meaning the DB has height variants for it).
+ */
+const isHeightSegmentedLabor = (description: string): boolean =>
+  description.includes("< 12ft");
+
+// ─── Material DB Index ─────────────────────────────────────────────────────────
+
+interface DbLaborEntry {
+  code: string;
+  laborCostCode: string;
+  description: string;
+  section: string;
+  per: string;
+  matCost: string | number;
+  category: string;
+}
+
+interface LaborIndex {
+  byCode: Map<string, DbLaborEntry>;
+  byLaborCostCode: Map<string, DbLaborEntry[]>;
+}
+
+const buildLaborIndex = (db: unknown[]): LaborIndex => {
+  const byCode = new Map<string, DbLaborEntry>();
+  const byLaborCostCode = new Map<string, DbLaborEntry[]>();
+
+  for (const entry of db) {
+    const e = entry as Record<string, unknown>;
+    if (e.category !== "Labor") continue;
+    const row: DbLaborEntry = {
+      code: String(e.code ?? ""),
+      laborCostCode: String(e.laborCostCode ?? ""),
+      description: String(e.description ?? ""),
+      section: String(e.section ?? ""),
+      per: String(e.per ?? ""),
+      matCost: e.matCost as string | number,
+      category: "Labor",
+    };
+    byCode.set(row.code, row);
+    const siblings = byLaborCostCode.get(row.laborCostCode) ?? [];
+    siblings.push(row);
+    byLaborCostCode.set(row.laborCostCode, siblings);
+  }
+
+  return { byCode, byLaborCostCode };
+};
+
+/**
+ * Expand a single matched_labor entry into one entry per height segment.
+ * If the labor is not height-segmentable, returns it unchanged (single entry).
+ */
+const expandLaborForHeight = (
+  labor: MatchedLabor,
+  segments: HeightSegment[],
+  laborIndex: LaborIndex,
+): MatchedLabor[] => {
+  // Not height-based labor OR only one segment → keep as-is
+  if (!isHeightSegmentedLabor(labor.description) || segments.length === 1) {
+    return [{ ...labor, height_ft: segments[0].height_ft, height_category: segments[0].category }];
+  }
+
+  // Look up the DB entry to get laborCostCode
+  const dbEntry = laborIndex.byCode.get(labor.code);
+  if (!dbEntry) {
+    // Not in DB — can't find variants, return with first segment info
+    return [{ ...labor, height_ft: segments[0].height_ft, height_category: segments[0].category }];
+  }
+
+  const variants = laborIndex.byLaborCostCode.get(dbEntry.laborCostCode) ?? [];
+
+  return segments.map((segment) => {
+    const variant = variants.find((v) => matchesSegment(v.description, segment.category));
+    if (variant) {
+      return {
+        code: variant.code,
+        section: variant.section,
+        description: variant.description,
+        unit: variant.per,
+        unit_cost: typeof variant.matCost === "string" ? parseFloat(variant.matCost) : variant.matCost,
+        height_ft: segment.height_ft,
+        height_category: segment.category,
+      };
+    }
+    // No variant found for segment — fall back to original code with segment tags
+    return { ...labor, height_ft: segment.height_ft, height_category: segment.category };
+  });
+};
+
+// ─── Takeoff Helpers ───────────────────────────────────────────────────────────
 
 const parseHeight = (h: string | number | null | undefined): number => {
   if (h == null) return 0;
@@ -157,11 +295,19 @@ const aggregateTakeoff = (rows: TakeoffRawRecord[]): AggregatedTakeoffGroup[] =>
   }));
 };
 
-/** Deep clone materials_costing and enrich extracted_material with takeoff fields */
+// ─── Enrich Materials Costing ──────────────────────────────────────────────────
+
+/**
+ * Deep clone materials_costing, enrich extracted_material with takeoff fields,
+ * and apply height segmentation to labor (walls only).
+ */
 const enrichMaterialsCosting = (
   materialsCosting: MaterialsCostingItem[],
   takeoff: AggregatedTakeoffGroup,
+  laborIndex: LaborIndex,
 ): MaterialsCostingItem[] => {
+  const segments = takeoff.is_ceiling ? [] : getHeightSegments(takeoff.height_ft);
+
   return materialsCosting.map((item) => {
     const ext = item.extracted_material;
     const enriched: MaterialItem = {
@@ -172,24 +318,48 @@ const enrichMaterialsCosting = (
       height_ft: takeoff.is_ceiling ? undefined : takeoff.height_ft,
       total_length: takeoff.is_ceiling ? undefined : takeoff.total_length,
     };
+
+    // Expand labor for height segments (walls only)
+    let expandedLabor: MatchedLabor[];
+    if (takeoff.is_ceiling || segments.length === 0) {
+      expandedLabor = [...(item.matched_labor as MatchedLabor[])];
+    } else {
+      expandedLabor = (item.matched_labor as MatchedLabor[]).flatMap((labor) =>
+        expandLaborForHeight(labor, segments, laborIndex),
+      );
+    }
+
     return {
       extracted_material: enriched,
       matched_materials: [...(item.matched_materials as MatchedMaterial[])],
-      matched_labor: [...(item.matched_labor as MatchedLabor[])],
+      matched_labor: expandedLabor,
     };
   });
 };
+
+// ─── Public Interface ──────────────────────────────────────────────────────────
+
+export interface ProjectContext {
+  country?: string | null;
+  province?: string | null;
+  location?: string | null;
+}
 
 /**
  * Merge material match with takeoff rows using deterministic rules.
  * Match: takeoff.wall_type === assembly.assembly_id.
  * Aggregate: one output assembly per (assembly_id, height) with summed quantities.
+ * Height segmentation: labor entries are expanded into per-segment entries (walls only).
  * Output shape matches final_output JSON for downstream (assembly-data, project page).
  */
 export const mergeTakeoffWithMaterialMatch = (
   materialMatch: MaterialMatchInput,
   takeoffRows: TakeoffRawRecord[],
+  projectContext?: ProjectContext,
+  materialDb?: unknown[],
 ): FinalOutputResult => {
+  const laborIndex = buildLaborIndex(materialDb ?? []);
+
   const matchById = new Map<string, MaterialMatchAssembly>();
   for (const a of materialMatch.assemblies) {
     if (a.assembly_id) matchById.set(String(a.assembly_id).trim(), a);
@@ -214,8 +384,9 @@ export const mergeTakeoffWithMaterialMatch = (
         height_ft: group.height_ft,
         level,
         materials_costing: [],
-        project_location: null,
-        project_province: null,
+        project_country: projectContext?.country ?? null,
+        project_location: projectContext?.location ?? null,
+        project_province: projectContext?.province ?? null,
         review_notes: "Assembly not found in material match",
         selected_gauge: null,
         stc_rating: null,
@@ -225,7 +396,7 @@ export const mergeTakeoffWithMaterialMatch = (
       continue;
     }
 
-    const materials_costing = enrichMaterialsCosting(match.materials_costing, group);
+    const materials_costing = enrichMaterialsCosting(match.materials_costing, group, laborIndex);
     const assembly_type =
       group.assembly_type && String(group.assembly_type).toLowerCase() === "ceiling"
         ? "ceiling"
@@ -242,8 +413,9 @@ export const mergeTakeoffWithMaterialMatch = (
       height_ft: group.height_ft,
       level,
       materials_costing,
-      project_location: match.project_location ?? null,
-      project_province: match.project_province ?? null,
+      project_country: projectContext?.country ?? match.project_country ?? null,
+      project_location: projectContext?.location ?? match.project_location ?? null,
+      project_province: projectContext?.province ?? match.project_province ?? null,
       review_notes: null,
       selected_gauge: match.selected_gauge ?? null,
       stc_rating: match.stc_rating ?? null,

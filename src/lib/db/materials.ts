@@ -33,15 +33,23 @@ const transformToMaterial = (row: any): MaterialDefinition => ({
   gauge: row.gauge,
   flange: row.flange,
   sheetBagBox: row.sheet_bag_box ?? undefined,
+  sheetBagBoxSizeUnits: row.sheet_bag_box_size_units ?? undefined,
   size: row.size ?? undefined,
   screwSpacing: row.screw_spacing ?? undefined,
+  lengthCover: row.length_cover ?? undefined,
+  lengthCoverUnits: row.length_cover_units ?? undefined,
   formulaQty: row.formula_qty ?? undefined,
   formulaSecQty: row.formula_sec_qty ?? undefined,
   formulaCeilQty: row.formula_ceil_qty ?? undefined,
   formulaCeilSecQty: row.formula_ceil_sec_qty ?? undefined,
+  mouWall: row.mou_wall ?? undefined,
+  mouWallSec: row.mou_wall_sec ?? undefined,
+  mouCeil: row.mou_ceil ?? undefined,
+  mouCeilSec: row.mou_ceil_sec ?? undefined,
   note: row.note ?? undefined,
   productivity: row.productivity ? parseFloat(row.productivity) : undefined,
   hourlyRate: row.hourly_rate ? parseFloat(row.hourly_rate) : undefined,
+  coverPerHour: row.cover_per_hour ? parseFloat(row.cover_per_hour) : undefined,
 });
 
 /**
@@ -58,21 +66,29 @@ const transformToDbRow = (material: MaterialDefinition) => ({
   mat_cost: material.matCost,
   unit_cost: material.unitCost ?? null,
   per: material.per,
-  price_updated: material.priceUpdated || new Date().toLocaleDateString(),
+  price_updated: material.priceUpdated || new Date().toISOString().slice(0, 10),
   category: material.category,
   width: material.width ?? null,
   gauge: material.gauge ?? null,
   flange: material.flange ?? null,
   sheet_bag_box: material.sheetBagBox ?? null,
+  sheet_bag_box_size_units: material.sheetBagBoxSizeUnits ?? null,
   size: material.size ?? null,
   screw_spacing: material.screwSpacing ?? null,
+  length_cover: material.lengthCover ?? null,
+  length_cover_units: material.lengthCoverUnits ?? null,
   formula_qty: material.formulaQty ?? null,
   formula_sec_qty: material.formulaSecQty ?? null,
   formula_ceil_qty: material.formulaCeilQty ?? null,
   formula_ceil_sec_qty: material.formulaCeilSecQty ?? null,
+  mou_wall: material.mouWall ?? null,
+  mou_wall_sec: material.mouWallSec ?? null,
+  mou_ceil: material.mouCeil ?? null,
+  mou_ceil_sec: material.mouCeilSec ?? null,
   note: material.note ?? null,
   productivity: material.productivity ?? null,
   hourly_rate: material.hourlyRate ?? null,
+  cover_per_hour: material.coverPerHour ?? null,
 });
 
 /**
@@ -193,17 +209,26 @@ export async function updateMaterial(
   if (updates.gauge !== undefined) dbUpdates.gauge = updates.gauge;
   if (updates.flange !== undefined) dbUpdates.flange = updates.flange;
   if (updates.sheetBagBox !== undefined) dbUpdates.sheet_bag_box = updates.sheetBagBox;
+  if (updates.sheetBagBoxSizeUnits !== undefined) dbUpdates.sheet_bag_box_size_units = updates.sheetBagBoxSizeUnits;
   if (updates.size !== undefined) dbUpdates.size = updates.size;
   if (updates.screwSpacing !== undefined) dbUpdates.screw_spacing = updates.screwSpacing;
+  if (updates.lengthCover !== undefined) dbUpdates.length_cover = updates.lengthCover;
+  if (updates.lengthCoverUnits !== undefined) dbUpdates.length_cover_units = updates.lengthCoverUnits;
   if (updates.formulaQty !== undefined) dbUpdates.formula_qty = updates.formulaQty;
   if (updates.formulaSecQty !== undefined) dbUpdates.formula_sec_qty = updates.formulaSecQty;
   if (updates.formulaCeilQty !== undefined) dbUpdates.formula_ceil_qty = updates.formulaCeilQty;
   if (updates.formulaCeilSecQty !== undefined) dbUpdates.formula_ceil_sec_qty = updates.formulaCeilSecQty;
+  if (updates.mouWall !== undefined) dbUpdates.mou_wall = updates.mouWall;
+  if (updates.mouWallSec !== undefined) dbUpdates.mou_wall_sec = updates.mouWallSec;
+  if (updates.mouCeil !== undefined) dbUpdates.mou_ceil = updates.mouCeil;
+  if (updates.mouCeilSec !== undefined) dbUpdates.mou_ceil_sec = updates.mouCeilSec;
   if (updates.note !== undefined) dbUpdates.note = updates.note;
   if (updates.productivity !== undefined)
     dbUpdates.productivity = updates.productivity;
   if (updates.hourlyRate !== undefined)
     dbUpdates.hourly_rate = updates.hourlyRate;
+  if (updates.coverPerHour !== undefined)
+    dbUpdates.cover_per_hour = updates.coverPerHour;
 
   const { data, error } = await supabaseAdmin
     .from(TABLES.MATERIALS)
@@ -224,6 +249,8 @@ export async function updateMaterial(
  * Deduplicates by code (keeps last occurrence) to avoid PostgreSQL error:
  * "ON CONFLICT DO UPDATE command cannot affect row a second time"
  */
+const UPSERT_CHUNK_SIZE = 250;
+
 export async function bulkUpsertMaterials(
   materials: MaterialDefinition[],
 ): Promise<{
@@ -237,19 +264,25 @@ export async function bulkUpsertMaterials(
   }
   const deduped = Array.from(seen.values());
 
-  const dbRows = deduped.map(transformToDbRow);
+  // Chunk to avoid Supabase request-size and timeout limits
+  const allData: MaterialDefinition[] = [];
+  for (let i = 0; i < deduped.length; i += UPSERT_CHUNK_SIZE) {
+    const chunk = deduped.slice(i, i + UPSERT_CHUNK_SIZE);
+    const dbRows = chunk.map(transformToDbRow);
 
-  const { data, error } = await supabaseAdmin
-    .from(TABLES.MATERIALS)
-    .upsert(dbRows, { onConflict: "code" })
-    .select();
+    const { data, error } = await supabaseAdmin
+      .from(TABLES.MATERIALS)
+      .upsert(dbRows, { onConflict: "code" })
+      .select();
 
-  if (error) {
-    return { data: null, error };
+    if (error) {
+      return { data: null, error };
+    }
+
+    allData.push(...(data?.map(transformToMaterial) ?? []));
   }
 
-  const transformedData = data?.map(transformToMaterial) || [];
-  return { data: transformedData, error: null };
+  return { data: allData, error: null };
 }
 
 /**

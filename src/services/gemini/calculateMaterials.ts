@@ -112,7 +112,8 @@ export const calculateMaterials = (
         if (qty <= 0) return;
         const addIfValid = (category: CalculatedMaterial['category'], itemName: string, quantity: number, unit: string, notes: string, extra: Partial<CalculatedMaterial> = {}) => {
             if (!validMaterialNames.has(itemName) && !itemName.includes('Generic')) return;
-            mats.push({ category, item: itemName, quantity, unit, notes, ...extra });
+            const codeByDescription = availableMaterials.find((m) => m.description === itemName)?.code;
+            mats.push({ category, item: itemName, quantity, unit, notes, code: codeByDescription, ...extra });
         };
 
         if (cat === 'Framing') {
@@ -408,41 +409,77 @@ export const calculateMaterials = (
         }
 
         // Align with assembly modal Code column: LAB- code or material category Labor → Labor tab
+        const matchedMaterial = availableMaterials.find(
+            (m) => m.code === comp.materialCode || m.description === comp.materialName
+        );
         const isLaborComponent =
             (comp.materialCode != null && comp.materialCode.startsWith('LAB-')) ||
-            availableMaterials.find((m) => m.code === comp.materialCode)?.category === 'Labor';
+            matchedMaterial?.category === 'Labor';
         if (isLaborComponent) category = 'Labor';
 
         if (quantity > 0) {
-            mats.push({
-                category,
-                item: finalItemName,
-                quantity,
-                unit,
-                notes,
-                sect: compSect,
-                height: compHeight,
-                oc: compOC,
-                layers: compLayers,
-                wastePercent: wastePct * 100,
-                grade: 'Standard'
-            });
+            // Labor components: show hours and use DB hourly rate / override for Labor tab
+            if (isLaborComponent) {
+                let hours = quantity;
+                if (comp.installRate != null && comp.installRate > 0) {
+                    hours = quantity * comp.installRate;
+                } else if (matchedMaterial?.productivity != null && matchedMaterial.productivity > 0) {
+                    hours = quantity / matchedMaterial.productivity;
+                }
+                const rate = comp.overrideLaborCost ?? matchedMaterial?.hourlyRate ?? 65;
+                const laborCode = matchedMaterial?.laborCostCode || comp.sectionCode || 'Labor';
+                mats.push({
+                    category: 'Labor',
+                    item: finalItemName,
+                    quantity: Math.round(hours * 100) / 100,
+                    unit: 'HR',
+                    notes: notes || (matchedMaterial?.description ? `${matchedMaterial.description}` : 'Labor'),
+                    sect: compSect,
+                    height: compHeight,
+                    oc: compOC,
+                    layers: compLayers,
+                    wastePercent: wastePct * 100,
+                    grade: 'Labor',
+                    laborCode,
+                    overridePrice: rate,
+                    productionRate: matchedMaterial?.productivity ?? (comp.installRate != null && comp.installRate > 0 ? 1 / comp.installRate : undefined),
+                    crew: comp.crew ? `${comp.crew} Crew` : '1',
+                    code: comp.materialCode ?? matchedMaterial?.code
+                });
+            } else {
+                mats.push({
+                    category,
+                    item: finalItemName,
+                    quantity,
+                    unit,
+                    notes,
+                    sect: compSect,
+                    height: compHeight,
+                    oc: compOC,
+                    layers: compLayers,
+                    wastePercent: wastePct * 100,
+                    grade: 'Standard',
+                    code: comp.materialCode ?? matchedMaterial?.code
+                });
 
-            if (comp.installRate && comp.installRate > 0) {
-                const laborQty = Math.ceil(quantity * comp.installRate);
-                if (laborQty > 0) {
-                    mats.push({
-                        category: 'Labor',
-                        item: 'Journeyman Carpenter (Framing/Drywall)',
-                        quantity: laborQty,
-                        unit: 'HR',
-                        notes: `Install ${finalItemName}`,
-                        overridePrice: 65,
-                        grade: 'Labor',
-                        sect: compSect,
-                        productionRate: comp.installRate,
-                        crew: '1 Carp'
-                    });
+                if (comp.installRate && comp.installRate > 0) {
+                    const laborQty = Math.ceil(quantity * comp.installRate);
+                    if (laborQty > 0) {
+                        const installLaborMat = availableMaterials.find((m) => m.description === 'Journeyman Carpenter (Framing/Drywall)');
+                        mats.push({
+                            category: 'Labor',
+                            item: 'Journeyman Carpenter (Framing/Drywall)',
+                            quantity: laborQty,
+                            unit: 'HR',
+                            notes: `Install ${finalItemName}`,
+                            overridePrice: 65,
+                            grade: 'Labor',
+                            sect: compSect,
+                            productionRate: comp.installRate,
+                            crew: '1 Carp',
+                            code: installLaborMat?.code
+                        });
+                    }
                 }
             }
         }

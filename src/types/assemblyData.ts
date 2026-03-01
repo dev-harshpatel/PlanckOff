@@ -64,6 +64,9 @@ export interface MatchedLabor {
   description: string;
   unit: string;
   unit_cost: number;
+  /** Height segment this labor entry covers (set by code-merge height segmentation) */
+  height_ft?: number;
+  height_category?: string;
 }
 
 export interface MaterialsCostingItem {

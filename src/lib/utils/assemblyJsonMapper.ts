@@ -1,5 +1,6 @@
 import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { AssemblyComponent, TakeoffInstance, WallAssembly } from "@/types";
+import { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 
 /** Assembly with final_output format fields (height_ft, total_length, etc.) */
 interface FinalOutputAssembly extends MaterialCosting {
@@ -141,8 +142,10 @@ export const mapJsonToWallAssemblies = (
           });
         });
 
-        // Add components for each matched labor
+        // Add components for each matched labor (use per-segment height_ft when present)
         (matched_labor ?? []).forEach((labor, idx) => {
+          const laborHeightFt = (labor as { height_ft?: number }).height_ft;
+          const displayHeight = typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
           components.push({
             id: `${assembly.assembly_id}-lab-${idx}-${Date.now()}`,
             materialName: labor.description,
@@ -150,7 +153,7 @@ export const mapJsonToWallAssemblies = (
             wasteFactor: 0,
             materialCost: labor.unit_cost,
             overrideLayers: undefined,
-            overrideHeight: typeof heightFt === "number" ? heightFt : undefined,
+            overrideHeight: typeof displayHeight === "number" ? displayHeight : undefined,
             materialCode: labor.code,
             sectionCode: labor.section ?? "",
             ocSpacing: spacingDisplay || undefined,
@@ -261,6 +264,8 @@ export const mapFinalOutputToWallAssemblies = (
         });
       });
       (matched_labor ?? []).forEach((labor) => {
+        const laborHeightFt = (labor as { height_ft?: number }).height_ft;
+        const displayHeight = typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
         components.push({
           id: `${compositeId}-lab-${componentIdx++}`,
           materialName: labor.description,
@@ -268,7 +273,7 @@ export const mapFinalOutputToWallAssemblies = (
           wasteFactor: 0,
           materialCost: labor.unit_cost,
           overrideLayers: undefined,
-          overrideHeight: heightFt,
+          overrideHeight: displayHeight,
           materialCode: labor.code,
           sectionCode: labor.section ?? "",
           ocSpacing: spacingDisplay || undefined,
@@ -332,6 +337,64 @@ export const mapFinalOutputToTakeoffs = (
 
     if (!result[compositeKey]) result[compositeKey] = [];
     result[compositeKey].push(instance);
+  });
+
+  return result;
+};
+
+/**
+ * Maps raw takeoff records (one per original Excel row) to TakeoffInstance records.
+ * Unlike mapFinalOutputToTakeoffs, this preserves individual levels — no merging.
+ * Used by TakeoffScheduleView so each row shows its own level.
+ */
+export const mapRawTakeoffToInstances = (
+  rawRows: TakeoffRawRecord[],
+  assemblies: (MaterialCosting | FinalOutputAssembly)[],
+): Record<string, TakeoffInstance[]> => {
+  // Build map: "wall_type|height" → compositeKey (e.g. "P1@9.7")
+  const keyMap = new Map<string, string>();
+  assemblies.forEach((asm) => {
+    const ext = asm as FinalOutputAssembly;
+    if (typeof ext.height_ft === "number" && ext.assembly_id) {
+      const heightFt = Number(ext.height_ft);
+      const k = `${String(ext.assembly_id).trim()}|${heightFt}`;
+      keyMap.set(k, getFinalOutputAssemblyKey(ext.assembly_id, heightFt));
+    }
+  });
+
+  const result: Record<string, TakeoffInstance[]> = {};
+
+  rawRows.forEach((row, idx) => {
+    if (!row.wall_type) return;
+    const assemblyId = String(row.wall_type).trim();
+    const heightFt = parseFloat(String(row.height ?? 0)) || 0;
+    const k = `${assemblyId}|${heightFt}`;
+    const compositeKey = keyMap.get(k);
+    if (!compositeKey) return;
+
+    const isCeiling =
+      String(row.assembly_type ?? "").trim().toLowerCase() === "ceiling";
+    const level = row.level != null ? String(row.level).trim() : "";
+    const length = isCeiling ? 0 : (row.wall_length ?? 0);
+    const ceilingArea = isCeiling ? (row.ceiling_area ?? undefined) : undefined;
+    const perimeter =
+      row.area_parementer != null
+        ? parseFloat(String(row.area_parementer)) || undefined
+        : undefined;
+
+    if (!result[compositeKey]) result[compositeKey] = [];
+    result[compositeKey].push({
+      id: `raw-${compositeKey}-${idx}`,
+      level,
+      description: `Assembly ${assemblyId}`,
+      quantity: 1,
+      length,
+      height: heightFt,
+      ceilingArea,
+      perimeter,
+      lengthUnit: isCeiling ? "SF" : "LF",
+      areaUnit: "SF",
+    });
   });
 
   return result;

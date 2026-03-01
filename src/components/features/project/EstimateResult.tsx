@@ -58,7 +58,9 @@ import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
 import { FORMULA_DEFINITIONS } from "@/constants/formulas";
 import {
   mapFinalOutputToTakeoffs,
+  mapRawTakeoffToInstances,
 } from "@/lib/utils/assemblyJsonMapper";
+import { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 import {
   detectLengthFt,
   getFilteredFormulas,
@@ -91,6 +93,8 @@ interface EstimateResultProps {
   templates?: AssemblyTemplate[];
   assemblyData?: AssemblyData[];
   materialCostingData?: MaterialCosting[];
+  /** Raw takeoff rows (one per original Excel row) — used to show individual levels in TakeoffScheduleView */
+  rawTakeoffRows?: unknown[];
   projectId?: string | null;
   onImportComplete?: () => void;
 }
@@ -112,6 +116,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   templates = DEFAULT_TEMPLATES,
   assemblyData = [],
   materialCostingData = [],
+  rawTakeoffRows = [],
   projectId: projectIdProp,
   onImportComplete,
 }) => {
@@ -451,7 +456,14 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       );
       let newTakeoffs: Record<string, TakeoffInstance[]>;
       if (hasFinalOutputFormat) {
-        newTakeoffs = mapFinalOutputToTakeoffs(materialCostingData);
+        // Prefer raw rows (individual levels) for TakeoffScheduleView; fall back to aggregated
+        newTakeoffs =
+          rawTakeoffRows.length > 0
+            ? mapRawTakeoffToInstances(
+                rawTakeoffRows as TakeoffRawRecord[],
+                materialCostingData,
+              )
+            : mapFinalOutputToTakeoffs(materialCostingData);
         // Ensure every assembly has an entry (even if empty)
         initialAssemblies.forEach((a) => {
           if (!newTakeoffs[a.id]) newTakeoffs[a.id] = [];
@@ -475,7 +487,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       setTakeoffs(mergedTakeoffs);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- takeoffs intentionally excluded to avoid sync loop
-  }, [initialAssemblies, viewMode, materialCostingData]);
+  }, [initialAssemblies, viewMode, materialCostingData, rawTakeoffRows]);
 
   useEffect(() => {
     const initial: Record<string, TakeoffInstance[]> = {};

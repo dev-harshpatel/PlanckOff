@@ -7,6 +7,8 @@
  * Saves to database and local.
  */
 
+import { readFile } from "fs/promises";
+import path from "path";
 import { getLatestMaterialMatch } from "@/lib/db/assemblyData";
 import {
   getLatestTakeoffOutput,
@@ -14,8 +16,10 @@ import {
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 import {
   type MaterialMatchInput,
+  type ProjectContext,
   mergeTakeoffWithMaterialMatch,
 } from "@/services/finalize/mergeTakeoffWithMaterialMatch";
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
@@ -125,6 +129,29 @@ export async function POST(req: NextRequest) {
     }
 
     const totalStart = Date.now();
+
+    // Fetch project context once — used for gauge selection in both code-merge and AI paths
+    let projectContext: ProjectContext | undefined;
+    if (projectId) {
+      const { data: project } = await getProjectById(projectId);
+      if (project) {
+        // Derive project_location classifier ("US" | "CAN" | "OTHER") from stored country code.
+        // project.location is a city/address text field — NOT the country classifier.
+        const countryCode = project.country?.toUpperCase() ?? "";
+        const locationClassifier =
+          countryCode === "USA" ? "US"
+          : countryCode === "CA" ? "CAN"
+          : countryCode ? "OTHER"
+          : null;
+
+        projectContext = {
+          country: project.country ?? null,
+          province: project.province ?? null,
+          location: locationClassifier,
+        };
+      }
+    }
+
     const takeoffRows =
       Array.isArray(takeoffData) && takeoffData.length > 0
         ? takeoffData.filter(isTakeoffRow)
@@ -138,9 +165,19 @@ export async function POST(req: NextRequest) {
       console.log(
         `[finalize] Code merge: ${materialMatchData.assemblies.length} match assemblies, ${takeoffRows.length} takeoff rows`,
       );
+      // Load material DB for height-segmented labor lookup
+      let materialDb: unknown[] = [];
+      try {
+        const dbRaw = await readFile(path.join(process.cwd(), "data", "material-database.json"), "utf-8");
+        materialDb = JSON.parse(dbRaw) as unknown[];
+      } catch {
+        console.warn("[finalize] Could not load material-database.json for labor index — height segmentation will use fallback");
+      }
       result = mergeTakeoffWithMaterialMatch(
         { assemblies: materialMatchData.assemblies } as MaterialMatchInput,
         takeoffRows,
+        projectContext,
+        materialDb,
       );
     } else {
       const apiKey = process.env.OPENROUTER_API_KEY;
@@ -158,20 +195,22 @@ export async function POST(req: NextRequest) {
         { assemblies: materialMatchData.assemblies },
         apiKey,
         takeoffData,
+        projectContext,
       );
       result = { assemblies: aiResult.assemblies ?? [] };
     }
 
-    // Enrich each assembly with project_location and project_province from the project record
-    if (projectId) {
-      const { data: project } = await getProjectById(projectId);
-      if (project && (project.location || project.province)) {
-        result.assemblies = result.assemblies.map((a) => ({
-          ...(a as Record<string, unknown>),
-          project_location: project.location ?? (a as Record<string, unknown>).project_location ?? null,
-          project_province: project.province ?? (a as Record<string, unknown>).project_province ?? null,
-        }));
-      }
+    // Safety net: ensure project_country/location/province are set on every assembly
+    if (projectContext) {
+      result.assemblies = result.assemblies.map((a) => {
+        const assembly = a as Record<string, unknown>;
+        return {
+          ...assembly,
+          project_country: projectContext!.country ?? assembly.project_country ?? null,
+          project_location: projectContext!.location ?? assembly.project_location ?? null,
+          project_province: projectContext!.province ?? assembly.project_province ?? null,
+        };
+      });
     }
 
     const timestamp = Date.now();
@@ -184,7 +223,7 @@ export async function POST(req: NextRequest) {
       resolvedTakeoffOutputId,
     );
     // const localPath = await writeJsonToLocal("final_output", result);
-    console.log(`[finalize] DB: ${dbSaved?.id ?? "ok"}`);
+    console.log(`[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: (disabled)`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

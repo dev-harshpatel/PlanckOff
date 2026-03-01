@@ -15,9 +15,12 @@ export interface MaterialDefinition {
   width?: string;         // e.g., 3-5/8", 6"
   gauge?: string;         // e.g., 20ga, 33mil
   flange?: string;        // e.g., 1-1/4", 1-5/8", 2"
-  sheetBagBox?: string;   // Sheet / Bag / Box quantity
-  size?: string;          // Size spec
-  screwSpacing?: string;  // Screw spacing
+  sheetBagBox?: string;        // Sheet / Bag / Box quantity
+  sheetBagBoxSizeUnits?: string; // Units for sheet/bag/box (e.g., SHEET, BAG, BOX)
+  size?: string;               // Size spec
+  screwSpacing?: string;       // Screw spacing
+  lengthCover?: string;        // Area / Length cover value
+  lengthCoverUnits?: string;   // Units for length cover (e.g., SF, LF)
 
   // Formulas (shown in modal, not in table)
   formulaQty?: string;        // Wall: Formula for Qty
@@ -25,13 +28,20 @@ export interface MaterialDefinition {
   formulaCeilQty?: string;    // Ceiling: Formula for Qty
   formulaCeilSecQty?: string; // Ceiling: Formula for Sec. Qty
 
+  // MOU (Measure of Unit) for formulas - the output unit for each formula
+  mouWall?: string;           // MOU for wall qty (e.g., SF)
+  mouWallSec?: string;        // MOU for wall sec. qty (e.g., EA)
+  mouCeil?: string;           // MOU for ceiling qty (e.g., SF)
+  mouCeilSec?: string;        // MOU for ceiling sec. qty (e.g., EA)
+
   // Notes
   note?: string;
 
   // Helper for app logic
   category: 'Framing' | 'Drywall' | 'Insulation' | 'Finishing' | 'Ceiling' | 'Labor' | 'Other';
   productivity?: number; // Production rate / Units per Hour (for Labor items)
-  hourlyRate?: number; // Base Hourly Rate (e.g. $65)
+  hourlyRate?: number;   // Base Hourly Rate (e.g. $65)
+  coverPerHour?: number; // Coverage per Hour (e.g. SF/hr for certain labor items)
 }
 
 export type CalculationMethod =
@@ -110,6 +120,12 @@ export interface AssemblyComponent {
   materialCode?: string; // Code from matched_materials or matched_labor
   sectionCode?: string; // Section code (e.g., "09200")
   ocSpacing?: string; // OC spacing (e.g., "400 mm O.C." or "16\"")
+
+  // Per-component formula overrides (override the material database formula)
+  formulaQtyOverride?: string;
+  formulaSecQtyOverride?: string;
+  formulaCeilQtyOverride?: string;
+  formulaCeilSecQtyOverride?: string;
 }
 
 export interface WallAssembly {
@@ -164,6 +180,9 @@ export interface CalculatedMaterial {
   notes?: string;
   overridePrice?: number; // Optional override for price per unit (e.g. labor rate)
   grade?: string; // Material Grade (e.g. Type X, Commercial)
+
+  /** Material code (e.g. DW-58-X-8, LAB-INS-HI) — same as Assembly modal Code column */
+  code?: string;
 
   // QuickBid Style Details
   sect?: string; // CSI Section e.g. 09100
@@ -221,6 +240,7 @@ export interface ProjectSummary {
   projectNumber: string;
   assignedTo?: string; // User ID or Name
   location?: string;
+  country?: string;
   province?: string;
   pricingConfig?: ProposalConfig;
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
-// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s.
 export const maxDuration = 300;
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     // const localPath = await writeJsonToLocal("assembly", {
     //   assemblies: result.assemblies,
     // });
-    console.log(`[extract] DB: ${savedData?.id}`);
+    console.log(`[extract] DB: ${savedData?.id} | Local: (disabled)`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

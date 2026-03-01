@@ -177,7 +177,7 @@ export const MaterialsView: React.FC<MaterialsViewProps> = ({ items, priceMap })
 
                             return (
                                 <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
-                                    <td className="p-2 pl-3 font-mono text-slate-500">{item.item.substring(0, 8)}</td>
+                                    <td className="p-2 pl-3 font-mono text-slate-500">{item.code ?? '—'}</td>
                                     <td className="p-2 font-medium text-slate-800">{item.item}</td>
                                     <td className="p-2 text-slate-500">
                                         <div className="flex flex-col">

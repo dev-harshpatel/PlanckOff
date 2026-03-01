@@ -88,6 +88,7 @@ function ProjectContent() {
   const [materialCostingData, setMaterialCostingData] = useState<
     MaterialCosting[]
   >([]);
+  const [rawTakeoffRows, setRawTakeoffRows] = useState<unknown[]>([]);
   const [isLoadingAssemblyData, setIsLoadingAssemblyData] = useState(true);
   const [assemblyDataRefreshTrigger, setAssemblyDataRefreshTrigger] =
     useState(0);
@@ -161,6 +162,7 @@ function ProjectContent() {
           materialData?: { assemblies?: unknown[] };
           assemblyFilename?: string;
           materialFilename?: string;
+          rawTakeoffRows?: unknown[];
           error?: string;
         };
         try {
@@ -181,6 +183,7 @@ function ProjectContent() {
 
         setAssemblyData(assemblyDataArray);
         setMaterialCostingData(costingDataArray);
+        setRawTakeoffRows(data.rawTakeoffRows ?? []);
 
         const hasFinalOutputFormat =
           costingDataArray.length > 0 &&
@@ -424,6 +427,7 @@ function ProjectContent() {
           onCloseReport={closeReport}
           assemblyData={assemblyData}
           materialCostingData={materialCostingData}
+          rawTakeoffRows={rawTakeoffRows}
           projectId={projectId}
           onImportComplete={() =>
             setAssemblyDataRefreshTrigger((t) => t + 1)

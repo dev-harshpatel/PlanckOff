@@ -239,6 +239,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
             projectNumber: projectData.projectNumber,
             assignedTo: projectData.assignedTo,
             location: projectData.location,
+            country: projectData.country,
+            province: projectData.province,
           }),
         });
         const data = await response.json();
@@ -265,6 +267,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
             projectNumber: projectData.projectNumber,
             assignedTo: projectData.assignedTo,
             location: projectData.location,
+            country: projectData.country,
+            province: projectData.province,
           }),
         });
         const data = await response.json();

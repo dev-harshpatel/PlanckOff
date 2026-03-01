@@ -108,6 +108,12 @@ export interface FinalizeInput {
   assemblies: unknown[];
 }
 
+export interface ProjectContext {
+  country?: string | null;
+  province?: string | null;
+  location?: string | null;
+}
+
 export interface FinalizeResult {
   assemblies?: unknown[];
   [key: string]: unknown;
@@ -123,8 +129,16 @@ const callFinalizeBatch = async (
   materialDb: unknown,
   promptRaw: string,
   apiKey: string,
+  projectContext?: ProjectContext,
 ): Promise<unknown[]> => {
-  const userMessage = `INPUT 1 – Assembly Specification JSON (material match). Match assembly_id to takeoff wall_type:
+  const projectContextBlock = projectContext
+    ? `PROJECT CONTEXT (use country + province to select correct construction code gauge requirements):
+${JSON.stringify({ country: projectContext.country ?? null, province: projectContext.province ?? null, location: projectContext.location ?? null }, null, 2)}
+
+`
+    : "";
+
+  const userMessage = `${projectContextBlock}INPUT 1 – Assembly Specification JSON (material match). Match assembly_id to takeoff wall_type:
 ${JSON.stringify(materialMatch, null, 2)}
 
 INPUT 2 – Takeoff JSON (batch). Output ONE assembly for EACH row:
@@ -145,6 +159,7 @@ Output exactly ${takeoffBatch.length} assemblies in {"assemblies": [...]}. One p
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        // model: "openai/gpt-4o-mini",
         max_tokens: 32768,
         messages: [
           { role: "system", content: promptRaw },
@@ -195,7 +210,8 @@ Output exactly ${takeoffBatch.length} assemblies in {"assemblies": [...]}. One p
 export const finalizeAssembliesWithTakeoff = async (
   materialMatch: FinalizeInput,
   apiKey: string,
-  takeoffData?: unknown[], // Strategy 1: Accept takeoff data as parameter instead of reading from file
+  takeoffData?: unknown[],
+  projectContext?: ProjectContext,
 ): Promise<FinalizeResult> => {
   const dataDir = path.join(process.cwd(), "data");
   const promptPath = path.join(process.cwd(), "prompt", "prompt.txt");
@@ -206,7 +222,10 @@ export const finalizeAssembliesWithTakeoff = async (
     takeoffRows = takeoffData;
   } else {
     // Fallback: read from file (for legacy calls)
-    const takeoffRaw = await readFile(path.join(dataDir, "take_off_data.json"), "utf-8");
+    const takeoffRaw = await readFile(
+      path.join(dataDir, "take_off_data.json"),
+      "utf-8",
+    );
     takeoffRows = JSON.parse(takeoffRaw) as unknown[];
   }
 
@@ -236,6 +255,7 @@ export const finalizeAssembliesWithTakeoff = async (
           materialDb,
           promptRaw,
           apiKey,
+          projectContext,
         );
         break;
       } catch (err) {

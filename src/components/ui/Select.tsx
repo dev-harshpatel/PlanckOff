@@ -232,7 +232,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
                         minWidth: variant === 'default' || variant === 'filter' ? `${MIN_DROPDOWN_WIDTH_PX}px` : undefined,
                     }}
                     className={[
-                        'w-full rounded-lg border transition-all text-left overflow-hidden',
+                        'w-full rounded-lg border transition-all text-left',
                         'focus:outline-none focus:ring-2 focus:ring-emerald-500',
                         'disabled:cursor-not-allowed disabled:opacity-60',
                         'flex items-center gap-2',

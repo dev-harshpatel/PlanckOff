@@ -15,7 +15,7 @@ import {
   saveTakeoffOutput,
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
-// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 // Hobby plan max: 300s. Pro allows up to 900s.
 export const maxDuration = 300;
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     );
     // const assemblyPath = await writeJsonToLocal("assembly", assemblyPayload);
     console.log(`${TAG} Step 1 done [${elapsed(step1Start)}] — ${extractResult.assemblies.length} assemblies`);
-    console.log(`${TAG}   → DB: ${assemblySaved?.id ?? "ok"}`);
+    console.log(`${TAG}   → DB: ${assemblySaved?.id ?? "ok"} | Local: (disabled)`);
 
     // ── Step 2: Excel → Takeoff JSON ─────────────────────────────────
     console.log(`\n${TAG} ── Step 2/4: Parsing Excel takeoff ──`);
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     );
     // const takeoffPath = await writeJsonToLocal("takeoff", takeoffPayload);
     console.log(`${TAG} Step 2 done [${elapsed(step2Start)}] — ${takeoffRecords.length} takeoff rows`);
-    console.log(`${TAG}   → DB: ${takeoffSaved?.id ?? "ok"}`);
+    console.log(`${TAG}   → DB: ${takeoffSaved?.id ?? "ok"} | Local: (disabled)`);
 
     // ── Step 3: Load Material Database ───────────────────────────────
     console.log(`\n${TAG} ── Step 3/4: Loading material database ──`);
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
       takeoffSaved?.id,
     );
     // const finalPath = await writeJsonToLocal("final_output", finalPayload);
-    console.log(`${TAG}   → DB: ${finalSaved?.id ?? "ok"}`);
+    console.log(`${TAG}   → DB: ${finalSaved?.id ?? "ok"} | Local: (disabled)`);
 
     // ── Summary ──────────────────────────────────────────────────────
     const totalTime = elapsed(pipelineStart);

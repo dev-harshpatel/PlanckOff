@@ -48,13 +48,6 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
         { value: "HM Frames", label: "HM Frames" },
     ];
 
-    const ceilingSubtypeOptions = [
-        { value: "Suspended", label: "Suspended" },
-        { value: "Hard Lid", label: "Hard Lid" },
-        { value: "Baffles", label: "Baffles" },
-        { value: "Steel Joist", label: "Steel Joist" },
-    ];
-
     return (
         <div className="w-[300px] bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
             <div className="p-6 space-y-6">
@@ -101,48 +94,26 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                         className="font-bold"
                     />
 
-                    <div className="grid grid-cols-2 gap-2">
-                        <SelectField
-                            label="Category"
-                            value={
-                                tempAssembly.assemblyType ||
-                                "Interior Walls"
-                            }
-                            onValueChange={(val) => {
-                                const nextAssemblyType = val as WallAssembly["assemblyType"];
-                                setTempAssembly({
-                                    ...tempAssembly,
-                                    assemblyType: nextAssemblyType,
-                                });
-                                updateAssemblyInfo(
-                                    assembly.id,
-                                    "assemblyType",
-                                    nextAssemblyType,
-                                );
-                            }}
-                            options={categoryOptions}
-                        />
-                        {tempAssembly.assemblyType === "Ceiling" && (
-                            <SelectField
-                                label="Grid/Type"
-                                value={tempAssembly.ceilingSubtype || "Suspended"}
-                                onValueChange={(val) => {
-                                    const nextSubtype =
-                                        val as WallAssembly["ceilingSubtype"];
-                                    setTempAssembly({
-                                        ...tempAssembly,
-                                        ceilingSubtype: nextSubtype,
-                                    });
-                                    updateAssemblyInfo(
-                                        assembly.id,
-                                        "ceilingSubtype",
-                                        nextSubtype,
-                                    );
-                                }}
-                                options={ceilingSubtypeOptions}
-                            />
-                        )}
-                    </div>
+                    <SelectField
+                        label="Category"
+                        value={
+                            tempAssembly.assemblyType ||
+                            "Interior Walls"
+                        }
+                        onValueChange={(val) => {
+                            const nextAssemblyType = val as WallAssembly["assemblyType"];
+                            setTempAssembly({
+                                ...tempAssembly,
+                                assemblyType: nextAssemblyType,
+                            });
+                            updateAssemblyInfo(
+                                assembly.id,
+                                "assemblyType",
+                                nextAssemblyType,
+                            );
+                        }}
+                        options={categoryOptions}
+                    />
 
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
