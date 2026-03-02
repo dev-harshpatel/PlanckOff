@@ -14,6 +14,7 @@ import {
   deleteAllMaterials,
   getAllMaterials,
 } from "@/lib/db/materials";
+import { invalidateMaterialDbCache } from "@/lib/cache/materialDbCache";
 import { MaterialDefinition } from "@/types";
 
 /**
@@ -66,6 +67,7 @@ export const DELETE = withRoleAuth(
         );
       }
 
+      await invalidateMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "All materials deleted",
@@ -130,6 +132,7 @@ export const POST = withRoleAuth(
           );
         }
 
+        await invalidateMaterialDbCache();
         return NextResponse.json({
           success: true,
           message: "Material created successfully",
@@ -147,6 +150,7 @@ export const POST = withRoleAuth(
           );
         }
 
+        await invalidateMaterialDbCache();
         return NextResponse.json({
           success: true,
           message: `Successfully saved ${data?.length || 0} materials`,

@@ -4,13 +4,18 @@ INPUTS: (1) Extracted assemblies (assemblies, materials, raw_text, thickness_mm,
 
 RULES:
 1) Material match: Use category, thickness (mm→inch OK), keywords (Type X, Regular, Shaftliner, Furring, CH Stud). No match → null.
-2) Metal stud: Also attach matching TRACK and Deflection/Slotted track from DB (same width).
+2) Metal stud — EXACTLY ONE stud and ONE track per framing member:
+   - Select EXACTLY ONE stud gauge from DB. Use the gauge specified in the assembly; if unspecified, default to 25ga (18mil).
+   - Attach EXACTLY ONE standard track of the SAME gauge as the selected stud.
+   - Only add ONE Deflection or Slotted track if the assembly explicitly requires head-of-wall deflection (e.g. fire-rated, seismic, or slotted track is mentioned). Otherwise omit.
+   - NEVER return multiple studs or tracks of different gauges for the same framing member.
 3) Screws: Add from DB — drywall screws for gypsum, fire-rated for Type X, framing/tek for metal studs & furring. No labor unless in DB.
 4) Fire rating non-null: Attach fire sealant/caulking material + fire-stop labor from DB. STC/sound: acoustic sealant + labor if in DB.
-5) Labor: Gypsum→Hang Drywall + Type X premium if Type X; Sheathing/Shaftliner→Shaftliner install; Metal studs→Install Metal Studs; CH→Shaftwall Framing; Furring→Furring Channel; Batt→Install Batt; Sealants→Fire-Stop/Caulking. Labor additive.
+5) Labor: Gypsum→Hang Drywall + Tape & Finish; Sheathing/Shaftliner→Shaftliner install; Metal studs→Install Metal Studs; CH→Shaftwall Framing; Furring→Furring Channel; Batt→Install Batt; Sealants→Fire-Stop/Caulking. Labor additive.
 6) Do NOT invent codes, SKUs, or sealants. Only use DB entries.
 7) SKIP null/empty materials: If an extracted material has null or empty raw_text, OMIT it entirely from the output. Do not match, do not guess, do not assign any materials or labor to it. Only process materials that have a real, non-null raw_text value.
 8) REQUIRED — section: Each matched_materials and matched_labor entry MUST include the "section" field. Copy the exact "section" value (e.g. "09 22 16", "09 29 00", "01 00 00") from the DB entry you matched. Never omit section.
+9) Insulation: Match batt R-value to stud cavity depth — 92mm/3-5/8" studs → R-13 (3.5" batt); 140mm/5-1/2" studs → R-21; 152mm/6" studs → R-19 (6.25" batt). Use extracted thickness_mm to determine the correct insulation. When uncertain, prefer the shallower/lighter R-value that fits the stud depth.
 
 OUTPUT (valid JSON only, no markdown):
 {"assemblies":[{"assembly_id":"string","materials_costing":[{"extracted_material":{...},"matched_materials":[{"code","section","description","manufacturer","unit","unit_cost"}],"matched_labor":[{"code","section","description","unit","unit_cost"}]}]}]}

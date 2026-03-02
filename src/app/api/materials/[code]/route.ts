@@ -14,6 +14,7 @@ import {
   getMaterialByCode,
   updateMaterial,
 } from "@/lib/db/materials";
+import { invalidateMaterialDbCache } from "@/lib/cache/materialDbCache";
 import { MaterialDefinition } from "@/types";
 
 /**
@@ -119,6 +120,7 @@ export const PUT = withRoleAuth(
         );
       }
 
+      await invalidateMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "Material updated successfully",
@@ -161,6 +163,7 @@ export const DELETE = withRoleAuth(
         );
       }
 
+      await invalidateMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "Material deleted successfully",

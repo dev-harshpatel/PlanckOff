@@ -16,7 +16,7 @@ import {
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage"; // disabled — local FS writes break on Vercel
 import {
   type MaterialMatchInput,
   type ProjectContext,

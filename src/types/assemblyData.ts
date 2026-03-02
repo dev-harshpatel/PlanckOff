@@ -70,7 +70,7 @@ export interface MatchedLabor {
 }
 
 export interface MaterialsCostingItem {
-  extracted_material: MaterialItem;
+  extracted_material: MaterialItem | null;
   matched_materials: MatchedMaterial[];
   matched_labor: MatchedLabor[];
 }

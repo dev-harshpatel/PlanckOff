@@ -32,7 +32,7 @@ export const mapAssemblyMaterialData = (
     // Get OC from steel_framing if available (assembly_extractions format)
     // Fall back to extracted_material.spacing when assembly.materials is undefined (final_output format)
     const steelFraming = assembly.materials?.steel_framing?.find(
-      (sf) => sf.raw_text === extracted_material.raw_text,
+      (sf) => sf.raw_text === extracted_material?.raw_text,
     );
     const spacingRaw =
       steelFraming?.spacing ?? extracted_material?.spacing ?? null;
@@ -49,7 +49,7 @@ export const mapAssemblyMaterialData = (
 
     // Get layers from gypsum_board only (not applicable to steel framing, labor)
     const gypsumBoard = assembly.materials?.gypsum_board?.find(
-      (gb) => gb.raw_text === extracted_material.raw_text,
+      (gb) => gb.raw_text === extracted_material?.raw_text,
     );
     const isGypsum = !!gypsumBoard || /GYPSUM|WALLBOARD|DRYWALL|TYPE X/i.test(rawText);
     const layering = isGypsum ? (gypsumBoard?.layers ?? extracted_material?.layers ?? "") : "";

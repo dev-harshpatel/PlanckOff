@@ -218,6 +218,81 @@ const expandLaborForHeight = (
   });
 };
 
+// ─── Steel Framing Gauge Filter ────────────────────────────────────────────────
+
+/**
+ * Extracts the mil (thousandths of an inch) value from a material code.
+ * e.g. "ST-358-18" → 18, "TR-358-43" → 43, "DLT-358-33" → 33
+ */
+const getMilFromCode = (code: string): number | null => {
+  const m = code.match(/-(\d{2,3})$/);
+  return m ? parseInt(m[1], 10) : null;
+};
+
+/**
+ * Returns the target mil value for a given wall height using USA ASTM C645/C955 defaults.
+ * ≤ 12 ft → 25ga (18mil), 12–20 ft → 20ga (30mil), > 20 ft → 18ga (43mil)
+ */
+const getTargetMilForHeight = (heightFt: number): number => {
+  if (heightFt <= 12) return 18;
+  if (heightFt <= 20) return 30;
+  return 43;
+};
+
+const STUD_CODE_RE = /^ST-/i;
+const STD_TRACK_CODE_RE = /^TR-/i;
+const SPECIAL_TRACK_CODE_RE = /^(DLT|SLT)-/i;
+const FRAMING_SCREW_CODE_RE = /^SC-FRM/i;
+const STEEL_FRAMING_TEXT_RE = /STUD|FURRING|TRACK|METAL STUD/i;
+
+/** Given a list of same-category framing items, keep only the one closest to targetMil. */
+const selectBestGauge = <T extends { code: string }>(items: T[], targetMil: number): T[] => {
+  if (items.length <= 1) return items;
+  const withMil = items.map((item) => ({ item, mil: getMilFromCode(item.code) }));
+  const exact = withMil.find((x) => x.mil === targetMil);
+  if (exact) return [exact.item];
+  // Closest mil >= target (next heavier gauge up)
+  const above = withMil
+    .filter((x) => x.mil != null && x.mil >= targetMil)
+    .sort((a, b) => (a.mil ?? 999) - (b.mil ?? 999));
+  if (above.length > 0) return [above[0].item];
+  // Fallback: lightest available
+  const sorted = withMil
+    .filter((x) => x.mil != null)
+    .sort((a, b) => (a.mil ?? 999) - (b.mil ?? 999));
+  return sorted.length > 0 ? [sorted[0].item] : [items[0]];
+};
+
+/**
+ * For steel framing matched_materials: keep exactly one stud, one standard track,
+ * at most one special track (DLT/SLT), and all framing screws.
+ * Gauge selection is based on wall height.
+ */
+const filterSteelFramingGauges = <T extends { code: string }>(
+  materials: T[],
+  heightFt: number,
+): T[] => {
+  const targetMil = getTargetMilForHeight(heightFt);
+  const studs = materials.filter((m) => STUD_CODE_RE.test(m.code));
+  const stdTracks = materials.filter((m) => STD_TRACK_CODE_RE.test(m.code));
+  const specialTracks = materials.filter((m) => SPECIAL_TRACK_CODE_RE.test(m.code));
+  const screws = materials.filter((m) => FRAMING_SCREW_CODE_RE.test(m.code));
+  const other = materials.filter(
+    (m) =>
+      !STUD_CODE_RE.test(m.code) &&
+      !STD_TRACK_CODE_RE.test(m.code) &&
+      !SPECIAL_TRACK_CODE_RE.test(m.code) &&
+      !FRAMING_SCREW_CODE_RE.test(m.code),
+  );
+  return [
+    ...selectBestGauge(studs, targetMil),
+    ...selectBestGauge(stdTracks, targetMil),
+    ...selectBestGauge(specialTracks, targetMil),
+    ...screws,
+    ...other,
+  ];
+};
+
 // ─── Takeoff Helpers ───────────────────────────────────────────────────────────
 
 const parseHeight = (h: string | number | null | undefined): number => {
@@ -310,6 +385,8 @@ const enrichMaterialsCosting = (
 
   return materialsCosting.map((item) => {
     const ext = item.extracted_material;
+    if (!ext) return item; // AI occasionally returns null extracted_material — skip enrichment
+
     const enriched: MaterialItem = {
       ...ext,
       area_parementer: takeoff.is_ceiling ? takeoff.area_parementer : null,
@@ -329,9 +406,20 @@ const enrichMaterialsCosting = (
       );
     }
 
+    // Apply gauge filtering for steel framing items (walls only) so that stale
+    // match data with multiple gauge variants is reduced to one stud + one track.
+    const rawMatchedMaterials = [...(item.matched_materials as MatchedMaterial[])];
+    const isSteelFraming =
+      !takeoff.is_ceiling &&
+      STEEL_FRAMING_TEXT_RE.test(ext.raw_text ?? "") &&
+      rawMatchedMaterials.some((m) => STUD_CODE_RE.test(m.code) || STD_TRACK_CODE_RE.test(m.code));
+    const filteredMaterials = isSteelFraming
+      ? filterSteelFramingGauges(rawMatchedMaterials, takeoff.height_ft)
+      : rawMatchedMaterials;
+
     return {
       extracted_material: enriched,
-      matched_materials: [...(item.matched_materials as MatchedMaterial[])],
+      matched_materials: filteredMaterials,
       matched_labor: expandedLabor,
     };
   });

@@ -91,13 +91,11 @@ export const mapJsonToWallAssemblies = (
           );
 
         const spacingDisplay =
-          typeof spacingRaw === "string"
-            ? spacingRaw
-            : spacingValue != null
-              ? `${spacingValue} mm O.C.`
-              : isSteelFraming
-                ? '16"'
-                : "";
+          spacingValue != null && spacingValue > 0
+            ? `${Math.round(spacingValue / 25.4)}"`
+            : isSteelFraming
+              ? '16"'
+              : "";
 
         // Get layers from gypsum_board if available (assembly_extractions format)
         // Fall back to extracted_material.layers when assembly.materials is undefined (final_output format)
@@ -226,13 +224,11 @@ export const mapFinalOutputToWallAssemblies = (
           String(extracted_material?.type ?? ""),
         );
       const spacingDisplay =
-        typeof spacingRaw === "string"
-          ? spacingRaw
-          : spacingValue != null
-            ? `${spacingValue} mm O.C.`
-            : isSteelFraming
-              ? '16"'
-              : "";
+        spacingValue != null && spacingValue > 0
+          ? `${Math.round(spacingValue / 25.4)}"`
+          : isSteelFraming
+            ? '16"'
+            : "";
 
       const isGypsumBoard = /GYPSUM|WALLBOARD|DRYWALL|TYPE X/i.test(rawText);
       const layers = isGypsumBoard

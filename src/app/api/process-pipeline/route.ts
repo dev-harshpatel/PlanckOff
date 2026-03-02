@@ -15,7 +15,7 @@ import {
   saveTakeoffOutput,
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage"; // disabled — local FS writes break on Vercel
 
 // Hobby plan max: 300s. Pro allows up to 900s.
 export const maxDuration = 300;
