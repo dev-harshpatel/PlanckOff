@@ -103,7 +103,7 @@ interface EstimateResultProps {
   /** Updates materialCostingData locally so costs recalculate immediately on blur. DB save happens on Save button click. */
   onWasteChange?: (code: string, wastePercent: number, isLabor: boolean) => void;
   onImportComplete?: () => void;
-  onAssemblySaveComplete?: () => void;
+  onAssemblySaveComplete?: (updatedCostingData: MaterialCosting[]) => void;
   overrideMap?: ProjectOverrideMap;
   onOverrideMapChange?: React.Dispatch<React.SetStateAction<ProjectOverrideMap>>;
 }
@@ -858,7 +858,28 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     value: AssemblyComponent[keyof AssemblyComponent],
   ) => {
     setAssemblies((prev) => {
+      const editedAssembly = prev.find((a) => a.id === assemblyId);
+      const editedComponent = editedAssembly?.components.find(
+        (c) => c.id === componentId,
+      );
+      const projectWideMaterialCode =
+        (field === "wasteFactor" || field === "overrideMatCost") &&
+        editedComponent?.materialCode
+          ? editedComponent.materialCode
+          : null;
+
       const next = prev.map((a) => {
+        if (projectWideMaterialCode) {
+          return {
+            ...a,
+            components: a.components.map((c) =>
+              c.materialCode === projectWideMaterialCode
+                ? { ...c, [field]: value }
+                : c,
+            ),
+          };
+        }
+
         if (a.id !== assemblyId) return a;
         return {
           ...a,
@@ -875,27 +896,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   };
 
   /**
-   * Persist assembly component overrides (unit_cost, quantity, waste_percent) to the final output in DB.
-   * Called by the Save button in AssemblyEditorModal.
-   * Unit cost overrides are applied project-wide (all assemblies) for single source of truth.
+   * Build all override maps for a given assembly:
+   * - project-wide overrides (unit cost + waste%) keyed by material code
+   * - per-assembly overrides (qty, height, layering, usage, oc) for this assembly only
    */
-  const handleSaveAssembly = useCallback(async (savedAssembly: WallAssembly) => {
-    if (!finalOutputId) return;
-
-    // Prefer the latest assembly from the always-current ref to avoid stale closure
-    // (e.g. when a NumberInput blur and Save click happen in the same event cycle).
-    const latestAssembly = assembliesRef.current.find(a => a.id === savedAssembly.id);
-    const assemblyToSave = latestAssembly ?? savedAssembly;
-
-    // Parse assembly_id and height_ft from composite id ("P1@9.7")
-    const lastAt = assemblyToSave.id.lastIndexOf('@');
-    const assemblyCode = lastAt >= 0 ? assemblyToSave.id.slice(0, lastAt) : assemblyToSave.id;
-    const heightFt = lastAt >= 0 ? parseFloat(assemblyToSave.id.slice(lastAt + 1)) : null;
-
-    // Build override maps — unit_cost is project-wide; all others are per-assembly-instance
+  const buildAssemblyOverrideMaps = (assemblyToSave: WallAssembly) => {
     const materialUnitCostOverrides = new Map<string, number>();
     const laborUnitCostOverrides = new Map<string, number>();
-    // Per-assembly-instance overrides (keyed by materialCode, applied only to the edited assembly)
     const matQty = new Map<string, number>();
     const matWaste = new Map<string, number>();
     const matHeight = new Map<string, number>();
@@ -905,33 +912,111 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     const labHeight = new Map<string, number>();
     const labWaste = new Map<string, number>();
 
+    console.log("[AsmSave DEBUG] buildAssemblyOverrideMaps: start", {
+      assemblyId: assemblyToSave.id,
+      componentCount: assemblyToSave.components.length,
+    });
+
     for (const comp of assemblyToSave.components) {
       if (!comp.materialCode) continue;
-      const isLabor = comp.materialCode.startsWith('LAB-');
+      const isLabor = comp.materialCode.startsWith("LAB-");
+
       if (comp.overrideMatCost != null) {
-        if (isLabor) laborUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
-        else materialUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
+        if (isLabor) {
+          laborUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
+        } else {
+          materialUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
+        }
       }
+
       if (!isLabor) {
-        if (comp.overrideQuantity != null) matQty.set(comp.materialCode, comp.overrideQuantity);
-        if (comp.wasteFactor != null) matWaste.set(comp.materialCode, comp.wasteFactor * 100);
-        if (comp.overrideHeight != null) matHeight.set(comp.materialCode, comp.overrideHeight);
+        if (comp.overrideQuantity != null) {
+          matQty.set(comp.materialCode, comp.overrideQuantity);
+        }
+        if (comp.wasteFactor != null) {
+          matWaste.set(comp.materialCode, comp.wasteFactor * 100);
+        }
+        if (comp.overrideHeight != null) {
+          matHeight.set(comp.materialCode, comp.overrideHeight);
+        }
         if (comp.usage) matUsage.set(comp.materialCode, comp.usage);
-        if (comp.overrideLayers != null) matLayers.set(comp.materialCode, comp.overrideLayers);
-        if (comp.ocSpacing != null) matOc.set(comp.materialCode, comp.ocSpacing);
+        if (comp.overrideLayers != null) {
+          matLayers.set(comp.materialCode, comp.overrideLayers);
+        }
+        if (comp.ocSpacing != null) {
+          matOc.set(comp.materialCode, comp.ocSpacing);
+        }
       } else {
-        if (comp.overrideHeight != null) labHeight.set(comp.materialCode, comp.overrideHeight);
-        if (comp.wasteFactor != null) labWaste.set(comp.materialCode, comp.wasteFactor * 100);
+        if (comp.overrideHeight != null) {
+          labHeight.set(comp.materialCode, comp.overrideHeight);
+        }
+        if (comp.wasteFactor != null) {
+          labWaste.set(comp.materialCode, comp.wasteFactor * 100);
+        }
       }
     }
 
-    // Apply overrides:
-    // - unit_cost and waste_percent → ALL assemblies (project-wide single source of truth)
-    // - qty, height, layers, usage, oc → edited assembly only (per-instance)
-    const updatedCostingData = materialCostingData.map((costing) => {
+    console.log("[AsmSave DEBUG] buildAssemblyOverrideMaps: maps built", {
+      materialUnitCostOverrides: Array.from(materialUnitCostOverrides.entries()),
+      laborUnitCostOverrides: Array.from(laborUnitCostOverrides.entries()),
+      matQty: Array.from(matQty.entries()),
+      matWaste: Array.from(matWaste.entries()),
+      matHeight: Array.from(matHeight.entries()),
+      matUsage: Array.from(matUsage.entries()),
+      matLayers: Array.from(matLayers.entries()),
+      matOc: Array.from(matOc.entries()),
+      labHeight: Array.from(labHeight.entries()),
+      labWaste: Array.from(labWaste.entries()),
+    });
+
+    return {
+      materialUnitCostOverrides,
+      laborUnitCostOverrides,
+      matQty,
+      matWaste,
+      matHeight,
+      matUsage,
+      matLayers,
+      matOc,
+      labHeight,
+      labWaste,
+    };
+  };
+
+  /**
+   * Apply the given override maps onto the current materialCostingData snapshot.
+   * - unit_cost + waste_percent are applied project-wide (all assemblies)
+   * - per-assembly overrides are applied only to the edited assembly instance
+   */
+  const applyOverridesToCostingData = (
+    assemblyCode: string,
+    heightFt: number | null,
+    overrideMaps: ReturnType<typeof buildAssemblyOverrideMaps>,
+  ): MaterialCosting[] => {
+    const {
+      materialUnitCostOverrides,
+      laborUnitCostOverrides,
+      matQty,
+      matWaste,
+      matHeight,
+      matUsage,
+      matLayers,
+      matOc,
+      labHeight,
+      labWaste,
+    } = overrideMaps;
+
+    console.log("[AsmSave DEBUG] applyOverridesToCostingData: input snapshot", {
+      assemblyCode,
+      heightFt,
+      materialCostingAssemblies: materialCostingData.length,
+    });
+
+    const updated = materialCostingData.map((costing) => {
       const isEditedAssembly =
         costing.assembly_id === assemblyCode &&
-        (heightFt === null || (costing as unknown as { height_ft?: number }).height_ft === heightFt);
+        (heightFt === null ||
+          (costing as unknown as { height_ft?: number }).height_ft === heightFt);
 
       return {
         ...costing,
@@ -940,44 +1025,173 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
           matched_materials: item.matched_materials.map((mat) => {
             const base = {
               ...mat,
-              unit_cost: materialUnitCostOverrides.get(mat.code) ?? mat.unit_cost,
+              unit_cost:
+                materialUnitCostOverrides.get(mat.code) ?? mat.unit_cost,
               // waste_percent is project-wide — same material has the same waste across all assemblies
-              ...(matWaste.has(mat.code) && { waste_percent: matWaste.get(mat.code) }),
+              ...(matWaste.has(mat.code) && {
+                waste_percent: matWaste.get(mat.code),
+              }),
             };
-            if (!isEditedAssembly) return base;
+
+            if (!isEditedAssembly) {
+              return base;
+            }
+
             // Apply per-assembly-instance overrides (only to the edited assembly)
-            if (matQty.has(mat.code)) base.quantity = matQty.get(mat.code);
-            if (matHeight.has(mat.code)) (base as Record<string, unknown>).height_ft_override = matHeight.get(mat.code);
-            if (matUsage.has(mat.code)) (base as Record<string, unknown>).usage_override = matUsage.get(mat.code);
-            if (matLayers.has(mat.code)) (base as Record<string, unknown>).layers_override = matLayers.get(mat.code);
-            if (matOc.has(mat.code)) (base as Record<string, unknown>).oc_spacing_override = matOc.get(mat.code);
+            if (matQty.has(mat.code)) {
+              base.quantity = matQty.get(mat.code);
+            }
+            if (matHeight.has(mat.code)) {
+              (base as Record<string, unknown>).height_ft_override =
+                matHeight.get(mat.code);
+            }
+            if (matUsage.has(mat.code)) {
+              (base as Record<string, unknown>).usage_override =
+                matUsage.get(mat.code);
+            }
+            if (matLayers.has(mat.code)) {
+              (base as Record<string, unknown>).layers_override =
+                matLayers.get(mat.code);
+            }
+            if (matOc.has(mat.code)) {
+              (base as Record<string, unknown>).oc_spacing_override =
+                matOc.get(mat.code);
+            }
+
+            console.log("[AsmSave DEBUG] material before→after", {
+              context: "applyOverridesToCostingData",
+              scope: "material",
+              assembly_id: costing.assembly_id,
+              height_ft: (costing as unknown as { height_ft?: number }).height_ft,
+              code: mat.code,
+              unit_cost_before: mat.unit_cost,
+              unit_cost_after: base.unit_cost,
+              waste_percent_before: mat.waste_percent,
+              waste_percent_after: (base as typeof mat).waste_percent,
+              quantity_before: mat.quantity,
+              quantity_after: base.quantity,
+              height_ft_override_before: (mat as unknown as { height_ft_override?: number }).height_ft_override,
+              height_ft_override_after: (base as unknown as { height_ft_override?: number }).height_ft_override,
+            });
+
             return base;
           }),
           matched_labor: (item.matched_labor ?? []).map((lab) => {
             const base = {
               ...lab,
-              unit_cost: laborUnitCostOverrides.get(lab.code) ?? lab.unit_cost,
+              unit_cost:
+                laborUnitCostOverrides.get(lab.code) ?? lab.unit_cost,
               // labor waste_percent is also project-wide
-              ...(labWaste.has(lab.code) && { waste_percent: labWaste.get(lab.code) }),
+              ...(labWaste.has(lab.code) && {
+                waste_percent: labWaste.get(lab.code),
+              }),
             };
-            if (isEditedAssembly && labHeight.has(lab.code)) base.height_ft = labHeight.get(lab.code);
+
+            if (isEditedAssembly && labHeight.has(lab.code)) {
+              base.height_ft = labHeight.get(lab.code);
+            }
+
+            console.log("[AsmSave DEBUG] material before→after", {
+              context: "applyOverridesToCostingData",
+              scope: "labor",
+              assembly_id: costing.assembly_id,
+              height_ft: (costing as unknown as { height_ft?: number }).height_ft,
+              code: lab.code,
+              unit_cost_before: lab.unit_cost,
+              unit_cost_after: base.unit_cost,
+              waste_percent_before: lab.waste_percent,
+              waste_percent_after: (base as typeof lab).waste_percent,
+              height_ft_before: lab.height_ft,
+              height_ft_after: base.height_ft,
+            });
+
             return base;
           }),
         })),
       };
     });
 
-    const res = await fetch(`/api/final-output/${finalOutputId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ assemblies: updatedCostingData }),
+    const debugAssembly = updated.find(
+      (c) => c.assembly_id === assemblyCode,
+    );
+    console.log("[AsmSave DEBUG] applyOverridesToCostingData: updated sample", {
+      assemblyCode,
+      heightFt,
+      sampleAssembly: debugAssembly,
     });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.error ?? 'Failed to save');
 
-    onAssemblySaveComplete?.();
-  }, [finalOutputId, materialCostingData, onAssemblySaveComplete]);
+    return updated;
+  };
+
+  /**
+   * Persist assembly component overrides (unit_cost, quantity, waste_percent, Hgt/OC/Layering)
+   * to the final output in DB. Called only by the Save button in AssemblyEditorModal.
+   */
+  const handleSaveAssembly = useCallback(
+    async (savedAssembly: WallAssembly) => {
+      if (!finalOutputId) return;
+
+      // Prefer the latest assembly from the always-current ref to avoid stale closure
+      // (e.g. when a NumberInput blur and Save click happen in the same event cycle).
+      const latestAssembly = assembliesRef.current.find(
+        (a) => a.id === savedAssembly.id,
+      );
+      const assemblyToSave = latestAssembly ?? savedAssembly;
+
+      // Parse assembly_id and height_ft from composite id ("P1@9.7")
+      const lastAt = assemblyToSave.id.lastIndexOf("@");
+      const assemblyCode =
+        lastAt >= 0
+          ? assemblyToSave.id.slice(0, lastAt)
+          : assemblyToSave.id;
+      const heightFt =
+        lastAt >= 0
+          ? parseFloat(assemblyToSave.id.slice(lastAt + 1))
+          : null;
+
+      console.log("[AsmSave DEBUG] handleSaveAssembly: start", {
+        rawAssemblyId: assemblyToSave.id,
+        assemblyCode,
+        heightFt,
+      });
+
+      const overrideMaps = buildAssemblyOverrideMaps(assemblyToSave);
+      const updatedCostingData = applyOverridesToCostingData(
+        assemblyCode,
+        heightFt,
+        overrideMaps,
+      );
+
+      console.log("[AsmSave DEBUG] handleSaveAssembly: PATCH payload summary", {
+        finalOutputId,
+        assembliesCount: updatedCostingData.length,
+      });
+
+      const res = await fetch(`/api/final-output/${finalOutputId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ assemblies: updatedCostingData }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        console.error("[AsmSave DEBUG] handleSaveAssembly: PATCH error", {
+          status: res.status,
+          body: json,
+        });
+        throw new Error(json.error ?? "Failed to save");
+      }
+
+      console.log("[AsmSave DEBUG] handleSaveAssembly: PATCH success", {
+        status: res.status,
+        dbFilename: json.debug?.filename,
+        localFileStatus: json.debug?.localFileStatus,
+      });
+
+      onAssemblySaveComplete?.(updatedCostingData);
+    },
+    [finalOutputId, materialCostingData, onAssemblySaveComplete],
+  );
 
   const handleFormulaChange = (
     assemblyId: string,

@@ -186,6 +186,27 @@ function ProjectContent() {
         const assemblyDataArray = (data.assemblyData?.assemblies || []) as AssemblyData[];
         const costingDataArray = (data.materialData?.assemblies || []) as MaterialCosting[];
 
+        const sample = costingDataArray[0];
+        console.log("[AsmSave DEBUG] loadAssemblyData: from API", {
+          projectId,
+          assembliesCount: costingDataArray.length,
+          sampleAssembly: sample,
+        });
+        if (sample) {
+          const allMatched = sample.materials_costing?.flatMap(
+            (mc: any) => mc.matched_materials ?? [],
+          );
+          console.log("[AsmSave DEBUG] loadAssemblyData: sample matched_materials", {
+            codes: Array.isArray(allMatched) ? allMatched.map((m: any) => ({
+              code: m.code,
+              waste_percent: m.waste_percent,
+              unit_cost: m.unit_cost,
+              quantity: m.quantity,
+              height_ft_override: (m as Record<string, unknown>).height_ft_override,
+            })) : [],
+          });
+        }
+
         const hasFinalOutputFormat =
           costingDataArray.length > 0 &&
           costingDataArray.every(
@@ -369,6 +390,13 @@ function ProjectContent() {
       })),
     }));
     setMaterialCostingData(updatedData);
+  };
+
+  const handleAssemblySaveComplete = (updatedCostingData: MaterialCosting[]) => {
+    setMaterialCostingData(updatedCostingData);
+
+    const mappedAssemblies = mapFinalOutputToWallAssemblies(updatedCostingData);
+    setAssemblies(mappedAssemblies);
   };
 
   const handleReset = () => {
@@ -569,9 +597,7 @@ function ProjectContent() {
           onImportComplete={() =>
             setAssemblyDataRefreshTrigger((t) => t + 1)
           }
-          onAssemblySaveComplete={() =>
-            setAssemblyDataRefreshTrigger((t) => t + 1)
-          }
+          onAssemblySaveComplete={handleAssemblySaveComplete}
         />
       </div>
     </div>
