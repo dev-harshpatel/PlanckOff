@@ -5,104 +5,7 @@
 
 import { readFile } from "fs/promises";
 import path from "path";
-
-const repairJSON = (input: string): string => {
-  try {
-    JSON.parse(input);
-    return input;
-  } catch {
-    // continue to repair
-  }
-
-  let fixed = input
-    .replace(/^```(?:json)?\s*\n?/, "")
-    .replace(/\n?```\s*$/, "")
-    .trim();
-
-  // Strategy 1: Truncate to last complete assembly (handles truncation + unterminated strings)
-  // Match end of assembly: "status":"OK"} or "status":"REVIEW REQUIRED"} (with or without trailing comma/])
-  const statusEndPattern = /"status"\s*:\s*"(?:OK|REVIEW REQUIRED)"\s*}/g;
-  let lastCompleteEnd = -1;
-  let match;
-  while ((match = statusEndPattern.exec(fixed)) !== null) {
-    lastCompleteEnd = match.index + match[0].length;
-  }
-  if (lastCompleteEnd > 0) {
-    let truncated = fixed.substring(0, lastCompleteEnd);
-    truncated = truncated.replace(/,\s*$/, "");
-    truncated += "\n  ]\n}";
-    try {
-      JSON.parse(truncated);
-      return truncated;
-    } catch {
-      // fall through
-    }
-  }
-
-  // Strategy 2: Alternative pattern - } ] } (end of labor array, then assembly)
-  const assemblyEndPattern = /\}\s*\]\s*\}\s*(?=,|\])/g;
-  lastCompleteEnd = -1;
-  while ((match = assemblyEndPattern.exec(fixed)) !== null) {
-    lastCompleteEnd = match.index + match[0].length;
-  }
-  if (lastCompleteEnd > 0) {
-    let truncated = fixed.substring(0, lastCompleteEnd);
-    truncated = truncated.replace(/,\s*$/, "");
-    truncated += "\n  ]\n}";
-    try {
-      JSON.parse(truncated);
-      return truncated;
-    } catch {
-      // fall through
-    }
-  }
-
-  // Strategy 3: Close unterminated string at end, fix trailing comma
-  let inString = false;
-  let escape = false;
-  for (const ch of fixed) {
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escape = true;
-      continue;
-    }
-    if (ch === '"') inString = !inString;
-  }
-  if (inString) fixed += '"';
-  fixed = fixed.replace(/,\s*$/, "");
-
-  // Strategy 4: Balance brackets
-  const closeMap: Record<string, string> = { "{": "}", "[": "]" };
-  const stack: string[] = [];
-  inString = false;
-  escape = false;
-  for (const ch of fixed) {
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escape = true;
-      continue;
-    }
-    if (ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-    if (ch === "{" || ch === "[") stack.push(ch);
-    if (ch === "}" || ch === "]") stack.pop();
-  }
-  while (stack.length > 0) {
-    const open = stack.pop()!;
-    fixed += closeMap[open];
-  }
-
-  return fixed;
-};
+import { repairJSONForUnifiedOutput, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
 
 export interface FinalizeInput {
   assemblies: unknown[];
@@ -180,17 +83,14 @@ Output exactly ${takeoffBatch.length} assemblies in {"assemblies": [...]}. One p
     choices?: Array<{ message?: { content?: string } }>;
   };
   const raw = data.choices?.[0]?.message?.content ?? "";
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*\n?/, "")
-    .replace(/\n?```\s*$/, "")
-    .trim();
+  const cleaned = stripMarkdownAndTrim(raw);
 
   let parsed: { assemblies?: unknown[] };
   try {
     parsed = JSON.parse(cleaned) as { assemblies?: unknown[] };
   } catch (firstErr) {
     try {
-      parsed = JSON.parse(repairJSON(cleaned)) as { assemblies?: unknown[] };
+      parsed = JSON.parse(repairJSONForUnifiedOutput(cleaned, "[finalize]")) as { assemblies?: unknown[] };
     } catch (repairErr) {
       console.error(
         "[finalize] JSON parse failed. Response length:",

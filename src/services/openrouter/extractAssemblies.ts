@@ -1,107 +1,25 @@
-const PROMPT = `You are a construction document reader extracting assembly material data from PDF drawings. Be THOROUGH — read every line of text for every assembly. Return ONLY valid JSON.
+import { repairJSONForAssemblyExtraction, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
+import type { ExtractionResult } from "@/types/pipeline";
 
-ASSEMBLY ID: Short alphanumeric tag (e.g. W14, WE3, P1, RF2B). Untagged: UN-TAGGED-WALL-1, etc. Never null.
+const EXTRACT_PROMPT = `Extract wall, roof, floor, and CEILING assembly data from ALL pages of the document. Return ONLY valid JSON. No commentary, no markdown.
 
-EXTRACT these material categories:
-- gypsum_board: GYPSUM WALLBOARD, GYPSUM BOARD, DRYWALL, TYPE X, TYPE 'X', fire-rated gypsum (interior finish)
-- gypsum_sheathing: GLASS MAT-FACED GYPSUM SHEATHING (exterior sheathing)
-- steel_framing: STEEL STUDS, METAL STUDS, C-H STUDS, FURRING CHANNEL, TRACKS
-- insulation: BATT INSULATION, ROCK WOOL BATT, SEMI-RIGID MINERAL WOOL, sound batts (extract ALL insulation types — a wall can have BOTH batt insulation AND semi-rigid mineral wool as separate entries)
-- plywood: PLYWOOD, OSB
-- blocking_and_bracing: BLOCKING, BRACING, CROSS BRACING
-- steel_deck: STEEL DECK
-- vapor_barriers: POLY VAPOUR BARRIER, POLYETHYLENE
-- sealants: SEALANT, CAULK (exclude acoustic caulk)
-- trim_and_accessories: TRIM, CORNER BEAD, J-TRIM
+MULTI-PAGE PDFs (critical): Process EVERY page. Ceiling assemblies (C1, C2, C3, C4, C5, etc.) are often on later pages — do not skip them. Extract assemblies from page 1, page 2, and all subsequent pages. Combine all assemblies into one output.
 
-EXCLUDE: Air barriers, cladding (brick/stone/metal/EIFS/siding/fibre cement), roofing membranes, rigid insulation, concrete/CMU/masonry, paint, window/curtain wall, aluminum panels/mullions, back pans, vertical support systems, thermally broken clip systems.
+ASSEMBLY ID: Short alphanumeric tag from page (e.g. W14, WE3, P1, C1, C2, C3, RF2B, WT1a). Ceiling assemblies often use C-prefix (C1, C2, C3, C4, C5). No long names. Untagged: UN-TAGGED-WALL-1, UN-TAGGED-ROOF-1, UN-TAGGED-FLOOR-1, UN-TAGGED-CEILING-1. Never null.
 
-CRITICAL RULES:
-1. READ EVERY LINE: Assembly descriptions list materials line by line. Read from FIRST line to LAST line. Do not stop early. Exterior walls (WE*) typically have materials on BOTH sides — exterior sheathing AND interior gypsum board.
-2. GYPSUM BOARD — NEVER MISS: If an assembly has steel studs, furring, or vapor barrier, it almost certainly has gypsum board as interior finish. Scan the FULL text top-to-bottom. The gypsum board line is often the LAST material listed.
-3. MULTIPLE INSULATION TYPES: A single assembly can have multiple insulation products (e.g. rock wool batt inside stud cavity + semi-rigid mineral wool on exterior). Extract each as a SEPARATE insulation entry.
-4. SCOPE: Only extract materials from THAT assembly's own content. Never copy from another assembly.
-5. LAYERS: "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X" → TWO separate entries each with layers=2. No layer count stated → layers=1. Never layers=null for gypsum.
-6. Each material: "raw_text" = exact verbatim text from PDF. Unstated properties = null.
+EXTRACT: Gypsum board (each layer separate), gypsum sheathing, steel framing (studs/tracks/metal/steel joists/steel angle/wire ties), batt/mineral wool insulation, plywood/OSB, blocking/bracing, steel deck, vapor barriers, sealants, trim/accessories. For ceiling assemblies: gypsum wallboard, shaft liner, steel joists, steel studs, steel angle, wire ties, mineral fibre insulation — extract all as applicable.
 
-SELF-CHECK before outputting each assembly:
-- Did I read ALL lines of text for this assembly, including the last line?
-- If steel_framing or vapor_barriers is non-empty, did I find gypsum_board? (It's almost always there — re-read the assembly)
-- If this is an exterior wall (WE*), did I capture both exterior sheathing AND interior gypsum board?
-- Did I capture ALL insulation types mentioned (there may be more than one)?
-- If fire_rating is not null/NA, are there gypsum boards? (Fire-rated walls always have gypsum)
+EXCLUDE: Air barriers, cladding (brick/stone/metal/EIFS/siding/fibre cement), roofing membranes, rigid insulation, concrete/CMU/masonry, paint, window/curtain wall, aluminum panels/mullions, back pans, vertical support systems. Include sound batts; exclude acoustic caulk.
 
-OUTPUT: {"assemblies":[{"assembly_id":"string","fire_rating":"string|null","stc_rating":"string|null","materials":{"gypsum_board":[],"gypsum_sheathing":[],"steel_framing":[],"insulation":[],"plywood":[],"blocking_and_bracing":[],"steel_deck":[],"vapor_barriers":[],"sealants":[],"trim_and_accessories":[]}}]}
-Each item: raw_text, thickness, size, gauge, spacing, type, layers, description, r_value, depth as applicable or null.`;
+SCOPE (critical): Materials must come ONLY from the content tied to THAT assembly (same row/section/block as its tag). Never copy materials from another assembly. If an assembly's content has no in-scope materials (e.g. only cladding/window/concrete), output it with ALL material arrays empty. One assembly's content = isolated; do not bleed across.
 
-function repairJSON(input: string): string {
-  try {
-    JSON.parse(input);
-    return input;
-  } catch {
-    // continue to repair
-  }
+Each material: "raw_text" = exact verbatim from PDF. Unstated properties = null.
 
-  const assemblyEndPattern = /\}\s*\}\s*(?=,|\])/g;
-  let lastCompleteEnd = -1;
-  let match;
-  while ((match = assemblyEndPattern.exec(input)) !== null) {
-    lastCompleteEnd = match.index + match[0].length;
-  }
+LAYERS (critical): Multiple gypsum layers = separate entries (never merge). If PDF says "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X", output TWO separate entries — each with layers=2 (the total layer count from the PDF as an integer). The "layers" field must always reflect the layer count stated in the PDF (1, 2, 3, etc.). If the PDF does not mention a layer count, set layers=1. Never set layers=null for gypsum board or gypsum sheathing.
 
-  if (lastCompleteEnd > 0) {
-    let fixed = input.substring(0, lastCompleteEnd);
-    fixed = fixed.replace(/,\s*$/, "");
-    fixed += "\n  ]\n}";
-    try {
-      JSON.parse(fixed);
-      return fixed;
-    } catch {
-      // fall through
-    }
-  }
+OUTPUT: JSON only. Structure: assemblies[].assembly_id, fire_rating, stc_rating, materials.{ gypsum_board[], gypsum_sheathing[], steel_framing[], insulation[], plywood[], blocking_and_bracing[], steel_deck[], vapor_barriers[], sealants[], trim_and_accessories[] }. Each item: raw_text, thickness/size/gauge/spacing/type/layers/description/r_value/depth as applicable or null. No assemblies on page → {"assemblies":[]}. Include every visible assembly from ALL pages; empty materials = empty arrays.`;
 
-  let fixed = input;
-
-  let inString = false;
-  let escape = false;
-  for (const ch of fixed) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; }
-  }
-  if (inString) fixed += '"';
-
-  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*"[^"]*"\s*$/, "");
-  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*$/, "");
-  fixed = fixed.replace(/,\s*"[^"]*$/, "");
-  fixed = fixed.replace(/,\s*$/, "");
-
-  const closeMap: Record<string, string> = { "{": "}", "[": "]" };
-  const stack: string[] = [];
-  inString = false;
-  escape = false;
-  for (const ch of fixed) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (ch === "{" || ch === "[") stack.push(ch);
-    if (ch === "}" || ch === "]") stack.pop();
-  }
-  while (stack.length > 0) {
-    const open = stack.pop()!;
-    fixed += closeMap[open];
-  }
-
-  return fixed;
-}
-
-export interface ExtractionResult {
-  assemblies: unknown[];
-  truncated: boolean;
-  usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-}
+export type { ExtractionResult };
 
 export async function extractAssembliesFromPDF(
   pdfBase64: string,
@@ -115,7 +33,7 @@ export async function extractAssembliesFromPDF(
       {
         role: "user",
         content: [
-          { type: "text", text: PROMPT },
+          { type: "text", text: EXTRACT_PROMPT },
           {
             type: "image_url",
             image_url: {
@@ -154,10 +72,7 @@ export async function extractAssembliesFromPDF(
     console.log(`[extract] Tokens: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total`);
   }
 
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*\n?/, "")
-    .replace(/\n?```\s*$/, "")
-    .trim();
+  const cleaned = stripMarkdownAndTrim(raw);
 
   let parsed;
   try {
@@ -165,7 +80,7 @@ export async function extractAssembliesFromPDF(
   } catch {
     console.warn("[extract] JSON parse failed, attempting repair...");
     try {
-      parsed = JSON.parse(repairJSON(cleaned));
+      parsed = JSON.parse(repairJSONForAssemblyExtraction(cleaned));
       console.log(`[extract] Repaired JSON — ${parsed.assemblies?.length ?? 0} assemblies`);
     } catch (repairErr) {
       console.error("[extract] JSON repair failed:", repairErr);

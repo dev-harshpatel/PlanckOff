@@ -1,43 +1,38 @@
 /**
- * Permission Types
- *
- * Types for the role-based permission system
+ * Role-based permission types
  */
 
-// Permission categories
-export type PermissionCategory = 'Team' | 'Projects' | 'Estimates' | 'Database' | 'Settings' | 'Admin';
+export type PermissionCategory =
+  | "Team"
+  | "Projects"
+  | "Estimates"
+  | "Database"
+  | "Settings"
+  | "Admin";
 
-// Permission codes (for type safety)
 export type PermissionCode =
-  // Team
-  | 'team.view'
-  | 'team.invite'
-  | 'team.edit'
-  | 'team.delete'
-  // Projects
-  | 'projects.view'
-  | 'projects.create'
-  | 'projects.edit'
-  | 'projects.delete'
-  | 'projects.assign'
-  // Estimates
-  | 'estimates.view'
-  | 'estimates.create'
-  | 'estimates.edit'
-  | 'estimates.delete'
-  | 'estimates.approve'
-  // Database
-  | 'database.view'
-  | 'database.edit'
-  // Settings
-  | 'settings.view'
-  | 'settings.edit'
-  // Admin
-  | 'admin.access'
-  | 'admin.roles'
-  | 'admin.permissions';
+  | "team.view"
+  | "team.invite"
+  | "team.edit"
+  | "team.delete"
+  | "projects.view"
+  | "projects.create"
+  | "projects.edit"
+  | "projects.delete"
+  | "projects.assign"
+  | "estimates.view"
+  | "estimates.create"
+  | "estimates.edit"
+  | "estimates.delete"
+  | "estimates.approve"
+  | "database.view"
+  | "database.edit"
+  | "settings.view"
+  | "settings.edit"
+  | "admin.access"
+  | "admin.roles"
+  | "admin.permissions";
 
-// Permission record from database
 export interface Permission {
   id: string;
   code: PermissionCode;
@@ -47,7 +42,6 @@ export interface Permission {
   created_at: string;
 }
 
-// Role with permissions
 export interface RoleWithPermissions {
   id: string;
   name: string;
@@ -58,20 +52,17 @@ export interface RoleWithPermissions {
   memberCount?: number;
 }
 
-// Role permission junction
 export interface RolePermission {
   role_id: string;
   permission_id: string;
   created_at: string;
 }
 
-// Grouped permissions by category
 export interface GroupedPermissions {
   category: PermissionCategory;
   permissions: Permission[];
 }
 
-// API Request/Response types
 export interface CreateRoleRequest {
   name: string;
   level: number;
@@ -112,7 +103,6 @@ export interface ChangeMemberRoleRequest {
   roleId: string;
 }
 
-// Form data types
 export interface RoleFormData {
   name: string;
   level: number;

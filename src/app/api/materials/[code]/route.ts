@@ -2,9 +2,10 @@
  * API routes for individual material operations
  * GET /api/materials/[code] - Fetch single material
  * PUT /api/materials/[code] - Update single material
+ * PATCH /api/materials/[code] - Partial update (same as PUT)
  * DELETE /api/materials/[code] - Delete material
  *
- * Only accessible by Administrators and Team Leads
+ * Only accessible by Administrators and Team Leads (write operations)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -135,6 +136,12 @@ export const PUT = withRoleAuth(
     }
   },
 );
+
+/**
+ * PATCH /api/materials/[code]
+ * Partial update — same logic as PUT (used by UOM/Formula Local/Global flow)
+ */
+export const PATCH = PUT;
 
 /**
  * DELETE /api/materials/[code]

@@ -107,6 +107,7 @@ export const normalizeExcelHeaders = (
       "bag units",
       "box units",
     ],
+    sizeOfUnit: ["size of unit", "sizeofunit"],
     lengthCover: [
       "lengthcover",
       "length cover",
@@ -338,6 +339,7 @@ export const validateMaterialData = (
   };
 
   const unitCost = parseOptionalNumeric("unitCost");
+  const sizeOfUnit = parseOptionalNumeric("sizeOfUnit");
   const productivity = parseOptionalNumeric("productivity");
   const hourlyRate = parseOptionalNumeric("hourlyRate");
   const coverPerHour = parseOptionalNumeric("coverPerHour");
@@ -382,6 +384,7 @@ export const validateMaterialData = (
     sheetBagBoxSizeUnits: getOptionalString("sheetBagBoxSizeUnits"),
     size: getOptionalString("size"),
     screwSpacing: getOptionalString("screwSpacing"),
+    sizeOfUnit,
     lengthCover: getOptionalString("lengthCover"),
     lengthCoverUnits: getOptionalString("lengthCoverUnits"),
     formulaQty: getOptionalString("formulaQty"),

@@ -15,6 +15,8 @@ import {
   AssemblyComponent,
   CalculationMethod,
 } from "@/types";
+import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
+import { resolveProjectMaterials } from "@/lib/utils/resolveProjectMaterial";
 import { calculateMaterials } from "@/services/gemini/calculateMaterials";
 import { evaluateMath } from "@/services/gemini/client";
 import {
@@ -54,7 +56,7 @@ import { TakeoffScheduleView } from "@/components/features/project/TakeoffSchedu
 import { AssemblySummaryGrid } from "@/components/features/project/AssemblySummaryGrid";
 import { usePipeline } from "@/context/PipelineContext";
 import { AggregatedTakeoff } from "@/types/takeoff";
-import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
+import { AssemblyData, MaterialCosting } from "@/types/assembly";
 import { FORMULA_DEFINITIONS } from "@/constants/formulas";
 import {
   mapFinalOutputToTakeoffs,
@@ -85,9 +87,9 @@ interface EstimateResultProps {
   isAnalyzing: boolean;
   viewMode?: "project" | "report";
   displayUnit: "imperial" | "metric";
-  activeReportTab?: "proposal" | "bidding" | "markups" | "materials" | "labor";
+  activeReportTab?: "proposal" | "bidding" | "markups" | "materials" | "matlab" | "labor";
   setActiveReportTab?: (
-    tab: "proposal" | "bidding" | "markups" | "materials" | "labor",
+    tab: "proposal" | "bidding" | "markups" | "materials" | "matlab" | "labor",
   ) => void;
   onCloseReport?: () => void;
   templates?: AssemblyTemplate[];
@@ -96,7 +98,14 @@ interface EstimateResultProps {
   /** Raw takeoff rows (one per original Excel row) — used to show individual levels in TakeoffScheduleView */
   rawTakeoffRows?: unknown[];
   projectId?: string | null;
+  finalOutputId?: string | null;
+  onUnitCostChange?: (code: string, newCost: number, type: "material" | "labor", unit?: string) => void;
+  /** Updates materialCostingData locally so costs recalculate immediately on blur. DB save happens on Save button click. */
+  onWasteChange?: (code: string, wastePercent: number, isLabor: boolean) => void;
   onImportComplete?: () => void;
+  onAssemblySaveComplete?: () => void;
+  overrideMap?: ProjectOverrideMap;
+  onOverrideMapChange?: React.Dispatch<React.SetStateAction<ProjectOverrideMap>>;
 }
 
 // Local definitions moved to calculationUtils.ts
@@ -118,10 +127,27 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   materialCostingData = [],
   rawTakeoffRows = [],
   projectId: projectIdProp,
+  finalOutputId,
+  onUnitCostChange,
+  onWasteChange,
   onImportComplete,
+  onAssemblySaveComplete,
+  overrideMap = {},
+  onOverrideMapChange,
 }) => {
+  // Merge global spec_database with project-specific overrides.
+  // resolvedMaterials is what every formula, cost calc, and UOM display should use.
+  const resolvedMaterials = useMemo(
+    () => resolveProjectMaterials(materials, overrideMap),
+    [materials, overrideMap],
+  );
+
   const [assemblies, setAssemblies] =
     useState<WallAssembly[]>(initialAssemblies);
+  // Always-current ref — set synchronously during render so handleSaveAssembly
+  // never reads a stale closure value when blur fires just before a Save click.
+  const assembliesRef = useRef<WallAssembly[]>(initialAssemblies);
+  assembliesRef.current = assemblies;
   const [takeoffs, setTakeoffs] = useState<Record<string, TakeoffInstance[]>>(
     {},
   );
@@ -444,37 +470,12 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Sync assemblies from parent: in project view, replace with loaded data; otherwise merge new ones
-  // When materialCostingData has final_output format (height_ft, total_length), populate takeoffs from it
+  // Sync assemblies from parent when initialAssemblies or viewMode changes.
+  // Separated from the takeoff effect below to avoid resetting user edits whenever
+  // materialCostingData or rawTakeoffRows change independently.
   useEffect(() => {
     if (viewMode === "project" && initialAssemblies.length > 0) {
       setAssemblies(initialAssemblies);
-      const hasFinalOutputFormat = materialCostingData.some(
-        (a) =>
-          typeof (a as { height_ft?: number; total_length?: number }).height_ft === "number" &&
-          typeof (a as { height_ft?: number; total_length?: number }).total_length === "number",
-      );
-      let newTakeoffs: Record<string, TakeoffInstance[]>;
-      if (hasFinalOutputFormat) {
-        // Prefer raw rows (individual levels) for TakeoffScheduleView; fall back to aggregated
-        newTakeoffs =
-          rawTakeoffRows.length > 0
-            ? mapRawTakeoffToInstances(
-                rawTakeoffRows as TakeoffRawRecord[],
-                materialCostingData,
-              )
-            : mapFinalOutputToTakeoffs(materialCostingData);
-        // Ensure every assembly has an entry (even if empty)
-        initialAssemblies.forEach((a) => {
-          if (!newTakeoffs[a.id]) newTakeoffs[a.id] = [];
-        });
-      } else {
-        newTakeoffs = {};
-        initialAssemblies.forEach((a) => {
-          newTakeoffs[a.id] = takeoffs[a.id] || [];
-        });
-      }
-      setTakeoffs(newTakeoffs);
     } else if (initialAssemblies.length > assemblies.length) {
       const newOnes = initialAssemblies.slice(assemblies.length);
       setAssemblies((prev) => [...prev, ...newOnes]);
@@ -486,6 +487,38 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       });
       setTakeoffs(mergedTakeoffs);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- takeoffs intentionally excluded to avoid sync loop
+  }, [initialAssemblies, viewMode]);
+
+  // Recompute takeoffs whenever costing data or raw rows change (does NOT reset assemblies).
+  useEffect(() => {
+    if (viewMode !== "project" || initialAssemblies.length === 0) return;
+    const hasFinalOutputFormat = materialCostingData.some(
+      (a) =>
+        typeof (a as { height_ft?: number; total_length?: number }).height_ft === "number" &&
+        typeof (a as { height_ft?: number; total_length?: number }).total_length === "number",
+    );
+    let newTakeoffs: Record<string, TakeoffInstance[]>;
+    if (hasFinalOutputFormat) {
+      // Prefer raw rows (individual levels) for TakeoffScheduleView; fall back to aggregated
+      newTakeoffs =
+        rawTakeoffRows.length > 0
+          ? mapRawTakeoffToInstances(
+              rawTakeoffRows as TakeoffRawRecord[],
+              materialCostingData,
+            )
+          : mapFinalOutputToTakeoffs(materialCostingData);
+      // Ensure every assembly has an entry (even if empty)
+      initialAssemblies.forEach((a) => {
+        if (!newTakeoffs[a.id]) newTakeoffs[a.id] = [];
+      });
+    } else {
+      newTakeoffs = {};
+      initialAssemblies.forEach((a) => {
+        newTakeoffs[a.id] = takeoffs[a.id] || [];
+      });
+    }
+    setTakeoffs(newTakeoffs);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- takeoffs intentionally excluded to avoid sync loop
   }, [initialAssemblies, viewMode, materialCostingData, rawTakeoffRows]);
 
@@ -822,10 +855,10 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     assemblyId: string,
     componentId: string,
     field: keyof AssemblyComponent,
-    value: any,
+    value: AssemblyComponent[keyof AssemblyComponent],
   ) => {
-    setAssemblies((prev) =>
-      prev.map((a) => {
+    setAssemblies((prev) => {
+      const next = prev.map((a) => {
         if (a.id !== assemblyId) return a;
         return {
           ...a,
@@ -833,9 +866,118 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
             c.id === componentId ? { ...c, [field]: value } : c,
           ),
         };
-      }),
-    );
+      });
+      // Update the ref immediately so handleSaveAssembly always reads the latest
+      // values even when React 18 defers the re-render (e.g. blur + Save in one click).
+      assembliesRef.current = next;
+      return next;
+    });
   };
+
+  /**
+   * Persist assembly component overrides (unit_cost, quantity, waste_percent) to the final output in DB.
+   * Called by the Save button in AssemblyEditorModal.
+   * Unit cost overrides are applied project-wide (all assemblies) for single source of truth.
+   */
+  const handleSaveAssembly = useCallback(async (savedAssembly: WallAssembly) => {
+    if (!finalOutputId) return;
+
+    // Prefer the latest assembly from the always-current ref to avoid stale closure
+    // (e.g. when a NumberInput blur and Save click happen in the same event cycle).
+    const latestAssembly = assembliesRef.current.find(a => a.id === savedAssembly.id);
+    const assemblyToSave = latestAssembly ?? savedAssembly;
+
+    // Parse assembly_id and height_ft from composite id ("P1@9.7")
+    const lastAt = assemblyToSave.id.lastIndexOf('@');
+    const assemblyCode = lastAt >= 0 ? assemblyToSave.id.slice(0, lastAt) : assemblyToSave.id;
+    const heightFt = lastAt >= 0 ? parseFloat(assemblyToSave.id.slice(lastAt + 1)) : null;
+
+    // Build override maps — unit_cost is project-wide; all others are per-assembly-instance
+    const materialUnitCostOverrides = new Map<string, number>();
+    const laborUnitCostOverrides = new Map<string, number>();
+    // Per-assembly-instance overrides (keyed by materialCode, applied only to the edited assembly)
+    const matQty = new Map<string, number>();
+    const matWaste = new Map<string, number>();
+    const matHeight = new Map<string, number>();
+    const matUsage = new Map<string, string>();
+    const matLayers = new Map<string, number>();
+    const matOc = new Map<string, string>();
+    const labHeight = new Map<string, number>();
+    const labWaste = new Map<string, number>();
+
+    for (const comp of assemblyToSave.components) {
+      if (!comp.materialCode) continue;
+      const isLabor = comp.materialCode.startsWith('LAB-');
+      if (comp.overrideMatCost != null) {
+        if (isLabor) laborUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
+        else materialUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
+      }
+      if (!isLabor) {
+        if (comp.overrideQuantity != null) matQty.set(comp.materialCode, comp.overrideQuantity);
+        if (comp.wasteFactor != null) matWaste.set(comp.materialCode, comp.wasteFactor * 100);
+        if (comp.overrideHeight != null) matHeight.set(comp.materialCode, comp.overrideHeight);
+        if (comp.usage) matUsage.set(comp.materialCode, comp.usage);
+        if (comp.overrideLayers != null) matLayers.set(comp.materialCode, comp.overrideLayers);
+        if (comp.ocSpacing != null) matOc.set(comp.materialCode, comp.ocSpacing);
+      } else {
+        if (comp.overrideHeight != null) labHeight.set(comp.materialCode, comp.overrideHeight);
+        if (comp.wasteFactor != null) labWaste.set(comp.materialCode, comp.wasteFactor * 100);
+      }
+    }
+
+    // Apply overrides:
+    // - unit_cost and waste_percent → ALL assemblies (project-wide single source of truth)
+    // - qty, height, layers, usage, oc → edited assembly only (per-instance)
+    const updatedCostingData = materialCostingData.map((costing) => {
+      const isEditedAssembly =
+        costing.assembly_id === assemblyCode &&
+        (heightFt === null || (costing as unknown as { height_ft?: number }).height_ft === heightFt);
+
+      return {
+        ...costing,
+        materials_costing: costing.materials_costing.map((item) => ({
+          ...item,
+          matched_materials: item.matched_materials.map((mat) => {
+            const base = {
+              ...mat,
+              unit_cost: materialUnitCostOverrides.get(mat.code) ?? mat.unit_cost,
+              // waste_percent is project-wide — same material has the same waste across all assemblies
+              ...(matWaste.has(mat.code) && { waste_percent: matWaste.get(mat.code) }),
+            };
+            if (!isEditedAssembly) return base;
+            // Apply per-assembly-instance overrides (only to the edited assembly)
+            if (matQty.has(mat.code)) base.quantity = matQty.get(mat.code);
+            if (matHeight.has(mat.code)) (base as Record<string, unknown>).height_ft_override = matHeight.get(mat.code);
+            if (matUsage.has(mat.code)) (base as Record<string, unknown>).usage_override = matUsage.get(mat.code);
+            if (matLayers.has(mat.code)) (base as Record<string, unknown>).layers_override = matLayers.get(mat.code);
+            if (matOc.has(mat.code)) (base as Record<string, unknown>).oc_spacing_override = matOc.get(mat.code);
+            return base;
+          }),
+          matched_labor: (item.matched_labor ?? []).map((lab) => {
+            const base = {
+              ...lab,
+              unit_cost: laborUnitCostOverrides.get(lab.code) ?? lab.unit_cost,
+              // labor waste_percent is also project-wide
+              ...(labWaste.has(lab.code) && { waste_percent: labWaste.get(lab.code) }),
+            };
+            if (isEditedAssembly && labHeight.has(lab.code)) base.height_ft = labHeight.get(lab.code);
+            return base;
+          }),
+        })),
+      };
+    });
+
+    const res = await fetch(`/api/final-output/${finalOutputId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ assemblies: updatedCostingData }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error ?? 'Failed to save');
+
+    onAssemblySaveComplete?.();
+  }, [finalOutputId, materialCostingData, onAssemblySaveComplete]);
 
   const handleFormulaChange = (
     assemblyId: string,
@@ -1245,7 +1387,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         if (filteredInstances.length > 0) {
           combined = [
             ...combined,
-            ...calculateMaterials(assembly, filteredInstances, materials),
+            ...calculateMaterials(assembly, filteredInstances, resolvedMaterials),
           ];
         }
       },
@@ -1470,7 +1612,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     const calculated = calculateMaterials(
       currentEditingAssembly,
       instances,
-      materials,
+      resolvedMaterials,
     );
 
     // Enrich calculated with cost
@@ -1487,7 +1629,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
           // Here we assume simple unit cost for now.
         }
       }
-      // For labor overridePrice is usually filled in geminiService
+      // For labor overridePrice use calculateMaterials / formula evaluator
       if (c.category === "Labor" && !unitPrice) unitPrice = 65; // Fallback
 
       return { ...c, overridePrice: unitPrice };
@@ -1523,7 +1665,9 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
             assemblies={assemblies}
             takeoffs={takeoffs}
             manualItems={manualItems}
-            materials={materials}
+            materials={resolvedMaterials}
+            materialCostingData={materialCostingData}
+            onUnitCostChange={onUnitCostChange}
             displayUnit={displayUnit}
             activeReportTab={activeReportTab}
             setActiveReportTab={setActiveReportTab}
@@ -1612,7 +1756,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
               <AssemblySummaryGrid
                 assemblies={filteredAssemblies}
                 takeoffs={takeoffs}
-                materials={materials}
+                materials={resolvedMaterials}
                 priceMap={priceMap}
                 onSelectAssembly={(id, height) => {
                   setActiveAssemblyId(id);
@@ -1712,7 +1856,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         }
         updateAssemblyInfo={updateAssemblyInfo}
         totalAggLength={totalAggLength}
-        materials={materials}
+        materials={resolvedMaterials}
         handleMaterialSelect={handleMaterialSelect}
         handleUpdateComponent={updateComponent}
         handleAddComponent={addComponent}
@@ -1728,6 +1872,14 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         onSelectHeight={setEditingHeight}
         onLoadTemplate={handleLoadTemplate}
         templates={templates}
+        materialCostingData={materialCostingData.find(
+          (m) => m.assembly_id === currentEditingAssembly?.code,
+        )}
+        projectId={projectIdProp}
+        overrideMap={overrideMap}
+        onOverrideMapChange={onOverrideMapChange}
+        onWasteChange={onWasteChange}
+        onSaveAssembly={finalOutputId ? handleSaveAssembly : undefined}
       />
 
       {/* Database Modal */}

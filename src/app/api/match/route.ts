@@ -97,10 +97,12 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
-    // const localPath = await writeJsonToLocal("material_match", {
-    //   assemblies: result.assemblies,
-    // });
-    console.log(`[match] DB: ${savedData?.id} | Local: (disabled)`);
+    const localPath = await writeJsonToLocal("material_match", {
+      assemblies: result.assemblies,
+    });
+    console.log(
+      `[match] DB: ${savedData?.id} | Local: ${localPath || "(failed)"}`,
+    );
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

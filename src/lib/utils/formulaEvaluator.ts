@@ -20,6 +20,7 @@ const MULTI_WORD_NORMALIZATIONS: [RegExp, string][] = [
     [/ceiling\s+area/gi, 'CeilingArea'],
     [/sheet\s+area/gi, 'SheetArea'],
     [/bag\s+size/gi, 'BagSize'],
+    [/size\s+of\s+bucket/gi, 'BagSize'],
     [/area\s+cover/gi, 'AreaCover'],
     [/length\s+cover/gi, 'AreaCover'],
 ];
@@ -46,7 +47,7 @@ export const FORMULA_VAR_DEFINITIONS: FormulaVarDef[] = [
     { displayName: 'Wastage',      key: 'Wastage',     unit: '',    description: 'Waste factor as decimal (0.05 = 5%)' },
     { displayName: 'layer',        key: 'layer',       unit: 'ea',  description: 'Number of layers applied' },
     { displayName: 'sheet area',   key: 'SheetArea',   unit: 'SF',  description: 'Sheet / panel area in sq ft' },
-    { displayName: 'bag size',     key: 'BagSize',     unit: 'SF',  description: 'Bag / box coverage area in sq ft' },
+    { displayName: 'size', key: 'BagSize', unit: '', description: 'Bag / box / bucket size from material database' },
     { displayName: 'Ceiling Area', key: 'CeilingArea', unit: 'SF',  description: 'Total ceiling area in sq ft' },
     { displayName: 'OC',           key: 'OC',          unit: '"',   description: 'On-center stud spacing in inches' },
     { displayName: 'Perimeter',    key: 'Perimeter',   unit: 'LF',  description: 'Room / ceiling perimeter in linear feet' },
@@ -240,6 +241,15 @@ export interface FormulaQuantities {
 }
 
 /**
+ * Dimensions sourced from final_output extracted_material.
+ * Only totalLength (total_length) overrides the Length variable.
+ * All other values (height, ceilingArea, etc.) still come from takeoff-instance aggregation.
+ */
+export interface ExtractedDimensions {
+    totalLength: number;
+}
+
+/**
  * Compute formula-based quantities for a single component row.
  * Formula precedence: component override > material database formula.
  * Returns null for each when no formula is defined.
@@ -249,10 +259,19 @@ export function computeFormulaQuantities(
     material: MaterialDefinition | undefined,
     assembly: WallAssembly,
     instances: TakeoffInstance[],
+    extractedDimensions?: ExtractedDimensions,
 ): FormulaQuantities {
+    // Aggregate height, ceilingArea, perimeter from takeoff instances
     const ctx = aggregateInstances(comp, assembly, instances);
-    const calcHeight = comp.overrideHeight ?? ctx.avgHeight;
-    const layers = comp.overrideLayers ?? 1;
+    // Length: use total_length from final_output when available, otherwise fall back to aggregated value
+    const length      = extractedDimensions?.totalLength ?? ctx.totalLinearFeet;
+    const baseHeight  = ctx.avgHeight;
+    const ceilingArea = ctx.totalCeilingArea;
+    const perimeter   = ctx.totalPerimeter;
+    const baseLayers  = 1;
+
+    const calcHeight = comp.overrideHeight ?? baseHeight;
+    const layers = comp.overrideLayers ?? baseLayers;
 
     // Waste factor: component override → category default
     const wastage = comp.wasteFactor != null
@@ -267,10 +286,10 @@ export function computeFormulaQuantities(
     const areaCover = material?.lengthCover ? parseFloat(material.lengthCover) || 0 : 0;
 
     const varMap = buildFormulaVarMap({
-        length:      ctx.totalLinearFeet,
+        length,
         height:      calcHeight,
-        ceilingArea: ctx.totalCeilingArea,
-        perimeter:   ctx.totalPerimeter,
+        ceilingArea,
+        perimeter,
         wastage,
         layers,
         oc,

@@ -1,4 +1,7 @@
-// Role types
+/**
+ * Team and role types
+ */
+
 export interface Role {
   id: string;
   name: RoleName;
@@ -7,9 +10,8 @@ export interface Role {
   created_at: string;
 }
 
-export type RoleName = 'Administrator' | 'Team Lead' | 'Estimator';
+export type RoleName = "Administrator" | "Team Lead" | "Estimator";
 
-// Team member types
 export interface TeamMember {
   id: string;
   email: string;
@@ -24,14 +26,12 @@ export interface TeamMember {
   updated_at: string;
 }
 
-export type TeamMemberStatus = 'Active' | 'Invited' | 'Inactive';
+export type TeamMemberStatus = "Active" | "Invited" | "Inactive";
 
-// Team member with role details (joined)
-export interface TeamMemberWithRole extends Omit<TeamMember, 'password_hash'> {
+export interface TeamMemberWithRole extends Omit<TeamMember, "password_hash"> {
   role: Role;
 }
 
-// Invitation types
 export interface Invitation {
   id: string;
   email: string;
@@ -48,7 +48,6 @@ export interface InvitationWithRole extends Invitation {
   role: Role;
 }
 
-// API Request/Response types
 export interface InviteRequest {
   email: string;
   name: string;
@@ -88,7 +87,6 @@ export interface TeamMembersResponse {
   error?: string;
 }
 
-// Form data types
 export interface InviteFormData {
   name: string;
   email: string;

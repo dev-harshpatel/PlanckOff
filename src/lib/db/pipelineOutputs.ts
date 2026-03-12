@@ -125,6 +125,44 @@ export const getTakeoffOutputById = async (takeoffOutputId: string) => {
 };
 
 /**
+ * Get final output by ID
+ */
+export const getFinalOutputById = async (id: string) => {
+  const { data, error } = await supabaseAdmin
+    .from("final_outputs")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return { data: null, error: null };
+    throw error;
+  }
+  return { data, error: null };
+};
+
+/**
+ * Update final output data (e.g. when user edits in Assembly modal)
+ */
+export const updateFinalOutput = async (
+  id: string,
+  data: unknown,
+): Promise<{ data: FinalOutput | null; error: { message: string } | null }> => {
+  const { data: result, error } = await supabaseAdmin
+    .from("final_outputs")
+    .update({ data })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[pipelineOutputs] updateFinalOutput error:", error.code, error.message);
+    return { data: null, error: { message: error.message } };
+  }
+  return { data: result as FinalOutput, error: null };
+};
+
+/**
  * Get latest final output for a project
  */
 export const getLatestFinalOutput = async (projectId?: string) => {

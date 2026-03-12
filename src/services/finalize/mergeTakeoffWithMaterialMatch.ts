@@ -8,7 +8,7 @@ import type {
   MaterialsCostingItem,
   MatchedLabor,
   MatchedMaterial,
-} from "@/types/assemblyData";
+} from "@/types/assembly";
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 
 /** Material match assembly (from match step) — has assembly_id and materials_costing; may have extra fields */
@@ -123,7 +123,8 @@ const SEGMENT_KEYWORDS: Record<string, string> = {
   "(High Above 24 ft)": "> 24",
 };
 
-const matchesSegment = (description: string, category: string): boolean => {
+const matchesSegment = (description: string | undefined, category: string): boolean => {
+  if (!description) return false;
   const keyword = SEGMENT_KEYWORDS[category];
   return !!keyword && description.includes(keyword);
 };
@@ -132,8 +133,8 @@ const matchesSegment = (description: string, category: string): boolean => {
  * A labor item is height-segmentable if its description contains "< 12ft"
  * (meaning the DB has height variants for it).
  */
-const isHeightSegmentedLabor = (description: string): boolean =>
-  description.includes("< 12ft");
+const isHeightSegmentedLabor = (description: string | undefined): boolean =>
+  !!description && description.includes("< 12ft");
 
 // ─── Material DB Index ─────────────────────────────────────────────────────────
 
@@ -188,33 +189,54 @@ const expandLaborForHeight = (
 ): MatchedLabor[] => {
   // Not height-based labor OR only one segment → keep as-is
   if (!isHeightSegmentedLabor(labor.description) || segments.length === 1) {
-    return [{ ...labor, height_ft: segments[0].height_ft, height_category: segments[0].category }];
+    return [
+      {
+        ...labor,
+        height_ft: segments[0].height_ft,
+        height_category: segments[0].category,
+      },
+    ];
   }
 
   // Look up the DB entry to get laborCostCode
   const dbEntry = laborIndex.byCode.get(labor.code);
   if (!dbEntry) {
     // Not in DB — can't find variants, return with first segment info
-    return [{ ...labor, height_ft: segments[0].height_ft, height_category: segments[0].category }];
+    return [
+      {
+        ...labor,
+        height_ft: segments[0].height_ft,
+        height_category: segments[0].category,
+      },
+    ];
   }
 
   const variants = laborIndex.byLaborCostCode.get(dbEntry.laborCostCode) ?? [];
 
   return segments.map((segment) => {
-    const variant = variants.find((v) => matchesSegment(v.description, segment.category));
+    const variant = variants.find((v) =>
+      matchesSegment(v.description, segment.category),
+    );
     if (variant) {
       return {
         code: variant.code,
         section: variant.section,
         description: variant.description,
         unit: variant.per,
-        unit_cost: typeof variant.matCost === "string" ? parseFloat(variant.matCost) : variant.matCost,
+        unit_cost:
+          typeof variant.matCost === "string"
+            ? parseFloat(variant.matCost)
+            : variant.matCost,
         height_ft: segment.height_ft,
         height_category: segment.category,
       };
     }
     // No variant found for segment — fall back to original code with segment tags
-    return { ...labor, height_ft: segment.height_ft, height_category: segment.category };
+    return {
+      ...labor,
+      height_ft: segment.height_ft,
+      height_category: segment.category,
+    };
   });
 };
 
@@ -246,9 +268,15 @@ const FRAMING_SCREW_CODE_RE = /^SC-FRM/i;
 const STEEL_FRAMING_TEXT_RE = /STUD|FURRING|TRACK|METAL STUD/i;
 
 /** Given a list of same-category framing items, keep only the one closest to targetMil. */
-const selectBestGauge = <T extends { code: string }>(items: T[], targetMil: number): T[] => {
+const selectBestGauge = <T extends { code: string }>(
+  items: T[],
+  targetMil: number,
+): T[] => {
   if (items.length <= 1) return items;
-  const withMil = items.map((item) => ({ item, mil: getMilFromCode(item.code) }));
+  const withMil = items.map((item) => ({
+    item,
+    mil: getMilFromCode(item.code),
+  }));
   const exact = withMil.find((x) => x.mil === targetMil);
   if (exact) return [exact.item];
   // Closest mil >= target (next heavier gauge up)
@@ -275,7 +303,9 @@ const filterSteelFramingGauges = <T extends { code: string }>(
   const targetMil = getTargetMilForHeight(heightFt);
   const studs = materials.filter((m) => STUD_CODE_RE.test(m.code));
   const stdTracks = materials.filter((m) => STD_TRACK_CODE_RE.test(m.code));
-  const specialTracks = materials.filter((m) => SPECIAL_TRACK_CODE_RE.test(m.code));
+  const specialTracks = materials.filter((m) =>
+    SPECIAL_TRACK_CODE_RE.test(m.code),
+  );
   const screws = materials.filter((m) => FRAMING_SCREW_CODE_RE.test(m.code));
   const other = materials.filter(
     (m) =>
@@ -309,11 +339,17 @@ const toNumber = (v: number | string | null | undefined): number => {
   return Number.isNaN(n) ? 0 : n;
 };
 
-const isCeilingRow = (assemblyType: string | number | null | undefined): boolean =>
-  String(assemblyType ?? "").toLowerCase().includes("ceiling");
+const isCeilingRow = (
+  assemblyType: string | number | null | undefined,
+): boolean =>
+  String(assemblyType ?? "")
+    .toLowerCase()
+    .includes("ceiling");
 
 /** Group takeoff rows by (wall_type, height) and sum quantities */
-const aggregateTakeoff = (rows: TakeoffRawRecord[]): AggregatedTakeoffGroup[] => {
+const aggregateTakeoff = (
+  rows: TakeoffRawRecord[],
+): AggregatedTakeoffGroup[] => {
   const keyToGroup = new Map<
     string,
     {
@@ -353,7 +389,8 @@ const aggregateTakeoff = (rows: TakeoffRawRecord[]): AggregatedTakeoffGroup[] =>
     } else {
       keyToGroup.set(key, {
         assembly_id: assemblyId,
-        assembly_type: row.assembly_type != null ? String(row.assembly_type) : "wall",
+        assembly_type:
+          row.assembly_type != null ? String(row.assembly_type) : "wall",
         height_ft: heightFt,
         total_length: wallLength,
         ceiling_area: ceilingArea,
@@ -381,9 +418,12 @@ const enrichMaterialsCosting = (
   takeoff: AggregatedTakeoffGroup,
   laborIndex: LaborIndex,
 ): MaterialsCostingItem[] => {
-  const segments = takeoff.is_ceiling ? [] : getHeightSegments(takeoff.height_ft);
+  const items = Array.isArray(materialsCosting) ? materialsCosting : [];
+  const segments = takeoff.is_ceiling
+    ? []
+    : getHeightSegments(takeoff.height_ft);
 
-  return materialsCosting.map((item) => {
+  return items.map((item) => {
     const ext = item.extracted_material;
     if (!ext) return item; // AI occasionally returns null extracted_material — skip enrichment
 
@@ -397,22 +437,29 @@ const enrichMaterialsCosting = (
     };
 
     // Expand labor for height segments (walls only)
+    const matchedLabor = Array.isArray(item.matched_labor)
+      ? (item.matched_labor as MatchedLabor[]).map((labor) => ({ ...labor }))
+      : [];
     let expandedLabor: MatchedLabor[];
     if (takeoff.is_ceiling || segments.length === 0) {
-      expandedLabor = [...(item.matched_labor as MatchedLabor[])];
+      expandedLabor = [...(matchedLabor as MatchedLabor[])];
     } else {
-      expandedLabor = (item.matched_labor as MatchedLabor[]).flatMap((labor) =>
+      expandedLabor = (matchedLabor as MatchedLabor[]).flatMap((labor) =>
         expandLaborForHeight(labor, segments, laborIndex),
       );
     }
 
     // Apply gauge filtering for steel framing items (walls only) so that stale
     // match data with multiple gauge variants is reduced to one stud + one track.
-    const rawMatchedMaterials = [...(item.matched_materials as MatchedMaterial[])];
+    const rawMatchedMaterials = Array.isArray(item.matched_materials)
+      ? (item.matched_materials as MatchedMaterial[]).map((m) => ({ ...m }))
+      : [];
     const isSteelFraming =
       !takeoff.is_ceiling &&
       STEEL_FRAMING_TEXT_RE.test(ext.raw_text ?? "") &&
-      rawMatchedMaterials.some((m) => STUD_CODE_RE.test(m.code) || STD_TRACK_CODE_RE.test(m.code));
+      rawMatchedMaterials.some(
+        (m) => STUD_CODE_RE.test(m.code) || STD_TRACK_CODE_RE.test(m.code),
+      );
     const filteredMaterials = isSteelFraming
       ? filterSteelFramingGauges(rawMatchedMaterials, takeoff.height_ft)
       : rawMatchedMaterials;
@@ -484,11 +531,15 @@ export const mergeTakeoffWithMaterialMatch = (
       continue;
     }
 
-    const materials_costing = enrichMaterialsCosting(match.materials_costing, group, laborIndex);
-    const assembly_type =
-      group.assembly_type && String(group.assembly_type).toLowerCase() === "ceiling"
-        ? "ceiling"
-        : "wall";
+    // Match step may return "materials" or "materials_costing" (AI sometimes uses "materials")
+    const matchAny = match as { materials_costing?: MaterialsCostingItem[]; materials?: MaterialsCostingItem[] };
+    const rawMaterialsCosting = matchAny.materials_costing ?? matchAny.materials ?? [];
+    const materials_costing = enrichMaterialsCosting(
+      Array.isArray(rawMaterialsCosting) ? rawMaterialsCosting : [],
+      group,
+      laborIndex,
+    );
+    const assembly_type = group.assembly_type ? String(group.assembly_type) : "wall";
 
     assemblies.push({
       assembly_id: match.assembly_id,
@@ -502,8 +553,10 @@ export const mergeTakeoffWithMaterialMatch = (
       level,
       materials_costing,
       project_country: projectContext?.country ?? match.project_country ?? null,
-      project_location: projectContext?.location ?? match.project_location ?? null,
-      project_province: projectContext?.province ?? match.project_province ?? null,
+      project_location:
+        projectContext?.location ?? match.project_location ?? null,
+      project_province:
+        projectContext?.province ?? match.project_province ?? null,
       review_notes: null,
       selected_gauge: match.selected_gauge ?? null,
       stc_rating: match.stc_rating ?? null,

@@ -11,11 +11,13 @@ import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblie
 import { finalizeWithUnifiedPrompt } from "@/services/openrouter/processWithUnifiedPrompt";
 import { parseRawTakeoffSheet } from "@/services/takeoff/parseRawTakeoff";
 import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
+import { getAllMaterials } from "@/lib/db/materials";
 import {
   saveTakeoffOutput,
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
-// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage"; // disabled — local FS writes break on Vercel
+import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 // Hobby plan max: 300s. Pro allows up to 900s.
 export const maxDuration = 300;
@@ -85,7 +87,7 @@ export async function POST(req: NextRequest) {
       assemblyFilename,
       projectId,
     );
-    // const assemblyPath = await writeJsonToLocal("assembly", assemblyPayload);
+    const assemblyPath = await writeJsonToLocal("assembly", assemblyPayload);
     console.log(`${TAG} Step 1 done [${elapsed(step1Start)}] — ${extractResult.assemblies.length} assemblies`);
     console.log(`${TAG}   → DB: ${assemblySaved?.id ?? "ok"} | Local: (disabled)`);
 
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
       takeoffFilename,
       projectId,
     );
-    // const takeoffPath = await writeJsonToLocal("takeoff", takeoffPayload);
+    const takeoffPath = await writeJsonToLocal("takeoff", takeoffPayload);
     console.log(`${TAG} Step 2 done [${elapsed(step2Start)}] — ${takeoffRecords.length} takeoff rows`);
     console.log(`${TAG}   → DB: ${takeoffSaved?.id ?? "ok"} | Local: (disabled)`);
 
@@ -128,6 +130,13 @@ export async function POST(req: NextRequest) {
     console.log(`${TAG} Step 4 done [${elapsed(step4Start)}] — ${finalResult.assemblies.length} final assemblies`);
 
     const finalPayload = { assemblies: finalResult.assemblies };
+
+    // Enrich with computed quantities (single source of truth)
+    const { data: materials } = await getAllMaterials();
+    if (materials && materials.length > 0) {
+      enrichFinalOutputWithQuantities(finalPayload, materials);
+      console.log(`${TAG} Enriched assemblies with stored quantities`);
+    }
     const finalTs = Date.now();
     const finalFilename = `final_output-${finalTs}.json`;
     const { data: finalSaved } = await saveFinalOutput(
@@ -137,8 +146,10 @@ export async function POST(req: NextRequest) {
       assemblySaved?.id,
       takeoffSaved?.id,
     );
-    // const finalPath = await writeJsonToLocal("final_output", finalPayload);
-    console.log(`${TAG}   → DB: ${finalSaved?.id ?? "ok"} | Local: (disabled)`);
+    const finalPath = await writeJsonToLocal("final_output", finalPayload);
+    console.log(
+      `${TAG}   → DB: ${finalSaved?.id ?? "ok"} | Local: ${finalPath || "(failed)"}`,
+    );
 
     // ── Summary ──────────────────────────────────────────────────────
     const totalTime = elapsed(pipelineStart);

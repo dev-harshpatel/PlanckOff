@@ -16,6 +16,7 @@ import {
     getActiveFormulaVars,
     parsePackageSize,
     normalizeFormula,
+    type ExtractedDimensions,
 } from '@/lib/utils/formulaEvaluator';
 import { getWasteFactor } from '@/constants';
 import { Modal, Button } from '@/components/ui';
@@ -33,6 +34,12 @@ interface FormulaEditModalProps {
     takeoffInstances: TakeoffInstance[];
     /** Which column was clicked — determines the default active tab */
     openedFrom: 'qty' | 'seqty';
+    /**
+     * Dimensions from the final_output extracted_material for this material/assembly.
+     * When provided, Length/Height/CeilingArea variables use these values instead of
+     * aggregating from takeoff instances — keeps formulas consistent with the stored output.
+     */
+    extractedDimensions?: ExtractedDimensions;
     onSaveFormulas: (overrides: {
         formulaQtyOverride?: string;
         formulaSecQtyOverride?: string;
@@ -52,54 +59,64 @@ function buildContextVarMap(
     assembly: WallAssembly,
     instances: TakeoffInstance[],
     material: MaterialDefinition | undefined,
+    extractedDimensions?: ExtractedDimensions,
 ): Record<string, number> {
-    const hMin = comp.heightCondition?.min ?? 0;
-    const hMax = comp.heightCondition?.max ?? Infinity;
+    let totalLinearFeet: number;
+    let avgHeight: number;
+    let totalCeilingArea: number;
+    let totalPerimeter: number;
+    let baseLayers: number;
 
-    let totalLinearFeet = 0;
-    let totalWallArea = 0;
-    let totalCeilingArea = 0;
-    let totalPerimeter = 0;
+    // Always aggregate from takeoff instances for height, ceilingArea, perimeter
+    {
+        const hMin = comp.heightCondition?.min ?? 0;
+        const hMax = comp.heightCondition?.max ?? Infinity;
+        let totalWallArea = 0;
+        totalLinearFeet  = 0;
+        totalCeilingArea = 0;
+        totalPerimeter   = 0;
+        avgHeight        = 0;
+        baseLayers       = 1;
 
-    instances.forEach(inst => {
-        const qty = inst.quantity || 1;
-        const isCeilingInst = (inst.ceilingArea || 0) > 0;
-        // For wall instances with missing height (0), fall back to the assembly's default height
-        const rawH = inst.height || 0;
-        const h = (!isCeilingInst && rawH === 0 && assembly.defaultHeight)
-            ? assembly.defaultHeight
-            : rawH;
-        const effectiveH = Math.max(0, Math.min(hMax, h) - hMin);
-        totalCeilingArea += (inst.ceilingArea || 0) * qty;
-        if (isCeilingInst) {
-            totalPerimeter += (inst.perimeter || inst.length || 0) * qty;
-        }
-        if (effectiveH > 0) {
-            totalLinearFeet += (inst.length || 0) * qty;
-            totalWallArea += (inst.length || 0) * effectiveH * qty;
-        }
-    });
-
-    let avgHeight = 0;
-    if (instances.length === 0) {
-        if (assembly.assemblyType === 'Ceiling') {
-            totalCeilingArea = assembly.defaultArea || 0;
-            totalPerimeter = assembly.defaultPerimeter || 0;
-        } else {
-            const defH = assembly.defaultHeight || 0;
-            const effectiveH = Math.max(0, Math.min(hMax, defH) - hMin);
+        instances.forEach(inst => {
+            const qty = inst.quantity || 1;
+            const isCeilingInst = (inst.ceilingArea || 0) > 0;
+            const rawH = inst.height || 0;
+            const h = (!isCeilingInst && rawH === 0 && assembly.defaultHeight)
+                ? assembly.defaultHeight : rawH;
+            const effectiveH = Math.max(0, Math.min(hMax, h) - hMin);
+            totalCeilingArea += (inst.ceilingArea || 0) * qty;
+            if (isCeilingInst) totalPerimeter += (inst.perimeter || inst.length || 0) * qty;
             if (effectiveH > 0) {
-                totalLinearFeet = assembly.defaultLength || 0;
-                avgHeight = effectiveH;
-                totalWallArea = totalLinearFeet * avgHeight;
+                totalLinearFeet += (inst.length || 0) * qty;
+                totalWallArea   += (inst.length || 0) * effectiveH * qty;
             }
+        });
+
+        if (instances.length === 0) {
+            if (assembly.assemblyType === 'Ceiling') {
+                totalCeilingArea = assembly.defaultArea || 0;
+                totalPerimeter   = assembly.defaultPerimeter || 0;
+            } else {
+                const defH = assembly.defaultHeight || 0;
+                const effectiveH = Math.max(0, Math.min(hMax, defH) - (comp.heightCondition?.min ?? 0));
+                if (effectiveH > 0) {
+                    totalLinearFeet = assembly.defaultLength || 0;
+                    avgHeight = effectiveH;
+                }
+            }
+        } else if (totalLinearFeet > 0) {
+            avgHeight = totalWallArea / totalLinearFeet;
         }
-    } else if (totalLinearFeet > 0) {
-        avgHeight = totalWallArea / totalLinearFeet;
+    }
+
+    // Length: use total_length from final_output when available
+    if (extractedDimensions?.totalLength) {
+        totalLinearFeet = extractedDimensions.totalLength;
     }
 
     const calcHeight = comp.overrideHeight ?? avgHeight;
-    const layers = comp.overrideLayers ?? 1;
+    const layers = comp.overrideLayers ?? baseLayers;
     const wastage = comp.wasteFactor != null ? comp.wasteFactor : getWasteFactor(material?.category || 'Other');
     const ocMatch = (comp.ocSpacing || comp.usage).match(/(\d+)/);
     const oc = ocMatch ? parseInt(ocMatch[1]) : 16;
@@ -329,6 +346,7 @@ export const FormulaEditModal: React.FC<FormulaEditModalProps> = ({
     assembly,
     takeoffInstances,
     openedFrom,
+    extractedDimensions,
     onSaveFormulas,
 }) => {
     const isCeilingAssembly = assembly.assemblyType === 'Ceiling';
@@ -367,7 +385,7 @@ export const FormulaEditModal: React.FC<FormulaEditModalProps> = ({
         setWallSeQty(component.formulaSecQtyOverride ?? material?.formulaSecQty ?? '');
         setCeilQty(component.formulaCeilQtyOverride ?? material?.formulaCeilQty ?? '');
         setCeilSeQty(component.formulaCeilSecQtyOverride ?? material?.formulaCeilSecQty ?? '');
-        setVarValues(buildContextVarMap(component, assembly, takeoffInstances, material));
+        setVarValues(buildContextVarMap(component, assembly, takeoffInstances, material, extractedDimensions));
     }, [isOpen, component, material]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleVarChange = useCallback((key: string, val: number) => {

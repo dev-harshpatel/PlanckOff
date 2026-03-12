@@ -1,5 +1,5 @@
 /**
- * Type definitions for assembly extraction and material matching data
+ * Assembly extraction and material matching data types
  */
 
 export interface MaterialItem {
@@ -13,12 +13,12 @@ export interface MaterialItem {
   description: string | null;
   r_value?: string | null;
   depth?: number | null;
-  /** final_output format fields */
   height_ft?: number;
   height_category?: string;
   total_length?: number;
   ceiling_area?: number | null;
   area_parementer?: number | null;
+  /** final_output format fields */
   selected_gauge?: string | null;
 }
 
@@ -40,7 +40,6 @@ export interface AssemblyData {
   fire_rating?: string | null;
   stc_rating?: string | null;
   materials?: AssemblyMaterials;
-  /** final_output format fields */
   assembly_type?: string;
   height_ft?: number;
   height_category?: string;
@@ -56,6 +55,22 @@ export interface MatchedMaterial {
   manufacturer: string;
   unit: string;
   unit_cost: number;
+  /** Stored quantity (computed at finalize) — single source of truth */
+  quantity?: number;
+  /** Stored secondary quantity (e.g. sheets from SF) */
+  sec_quantity?: number;
+  sec_unit?: string;
+  /** Waste % used for this calculation */
+  waste_percent?: number;
+  // ─── Per-component user overrides (persisted via Assembly modal Save button) ───
+  /** User-overridden height for this component */
+  height_ft_override?: number;
+  /** User-overridden calculation method/usage string (e.g. "Vertical @ 24\" OC") */
+  usage_override?: string;
+  /** User-overridden number of layers */
+  layers_override?: number;
+  /** User-overridden OC spacing display string (e.g. "24\"") */
+  oc_spacing_override?: string;
 }
 
 export interface MatchedLabor {
@@ -64,9 +79,15 @@ export interface MatchedLabor {
   description: string;
   unit: string;
   unit_cost: number;
-  /** Height segment this labor entry covers (set by code-merge height segmentation) */
   height_ft?: number;
   height_category?: string;
+  /** Stored quantity */
+  quantity?: number;
+  /** Stored secondary quantity */
+  sec_quantity?: number;
+  sec_unit?: string;
+  /** Waste % override saved via Assembly modal Save button */
+  waste_percent?: number;
 }
 
 export interface MaterialsCostingItem {

@@ -1,4 +1,5 @@
-import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
+import { getWasteFactor, inferCategoryFromMaterial } from "@/constants";
+import { AssemblyData, MaterialCosting } from "@/types/assembly";
 import { AssemblyComponent, TakeoffInstance, WallAssembly } from "@/types";
 import { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 
@@ -14,7 +15,10 @@ interface FinalOutputAssembly extends MaterialCosting {
 }
 
 /** Normalize assembly_type from takeoff to match category dropdown values */
-const normalizeAssemblyType = (raw: string): WallAssembly["assemblyType"] => {
+const normalizeAssemblyType = (
+  raw: string,
+  assemblyId?: string,
+): WallAssembly["assemblyType"] => {
   const lower = String(raw || "").toLowerCase();
   if (lower.includes("ceiling")) return "Ceiling";
   if (lower.includes("exterior")) return "Exterior Walls";
@@ -23,7 +27,17 @@ const normalizeAssemblyType = (raw: string): WallAssembly["assemblyType"] => {
   if (lower.includes("access")) return "Access Pannel";
   if (lower.includes("hm") || lower.includes("hollow metal"))
     return "HM Frames";
-  if (lower === "wall") return "Interior Walls";
+  if (lower === "wall") {
+    const id = String(assemblyId || "").toUpperCase();
+    if (
+      id.startsWith("WE") ||
+      id.startsWith("WEF") ||
+      id.includes("EF") ||
+      /^E\d/.test(id)
+    )
+      return "Exterior Walls";
+    return "Interior Walls";
+  }
   return (raw as WallAssembly["assemblyType"]) || "Interior Walls";
 };
 
@@ -126,17 +140,22 @@ export const mapJsonToWallAssemblies = (
 
         // Add components for each matched material
         (matched_materials ?? []).forEach((material, idx) => {
+          const category = inferCategoryFromMaterial(rawText, material.code);
           components.push({
             id: `${assembly.assembly_id}-mat-${idx}-${Date.now()}`,
             materialName: material.description,
             usage,
-            wasteFactor: 0.05,
+            wasteFactor: getWasteFactor(category),
             materialCost: material.unit_cost,
             overrideLayers: layers ?? undefined,
             overrideHeight: typeof heightFt === "number" ? heightFt : undefined,
             materialCode: material.code,
             sectionCode: material.section ?? "",
             ocSpacing: spacingDisplay || undefined,
+            overrideQuantity:
+              material.quantity != null && typeof material.quantity === "number"
+                ? material.quantity
+                : undefined,
           });
         });
 
@@ -144,11 +163,14 @@ export const mapJsonToWallAssemblies = (
         (matched_labor ?? []).forEach((labor, idx) => {
           const laborHeightFt = (labor as { height_ft?: number }).height_ft;
           const displayHeight = typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
+          const laborWaste = (labor as { waste_percent?: number }).waste_percent != null
+            ? (labor as { waste_percent?: number }).waste_percent! / 100
+            : 0;
           components.push({
             id: `${assembly.assembly_id}-lab-${idx}-${Date.now()}`,
             materialName: labor.description,
             usage,
-            wasteFactor: 0,
+            wasteFactor: laborWaste,
             materialCost: labor.unit_cost,
             overrideLayers: undefined,
             overrideHeight: typeof displayHeight === "number" ? displayHeight : undefined,
@@ -165,7 +187,10 @@ export const mapJsonToWallAssemblies = (
     // Prefer assembly_type from takeoff (final output) when available
     const rawType =
       costingExt?.assembly_type ?? extAssembly.assembly_type ?? "";
-    const assemblyType = normalizeAssemblyType(rawType);
+    const assemblyType = normalizeAssemblyType(
+      rawType,
+      extAssembly.assembly_id,
+    );
 
     return {
       id: assembly.assembly_id,
@@ -246,28 +271,48 @@ export const mapFinalOutputToWallAssemblies = (
       }
 
       (matched_materials ?? []).forEach((material) => {
+        const category = inferCategoryFromMaterial(rawText, material.code);
+        // Read back user-saved overrides (set via Assembly modal Save button)
+        const savedUsage = material.usage_override ?? usage;
+        const savedHeight = material.height_ft_override ?? heightFt;
+        const savedLayers = material.layers_override ?? layers ?? undefined;
+        const savedOc = material.oc_spacing_override ?? (spacingDisplay || undefined);
+        // wasteFactor: prefer stored waste_percent (user override), fall back to category constant
+        const savedWaste =
+          material.waste_percent != null
+            ? material.waste_percent / 100
+            : getWasteFactor(category);
+
         components.push({
           id: `${compositeId}-mat-${componentIdx++}`,
           materialName: material.description,
-          usage,
-          wasteFactor: 0.05,
+          usage: savedUsage,
+          wasteFactor: savedWaste,
           materialCost: material.unit_cost,
-          overrideLayers: layers ?? undefined,
-          overrideHeight: heightFt,
+          overrideMatCost: material.unit_cost,
+          overrideLayers: savedLayers,
+          overrideHeight: savedHeight,
           materialCode: material.code,
           sectionCode: material.section ?? "",
-          ocSpacing: spacingDisplay || undefined,
+          ocSpacing: savedOc,
+          overrideQuantity:
+            material.quantity != null && typeof material.quantity === "number"
+              ? material.quantity
+              : undefined,
         });
       });
       (matched_labor ?? []).forEach((labor) => {
         const laborHeightFt = (labor as { height_ft?: number }).height_ft;
         const displayHeight = typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
+        // Read back saved waste_percent; default 0 for labor
+        const laborWaste = labor.waste_percent != null ? labor.waste_percent / 100 : 0;
         components.push({
           id: `${compositeId}-lab-${componentIdx++}`,
           materialName: labor.description,
           usage,
-          wasteFactor: 0,
+          wasteFactor: laborWaste,
           materialCost: labor.unit_cost,
+          overrideMatCost: labor.unit_cost,
           overrideLayers: undefined,
           overrideHeight: displayHeight,
           materialCode: labor.code,
@@ -277,7 +322,10 @@ export const mapFinalOutputToWallAssemblies = (
       });
     });
 
-    const assemblyType = normalizeAssemblyType(ext.assembly_type ?? "");
+    const assemblyType = normalizeAssemblyType(
+      ext.assembly_type ?? "",
+      assemblyId,
+    );
 
     assemblies.push({
       id: compositeId,

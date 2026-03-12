@@ -355,6 +355,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     if (!projectId) return;
     setShowOverwriteModal(false);
     try {
+      // Delete previous assembly/final_output data
       const res = await fetch(`/api/assembly-data?projectId=${projectId}`, {
         method: "DELETE",
       });
@@ -362,6 +363,13 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to delete previous data");
       }
+      // Clear all project-level material overrides (unit costs, formulas, MOUs) so
+      // stale overrides from the old pipeline run don't bleed into the new one.
+      await fetch(`/api/projects/${projectId}/material-overrides`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       await runFullPipeline();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';

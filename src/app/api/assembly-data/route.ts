@@ -151,6 +151,7 @@ export async function GET(req: NextRequest) {
       assemblyFilename: assemblyRecord?.filename ?? "",
       materialFilename,
       rawTakeoffRows,
+      finalOutputId: finalResult.data?.id ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

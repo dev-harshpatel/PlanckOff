@@ -10,13 +10,15 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { getLatestMaterialMatch } from "@/lib/db/assemblyData";
+import { getAllMaterials } from "@/lib/db/materials";
 import {
   getLatestTakeoffOutput,
   getTakeoffOutputById,
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
-// import { writeJsonToLocal } from "@/lib/utils/localJsonStorage"; // disabled — local FS writes break on Vercel
+import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 import {
   type MaterialMatchInput,
   type ProjectContext,
@@ -213,8 +215,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const timestamp = Date.now();
-    const filename = `final_output-${timestamp}.json`;
+    // Enrich with computed quantities (single source of truth for Materials/MatLab tabs)
+    const { data: materials } = await getAllMaterials();
+    if (materials && materials.length > 0) {
+      enrichFinalOutputWithQuantities(result, materials);
+      console.log("[finalize] Enriched assemblies with stored quantities");
+    } else {
+      console.warn("[finalize] No materials in DB — skipping quantity enrichment");
+    }
+
+    const filename = `final_output-${Date.now()}.json`;
     const { data: dbSaved } = await saveFinalOutput(
       result,
       filename,
@@ -222,8 +232,10 @@ export async function POST(req: NextRequest) {
       assemblyExtractionId,
       resolvedTakeoffOutputId,
     );
-    // const localPath = await writeJsonToLocal("final_output", result);
-    console.log(`[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: (disabled)`);
+    const localPath = await writeJsonToLocal("final_output", result, filename);
+    console.log(
+      `[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: ${localPath || "(failed)"}`,
+    );
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

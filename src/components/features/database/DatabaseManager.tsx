@@ -388,16 +388,16 @@ const MaterialDetailModal: React.FC<MaterialDetailModalProps> = ({
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <Field
-                  label="Mat Cost"
+                  label="Unit Cost"
                   field="matCost"
                   type="number"
                   placeholder="0.00"
                 />
                 <Field
-                  label="Unit Cost"
-                  field="unitCost"
+                  label="Size of Unit"
+                  field="sizeOfUnit"
                   type="number"
-                  placeholder="0.00"
+                  placeholder="e.g. 32 for 4x8 sheet, 1 for EA"
                 />
                 <Field label="Unit (Per)" field="per" placeholder="1 EA" />
                 <Field label="Category" field="category" disabled />
@@ -417,9 +417,21 @@ const MaterialDetailModal: React.FC<MaterialDetailModalProps> = ({
                   Labor & Productivity
                 </h3>
               </div>
+              {formData.sizeOfUnit != null &&
+                formData.sizeOfUnit > 0 &&
+                (formData.unitCost ?? formData.matCost) != null &&
+                (formData.unitCost ?? formData.matCost)! > 0 && (
+                  <div className="mb-4 px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100 text-xs text-emerald-700">
+                    <span className="font-semibold">Prod. Rate (computed):</span>{" "}
+                    {(formData.unitCost ?? formData.matCost)! / formData.sizeOfUnit}{" "}
+                    <span className="text-emerald-600">
+                      (Unit Cost ÷ Size of Unit)
+                    </span>
+                  </div>
+                )}
               <div className="grid grid-cols-3 gap-4">
                 <Field
-                  label="Productivity"
+                  label="Productivity (fallback when no Size of Unit)"
                   field="productivity"
                   type="number"
                   placeholder="0"
@@ -487,9 +499,9 @@ const MaterialDetailModal: React.FC<MaterialDetailModalProps> = ({
                 placeholder="SHEET"
               />
               <Field
-                label="Area / Length Cover"
+                label="Area/Length Cover"
                 field="lengthCover"
-                placeholder="450"
+                placeholder="e.g. 450 SF coverage"
               />
               <Field
                 label="Cover Units"
@@ -830,6 +842,7 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
       manufacturer: newMaterial.manufacturer || "Generic",
       description: newMaterial.description || "New Material",
       matCost: newMaterial.matCost || 0,
+      unitCost: newMaterial.unitCost,
       per:
         newMaterial.per ||
         (newMaterial.category === "Drywall" ||
@@ -844,6 +857,8 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
       width: newMaterial.width,
       gauge: newMaterial.gauge,
       flange: newMaterial.flange,
+      sizeOfUnit: newMaterial.sizeOfUnit,
+      lengthCover: newMaterial.lengthCover,
       productivity: newMaterial.productivity,
       hourlyRate: newMaterial.hourlyRate,
     };
@@ -1321,13 +1336,13 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
                     Description
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28 text-right">
-                    Cost
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28 text-right">
                     Unit Cost
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-24">
                     Unit
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
+                    Size of Unit
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-500 w-28">
                     Prod. Rate
@@ -1459,21 +1474,7 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
                         onChange={(e) =>
                           handleUpdateNewMaterial(
                             "matCost",
-                            parseFloat(e.target.value),
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1 text-right"
-                        placeholder="0"
-                        value={newMaterial.unitCost ?? ""}
-                        onChange={(e) =>
-                          handleUpdateNewMaterial(
-                            "unitCost",
-                            parseFloat(e.target.value),
+                            parseFloat(e.target.value) || 0,
                           )
                         }
                       />
@@ -1492,13 +1493,32 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
                       <input
                         type="number"
                         className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
-                        placeholder="100"
-                        value={newMaterial.productivity ?? ""}
+                        placeholder="32"
+                        value={newMaterial.sizeOfUnit ?? ""}
                         onChange={(e) =>
                           handleUpdateNewMaterial(
-                            "productivity",
-                            parseFloat(e.target.value),
+                            "sizeOfUnit",
+                            e.target.value === ""
+                              ? undefined
+                              : parseFloat(e.target.value),
                           )
+                        }
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        className="w-full text-sm border border-emerald-300 rounded px-2 py-1"
+                        placeholder="Auto"
+                        disabled
+                        value={
+                          (() => {
+                            const uc = newMaterial.matCost ?? 0;
+                            const sz = newMaterial.sizeOfUnit ?? 0;
+                            return sz > 0 && uc > 0
+                              ? (uc / sz).toFixed(4)
+                              : "";
+                          })()
                         }
                       />
                     </td>
@@ -1574,21 +1594,26 @@ export const DatabaseManager: React.FC<DatabaseManagerProps> = ({
                     <td className="px-4 py-3 text-sm text-slate-800 font-medium">
                       {m.description}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-800 text-right">
-                      {m.matCost != null
-                        ? `$${m.matCost.toLocaleString()}`
-                        : "-"}
-                    </td>
                     <td className="px-4 py-3 text-sm text-slate-600 text-right">
-                      {m.unitCost != null
-                        ? `$${m.unitCost.toLocaleString()}`
+                      {(m.unitCost ?? m.matCost) != null && (m.unitCost ?? m.matCost)! > 0
+                        ? `$${(m.unitCost ?? m.matCost)!.toLocaleString()}`
                         : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
                       {m.per || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
-                      {m.productivity != null ? m.productivity : "-"}
+                      {m.sizeOfUnit != null ? m.sizeOfUnit : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {(() => {
+                        const unitCost = m.unitCost ?? m.matCost;
+                        const sz = m.sizeOfUnit ?? 0;
+                        if (unitCost != null && sz > 0) {
+                          return (unitCost / sz).toFixed(4);
+                        }
+                        return m.productivity != null ? m.productivity : "-";
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">

@@ -2,13 +2,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, ProposalConfig } from '@/types';
+import type { MaterialCosting } from "@/types/assembly";
 import { calculateMaterials } from '@/services/gemini/calculateMaterials';
-import { Printer, FileText, Settings } from 'lucide-react';
+import { FileText, Settings } from 'lucide-react';
 import { Select } from '@/components/ui';
+import { LaborView } from '@/components/features/reports/LaborView';
 import { MarkupsView } from '@/components/features/reports/Markups';
 import { MaterialsView, ExtendedLineItem } from '@/components/features/reports/MaterialsView';
-import { LaborView } from '@/components/features/reports/LaborView';
-import { parsePer } from '@/lib/utils/calculationUtils';
+import { MatLabView } from '@/components/features/reports/MatLabView';
 import { getCSISection } from '@/constants/csiSections';
 
 interface ReportsProps {
@@ -16,9 +17,11 @@ interface ReportsProps {
     takeoffs: Record<string, TakeoffInstance[]>;
     manualItems: CalculatedMaterial[];
     materials: MaterialDefinition[];
+    materialCostingData?: MaterialCosting[];
+    onUnitCostChange?: (code: string, newCost: number, type: 'material' | 'labor', unit?: string) => void;
     displayUnit: 'imperial' | 'metric';
-    activeReportTab?: 'proposal' | 'bidding' | 'markups' | 'materials' | 'labor';
-    setActiveReportTab?: (tab: 'proposal' | 'bidding' | 'markups' | 'materials' | 'labor') => void;
+    activeReportTab?: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor';
+    setActiveReportTab?: (tab: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor') => void;
     onCloseReport?: () => void;
 }
 
@@ -27,6 +30,8 @@ export const Reports: React.FC<ReportsProps> = ({
     takeoffs,
     manualItems,
     materials,
+    materialCostingData = [],
+    onUnitCostChange,
     displayUnit,
     activeReportTab,
     setActiveReportTab,
@@ -44,7 +49,7 @@ export const Reports: React.FC<ReportsProps> = ({
     });
 
     const [showConfig, setShowConfig] = useState(false);
-    const [localActiveReport, setLocalActiveReport] = useState<'proposal' | 'bidding' | 'markups' | 'materials' | 'labor'>('proposal');
+    const [localActiveReport, setLocalActiveReport] = useState<'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor'>('proposal');
 
     const activeReport = activeReportTab || localActiveReport;
     const handleReportChange = (tab: 'proposal' | 'bidding' | 'markups') => {
@@ -59,7 +64,7 @@ export const Reports: React.FC<ReportsProps> = ({
         if (materials) {
             materials.forEach(m => {
                 if (m && m.description) {
-                    map[m.description] = { cost: m.matCost || 0, per: parsePer(m.per || '1') };
+                    map[m.description] = { cost: m.productivity ?? m.matCost ?? 0, per: 1 };
                 }
             });
         }
@@ -236,7 +241,8 @@ export const Reports: React.FC<ReportsProps> = ({
                             section: getCSISection(m.category, m.item),
                             costCode: m.laborCode || m.category, // Fallback
                             conditionType: asm.description,
-                            supplier: 'Generic' // Helper to lookup if needed, but 'Generic' for now
+                            supplier: 'Generic',
+                            assemblyType: asm.assemblyType || 'Interior Walls',
                         });
                     });
                 } catch (e) {
@@ -254,7 +260,8 @@ export const Reports: React.FC<ReportsProps> = ({
                     section: getCSISection(m.category, m.item),
                     costCode: m.laborCode || m.category,
                     conditionType: 'Manual Entry',
-                    supplier: 'Generic'
+                    supplier: 'Generic',
+                    assemblyType: 'Manual',
                 });
             });
         }
@@ -266,6 +273,7 @@ export const Reports: React.FC<ReportsProps> = ({
     const getHeaderInfo = () => {
         switch (activeReport) {
             case 'materials': return { title: 'Materials', icon: null };
+            case 'matlab': return { title: 'Mat+Lab', icon: null };
             case 'labor': return { title: 'Labor', icon: null };
             case 'markups': return { title: 'Markups', icon: null };
             case 'proposal':
@@ -311,7 +319,7 @@ export const Reports: React.FC<ReportsProps> = ({
                         <button onClick={() => setShowConfig(!showConfig)} className={`px-3 py-2 rounded-md border flex items-center gap-2 text-sm font-medium transition-colors ${showConfig ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                             <Settings className="w-4 h-4" /> Configuration
                         </button>
-                    ) : (activeReport === 'bidding' || activeReport === 'materials' || activeReport === 'labor' ? (
+                    ) : (activeReport === 'bidding' || activeReport === 'materials' || activeReport === 'matlab' || activeReport === 'labor' ? (
                         // Show Floor Filter for Bidding, Materials and Labor views if desired, or just Bidding
                         // The user requested explicit separation.
                         // Let's keep specific controls per view.
@@ -331,9 +339,6 @@ export const Reports: React.FC<ReportsProps> = ({
                         />
                     )}
 
-                    <button onClick={() => window.print()} className="px-3 py-2 bg-slate-800 text-white rounded-md flex items-center gap-2 text-sm font-medium hover:bg-slate-900 shadow-sm">
-                        <Printer className="w-4 h-4" /> Print
-                    </button>
                 </div>
             </div>
 
@@ -383,12 +388,27 @@ export const Reports: React.FC<ReportsProps> = ({
                         </div>
                     </div>
                 ) : activeReport === 'materials' ? (
-                    <MaterialsView items={reportLineItems.filter(i => i.category !== 'Labor')} priceMap={priceMap} />
+                    <MaterialsView
+                        items={reportLineItems.filter(i => i.category !== 'Labor')}
+                        materialCostingData={materialCostingData}
+                        materials={materials}
+                        priceMap={priceMap}
+                        onUnitCostChange={onUnitCostChange ? (code, newCost, unit) => onUnitCostChange(code, newCost, 'material', unit) : undefined}
+                    />
+                ) : activeReport === 'matlab' ? (
+                    <MatLabView materialCostingData={materialCostingData} priceMap={priceMap} />
                 ) : activeReport === 'labor' ? (
-                    <LaborView items={reportLineItems.filter(i => i.category === 'Labor')} priceMap={priceMap} />
+                    <LaborView
+                        items={reportLineItems.filter(i => i.category === 'Labor')}
+                        materialCostingData={materialCostingData}
+                        priceMap={priceMap}
+                        materials={materials}
+                        onUnitCostChange={onUnitCostChange ? (code, newCost) => onUnitCostChange(code, newCost, 'labor') : undefined}
+                    />
                 ) : activeReport === 'markups' ? (
                     <MarkupsView
-                        calculatedMaterials={proposalData.allMats}
+                        markupItems={reportLineItems}
+                        materialCostingData={materialCostingData}
                         priceMap={priceMap}
                     />
                 ) : (

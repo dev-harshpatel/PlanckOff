@@ -1,5 +1,7 @@
 import { WallAssembly, CalculatedMaterial, TakeoffInstance, AssemblyComponent, MaterialDefinition } from '@/types';
 import { evaluateMath } from './client';
+import { computeFormulaQuantities } from '@/lib/utils/formulaEvaluator';
+import { getRowDetails } from '@/lib/utils/calculationUtils';
 
 // --- SMART ASSEMBLY RECIPES ---
 const RECIPES = {
@@ -417,6 +419,21 @@ export const calculateMaterials = (
             matchedMaterial?.category === 'Labor';
         if (isLaborComponent) category = 'Labor';
 
+        // Sec. Qty / Sec. UOM — same as Assembly modal (formula or altUnits fallback)
+        const isCeilingAssembly = assembly.assemblyType === 'Ceiling';
+        const fq = computeFormulaQuantities(comp, matchedMaterial, assembly, instances);
+        const formulaSeQty = isCeilingAssembly ? fq.ceilSeQty : fq.seQty;
+        const details = getRowDetails(comp, assembly, instances);
+        const altU = details.altUnits || {};
+        const altSeQty = altU.sf ?? altU.lf ?? altU.m2 ?? altU.m ?? null;
+        const secQuantity = formulaSeQty ?? (typeof altSeQty === 'number' ? altSeQty : null);
+        const secUnit =
+            secQuantity != null
+                ? formulaSeQty != null
+                    ? (isCeilingAssembly ? matchedMaterial?.mouCeilSec : matchedMaterial?.mouWallSec) ?? '—'
+                    : (altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '—')
+                : undefined;
+
         if (quantity > 0) {
             // Labor components: show hours and use DB hourly rate / override for Labor tab
             if (isLaborComponent) {
@@ -444,7 +461,8 @@ export const calculateMaterials = (
                     overridePrice: rate,
                     productionRate: matchedMaterial?.productivity ?? (comp.installRate != null && comp.installRate > 0 ? 1 / comp.installRate : undefined),
                     crew: comp.crew ? `${comp.crew} Crew` : '1',
-                    code: comp.materialCode ?? matchedMaterial?.code
+                    code: comp.materialCode ?? matchedMaterial?.code,
+                    ...(secQuantity != null && { secQuantity, secUnit: secUnit ?? undefined }),
                 });
             } else {
                 mats.push({
@@ -459,7 +477,8 @@ export const calculateMaterials = (
                     layers: compLayers,
                     wastePercent: wastePct * 100,
                     grade: 'Standard',
-                    code: comp.materialCode ?? matchedMaterial?.code
+                    code: comp.materialCode ?? matchedMaterial?.code,
+                    ...(secQuantity != null && { secQuantity, secUnit: secUnit ?? undefined }),
                 });
 
                 if (comp.installRate && comp.installRate > 0) {

@@ -1,18 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { WallAssembly, MaterialDefinition, AssemblyComponent } from '@/types';
-import { Trash2, Plus, AppWindow, Calculator, FunctionSquare, Package, Ruler, Settings2, X } from 'lucide-react';
+import { Trash2, Plus, AppWindow, Calculator, FunctionSquare, Package, Ruler, Settings2, X, Edit2, RotateCcw } from 'lucide-react';
 import { DEFAULT_TEMPLATES, AssemblyTemplate } from '@/constants/defaultAssemblies';
 import { Button, CloseButton, IconButton, MaterialSearch, Modal, NumberInput } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { FormulaDebugModal } from '@/components/features/project/FormulaDebugModal';
 import { FormulaEditModal } from '@/components/features/project/FormulaEditModal';
+import { LocalGlobalConfirmModal } from '@/components/features/project/LocalGlobalConfirmModal';
 import { AssemblyEditorSidebar } from './AssemblyEditorSidebar';
 import {
     computeFormulaQuantities,
     hasFormulaForContext,
     roundToTwoDecimals,
+    type ExtractedDimensions,
 } from '@/lib/utils/formulaEvaluator';
+import { MaterialCosting } from '@/types/assembly';
+import type { ProjectOverrideMap, OverrideableField } from '@/types/core/projectOverrides';
 
 // ─── Component Detail Modal ──────────────────────────────────────────────────
 
@@ -602,15 +607,31 @@ interface AssemblyEditorModalProps {
     onSelectHeight: (height: number | null) => void;
     onLoadTemplate?: (template: AssemblyTemplate) => void;
     templates?: AssemblyTemplate[];
+    /** Final output material costing data for this assembly (used to get extracted dimensions for formula evaluation) */
+    materialCostingData?: MaterialCosting;
+    /** Project ID — required for local/global override dialog */
+    projectId?: string | null;
+    /** Project-level material override map — used to show override indicators */
+    overrideMap?: ProjectOverrideMap;
+    /** Callback to update override map after a local save */
+    onOverrideMapChange?: (updater: (prev: ProjectOverrideMap) => ProjectOverrideMap) => void;
+    /** Callback to persist assembly changes (unit cost, quantity, waste) to the final output */
+    onSaveAssembly?: (assembly: WallAssembly) => Promise<void>;
+    /** Notifies parent to update materialCostingData so costs recalculate immediately on blur (no DB write). */
+    onWasteChange?: (code: string, wastePercent: number, isLabor: boolean) => void;
 }
 
 export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
     isOpen, onClose, assembly, updateAssemblyInfo, totalAggLength, materials,
     handleMaterialSelect, handleUpdateComponent, handleAddComponent, handleDeleteComponent,
     getRowDetails, takeoffInstances, statsByHeight, selectedHeight, onSelectHeight,
-    onLoadTemplate, templates = DEFAULT_TEMPLATES
+    onLoadTemplate, templates = DEFAULT_TEMPLATES, materialCostingData,
+    projectId, overrideMap = {}, onOverrideMapChange, onSaveAssembly, onWasteChange,
 }) => {
+    const toast = useToast();
     const [tempAssembly, setTempAssembly] = useState(assembly);
+    const [isDirty, setIsDirty] = useState(false);
+    const [isSavingAssembly, setIsSavingAssembly] = useState(false);
 
     // Debug Modal State
     const [debugComponent, setDebugComponent] = useState<{ comp: AssemblyComponent, vars: any } | null>(null);
@@ -619,16 +640,87 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
     const [formulaEditState, setFormulaEditState] = useState<{
         comp: AssemblyComponent;
         openedFrom: 'qty' | 'seqty';
+        extractedDimensions?: ExtractedDimensions;
     } | null>(null);
 
     // Component Detail Modal State
     const [detailComp, setDetailComp] = useState<AssemblyComponent | null>(null);
     const [isNewDetailComp, setIsNewDetailComp] = useState(false);
 
+    // Pending formula save — holds formula overrides waiting for Local/Global dialog
+    const [pendingFormulaSave, setPendingFormulaSave] = useState<{
+        materialCode: string;
+        materialName: string;
+        componentId: string;
+        componentOverrides: {
+            formulaQtyOverride?: string;
+            formulaSecQtyOverride?: string;
+            formulaCeilQtyOverride?: string;
+            formulaCeilSecQtyOverride?: string;
+        };
+        // Fields that differ from DB — sent on "Global" save to spec_database
+        materialFieldUpdates: Partial<Pick<MaterialDefinition, 'formulaQty' | 'formulaSecQty' | 'formulaCeilQty' | 'formulaCeilSecQty'>>;
+    } | null>(null);
+    const [isSavingFormula, setIsSavingFormula] = useState(false);
+
+    // Inline MOU editing state
+    const [editingMouCell, setEditingMouCell] = useState<{ compId: string; type: 'qty' | 'seqty' } | null>(null);
+    const [mouInputValue, setMouInputValue] = useState('');
+
+    // Pending MOU save — holds MOU change awaiting Local/Global dialog
+    const [pendingMouSave, setPendingMouSave] = useState<{
+        materialCode: string;
+        materialName: string;
+        field: Extract<OverrideableField, 'mouWall' | 'mouWallSec' | 'mouCeil' | 'mouCeilSec'>;
+        fieldLabel: string;
+        newValue: string;
+    } | null>(null);
+    const [isSavingMou, setIsSavingMou] = useState(false);
+
     // Sync tempAssembly when assembly changes
     React.useEffect(() => {
         setTempAssembly(assembly);
     }, [assembly]);
+
+    // Reset dirty flag when a different assembly is opened
+    React.useEffect(() => {
+        setIsDirty(false);
+    }, [assembly.id]);
+
+    // Marks the assembly dirty and delegates the field update to the parent's handler.
+    // For wasteFactor changes, also notifies parent to refresh materialCostingData so
+    // costs recalculate immediately — no DB write here; Save button handles persistence.
+    const updateComp = useCallback((
+        assemblyId: string,
+        componentId: string,
+        field: keyof AssemblyComponent,
+        value: AssemblyComponent[keyof AssemblyComponent],
+    ) => {
+        setIsDirty(true);
+        handleUpdateComponent(assemblyId, componentId, field, value);
+        if (field === 'wasteFactor' && value != null && onWasteChange) {
+            const comp = assembly.components.find((c) => c.id === componentId);
+            if (comp?.materialCode) {
+                const isLabor = comp.materialCode.startsWith('LAB-');
+                onWasteChange(comp.materialCode, (value as number) * 100, isLabor);
+            }
+        }
+    }, [handleUpdateComponent, assembly.components, onWasteChange]);
+
+    // Save handler — maps current assembly state to final output and persists
+    const handleSaveClick = useCallback(async () => {
+        if (!onSaveAssembly) return;
+        setIsSavingAssembly(true);
+        try {
+            await onSaveAssembly(assembly);
+            setIsDirty(false);
+            toast.success('Assembly saved');
+        } catch {
+            toast.error('Failed to save assembly');
+        } finally {
+            setIsSavingAssembly(false);
+        }
+    }, [onSaveAssembly, assembly, toast]);
 
     // Open modal for newly added component (one-shot)
     const prevCompCountRef = React.useRef(assembly.components.length);
@@ -643,6 +735,158 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
     }, [isNewDetailComp, assembly.components]);
 
 
+
+    // ─── Formula Local/Global Save Handlers ────────────────────────────────────
+
+    const applyFormulaLocal = useCallback(async () => {
+        if (!pendingFormulaSave || !projectId) return;
+        const { materialCode, materialFieldUpdates } = pendingFormulaSave;
+        setIsSavingFormula(true);
+        try {
+            for (const [field, value] of Object.entries(materialFieldUpdates) as Array<[OverrideableField, string]>) {
+                const res = await fetch(`/api/projects/${projectId}/material-overrides`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ materialCode, field, value }),
+                });
+                const json = await res.json();
+                if (!json.success) { toast.error(json.error ?? 'Failed to save override'); return; }
+                onOverrideMapChange?.((prev) => ({
+                    ...prev,
+                    [materialCode]: { ...(prev[materialCode] ?? {}), [field]: value },
+                }));
+            }
+            toast.success('Formula saved for this project only');
+        } catch {
+            toast.error('Failed to save override');
+        } finally {
+            setIsSavingFormula(false);
+            setPendingFormulaSave(null);
+        }
+    }, [pendingFormulaSave, projectId, onOverrideMapChange, toast]);
+
+    const applyFormulaGlobal = useCallback(async () => {
+        if (!pendingFormulaSave) return;
+        const { materialCode, componentId, componentOverrides, materialFieldUpdates } = pendingFormulaSave;
+        if (Object.keys(materialFieldUpdates).length === 0) { setPendingFormulaSave(null); return; }
+        setIsSavingFormula(true);
+        try {
+            const res = await fetch(`/api/materials/${encodeURIComponent(materialCode)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(materialFieldUpdates),
+            });
+            const json = await res.json();
+            if (json.success) {
+                // Clear any component-level overrides for these fields
+                const overrideKeyMap: Record<string, keyof AssemblyComponent> = {
+                    formulaQty: 'formulaQtyOverride', formulaSecQty: 'formulaSecQtyOverride',
+                    formulaCeilQty: 'formulaCeilQtyOverride', formulaCeilSecQty: 'formulaCeilSecQtyOverride',
+                };
+                (Object.keys(materialFieldUpdates) as Array<keyof typeof materialFieldUpdates>).forEach((f) => {
+                    const cf = overrideKeyMap[f];
+                    if (cf && componentOverrides[cf as keyof typeof componentOverrides] !== undefined)
+                        updateComp(assembly.id, componentId, cf, undefined);
+                });
+                toast.success('Formula updated in database — affects all projects');
+            } else {
+                toast.error(json.error ?? 'Failed to update database');
+            }
+        } catch {
+            toast.error('Failed to update database');
+        } finally {
+            setIsSavingFormula(false);
+            setPendingFormulaSave(null);
+        }
+    }, [pendingFormulaSave, assembly.id, handleUpdateComponent, toast]);
+
+    const revertFormulaOverrides = useCallback(async (materialCode: string, fields: OverrideableField[]) => {
+        if (!projectId) return;
+        try {
+            for (const field of fields) {
+                const res = await fetch(`/api/projects/${projectId}/material-overrides`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ materialCode, field }),
+                });
+                const json = await res.json();
+                if (json.success) {
+                    onOverrideMapChange?.((prev) => {
+                        const existing = { ...(prev[materialCode] ?? {}) };
+                        delete (existing as Record<string, unknown>)[field];
+                        return { ...prev, [materialCode]: existing };
+                    });
+                }
+            }
+            toast.success('Reverted to database value');
+        } catch {
+            toast.error('Failed to revert');
+        }
+    }, [projectId, onOverrideMapChange, toast]);
+
+    // ─── MOU Local/Global Save Handlers ────────────────────────────────────────
+
+    const applyMouLocal = useCallback(async () => {
+        if (!pendingMouSave || !projectId) return;
+        setIsSavingMou(true);
+        try {
+            const res = await fetch(`/api/projects/${projectId}/material-overrides`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    materialCode: pendingMouSave.materialCode,
+                    field: pendingMouSave.field,
+                    value: pendingMouSave.newValue,
+                }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                onOverrideMapChange?.((prev) => ({
+                    ...prev,
+                    [pendingMouSave.materialCode]: {
+                        ...(prev[pendingMouSave.materialCode] ?? {}),
+                        [pendingMouSave.field]: pendingMouSave.newValue,
+                    },
+                }));
+                toast.success('UOM saved for this project only');
+            } else {
+                toast.error(json.error ?? 'Failed to save override');
+            }
+        } catch {
+            toast.error('Failed to save override');
+        } finally {
+            setIsSavingMou(false);
+            setPendingMouSave(null);
+        }
+    }, [pendingMouSave, projectId, onOverrideMapChange, toast]);
+
+    const applyMouGlobal = useCallback(async () => {
+        if (!pendingMouSave) return;
+        setIsSavingMou(true);
+        try {
+            const res = await fetch(`/api/materials/${encodeURIComponent(pendingMouSave.materialCode)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ [pendingMouSave.field]: pendingMouSave.newValue }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                toast.success('UOM updated in database — affects all projects');
+            } else {
+                toast.error(json.error ?? 'Failed to update database');
+            }
+        } catch {
+            toast.error('Failed to update database');
+        } finally {
+            setIsSavingMou(false);
+            setPendingMouSave(null);
+        }
+    }, [pendingMouSave, toast]);
 
     const getUnitSuffix = (u: string) => {
         if (!u) return '';
@@ -722,6 +966,20 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
         return rowCode ? materials.find((m) => m.code === rowCode) : undefined;
     };
 
+    /** Find total_length from final_output for a component (used as the Length variable in formulas) */
+    const findExtractedDimsForComponent = (comp: AssemblyComponent): ExtractedDimensions | undefined => {
+        if (!materialCostingData) return undefined;
+        const code = comp.materialCode;
+        if (!code) return undefined;
+        const item = materialCostingData.materials_costing.find(mci =>
+            mci.matched_materials.some(m => m.code === code) ||
+            mci.matched_labor.some(l => l.code === code),
+        );
+        const totalLength = item?.extracted_material?.total_length;
+        if (totalLength == null) return undefined;
+        return { totalLength };
+    };
+
     // Unit Cost = override ?? "Production rate (per unit)" from database (matched by Code column)
     const getUnitCostForRow = (comp: AssemblyComponent): number | undefined => {
         const mat = getMaterialByRowCode(comp);
@@ -736,7 +994,8 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
         const isCeiling = assembly.assemblyType === "Ceiling";
         const hasFormula = hasFormulaForContext(comp, mat, isCeiling);
         if (hasFormula) {
-            const fq = computeFormulaQuantities(comp, mat, assembly, takeoffInstances);
+            const extDims = findExtractedDimsForComponent(comp);
+            const fq = computeFormulaQuantities(comp, mat, assembly, takeoffInstances, extDims);
             const qty = isCeiling ? fq.ceilQty : fq.qty;
             return roundToTwoDecimals(qty ?? details.quantity ?? 0);
         }
@@ -759,6 +1018,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
         const mat = materials.find((m) => m.description === comp.materialName);
         return mat?.category === "Labor";
     };
+
     let totalLaborCost = 0;
     let totalMaterialCost = 0;
     assembly.components.forEach((comp) => {
@@ -916,25 +1176,35 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                         // Formula-based Qty / Se.Qty
                                         const mat = getMaterialByRowCode(comp);
                                         const isCeilingAssembly = assembly.assemblyType === 'Ceiling';
-                                        const fq = computeFormulaQuantities(comp, mat, assembly, takeoffInstances);
+                                        const extractedDims = findExtractedDimsForComponent(comp);
+                                        const fq = computeFormulaQuantities(comp, mat, assembly, takeoffInstances, extractedDims);
                                         const hasFormula = hasFormulaForContext(comp, mat, isCeilingAssembly);
 
-                                        // Qty: formula result takes precedence over getRowDetails
-                                        const formulaQtyValue = isCeilingAssembly ? fq.ceilQty : fq.qty;
-                                        const displayQty = formulaQtyValue ?? details.quantity;
+                                        // Override indicators — check if project has overrides for formula/MOU fields
+                                        const matOverrides = mat?.code ? (overrideMap[mat.code] ?? {}) : {};
+                                        const hasFormulaOverride = isCeilingAssembly
+                                            ? ('formulaCeilQty' in matOverrides || 'formulaCeilSecQty' in matOverrides)
+                                            : ('formulaQty' in matOverrides || 'formulaSecQty' in matOverrides);
+                                        const mouQtyField = isCeilingAssembly ? 'mouCeil' : 'mouWall';
+                                        const mouSeQtyField = isCeilingAssembly ? 'mouCeilSec' : 'mouWallSec';
+                                        const hasMouQtyOverride = mouQtyField in matOverrides;
+                                        const hasMouSeQtyOverride = mouSeQtyField in matOverrides;
 
-                                        // Se.Qty: formula result takes precedence over altUnits
+                                        // Qty: formula result → stored pipeline qty → null (never fallback to getRowDetails)
+                                        const formulaQtyValue = isCeilingAssembly ? fq.ceilQty : fq.qty;
+                                        const displayQty = formulaQtyValue ?? comp.overrideQuantity ?? null;
+
+                                        // Se.Qty: only show when an explicit Se.Qty formula exists — no fallback to altUnits
                                         const formulaSeQtyValue = isCeilingAssembly ? fq.ceilSeQty : fq.seQty;
+                                        const displaySeQty = formulaSeQtyValue;
                                         const altU = details.altUnits || {};
-                                        const altSeQty = altU.sf || altU.lf || altU.m2 || altU.m || null;
-                                        const displaySeQty = formulaSeQtyValue ?? altSeQty;
                                         const mouVal = altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
 
                                         return (
                                             <tr
                                                 key={comp.id}
                                                 className="hover:bg-blue-50/20 transition-colors h-7 cursor-pointer"
-                                                onDoubleClick={() => setDebugComponent({ comp, vars: details.calculationVars || {} })}
+                                                // onDoubleClick={() => setDebugComponent({ comp, vars: details.calculationVars || {} })}
                                             >
                                                 <td className="border-r border-slate-200 text-center bg-slate-50">{idx + 1}</td>
 
@@ -988,7 +1258,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                         className="w-full h-full bg-transparent text-center outline-none"
                                                         value={comp.overrideHeight}
                                                         onChange={(val) =>
-                                                            handleUpdateComponent(assembly.id, comp.id, "overrideHeight", val)
+                                                            updateComp(assembly.id, comp.id, "overrideHeight", val)
                                                         }
                                                         placeholder={heightVal}
                                                     />
@@ -1002,7 +1272,8 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                                 const val = e.target.value;
                                                                 // Only allow numeric input
                                                                 if (!/^\d*$/.test(val)) return;
-                                                                handleUpdateComponent(assembly.id, comp.id, 'usage', `Vertical @ ${val}" OC`);
+                                                                updateComp(assembly.id, comp.id, 'usage', `Vertical @ ${val}" OC`);
+                                                                updateComp(assembly.id, comp.id, 'ocSpacing', val ? `${val}"` : undefined);
                                                             }}
                                                         />
                                                     ) : (
@@ -1016,7 +1287,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                             className="w-full h-full bg-transparent text-center outline-none"
                                                             value={comp.overrideLayers}
                                                             onChange={(val) =>
-                                                                handleUpdateComponent(assembly.id, comp.id, "overrideLayers", val)
+                                                                updateComp(assembly.id, comp.id, "overrideLayers", val)
                                                             }
                                                             placeholder={layersVal}
                                                             type="float"
@@ -1031,7 +1302,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                     <NumberInput cellMode
                                                         className="w-full h-full bg-transparent text-center outline-none"
                                                         value={comp.wasteFactor}
-                                                        onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'wasteFactor', val)}
+                                                        onChange={(val) => updateComp(assembly.id, comp.id, 'wasteFactor', val)}
                                                         placeholder="5"
                                                         scale={0.01} // Display as 5, save as 0.05
                                                     />
@@ -1043,34 +1314,95 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                         'border-r border-slate-200 text-center font-bold px-1 p-0',
                                                         hasFormula ? 'cursor-pointer group' : '',
                                                     ].join(' ')}
-                                                    onClick={hasFormula ? () => setFormulaEditState({ comp, openedFrom: 'qty' }) : undefined}
+                                                    onClick={hasFormula ? () => setFormulaEditState({ comp, openedFrom: 'qty', extractedDimensions: extractedDims }) : undefined}
                                                     title={hasFormula ? 'Click to edit formula' : undefined}
                                                 >
                                                     {comp.usage === 'Fixed Qty' && !hasFormula ? (
                                                         <NumberInput cellMode
                                                             className="w-full h-full bg-transparent text-center outline-none font-bold"
                                                             value={comp.overrideQuantity}
-                                                            onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'overrideQuantity', val)}
-                                                            placeholder={displayQty.toFixed(2)}
+                                                            onChange={(val) => updateComp(assembly.id, comp.id, 'overrideQuantity', val)}
+                                                            placeholder={displayQty != null ? displayQty.toFixed(2) : '0.00'}
                                                         />
                                                     ) : (
                                                         <div className={[
-                                                            'flex items-center justify-center gap-0.5 h-full px-1',
+                                                            'flex items-center justify-center gap-0.5 h-full px-1 relative',
                                                             hasFormula ? 'hover:bg-emerald-50 transition-colors rounded' : '',
                                                         ].join(' ')}>
                                                             <span className={hasFormula ? 'text-emerald-700' : ''}>
-                                                                {displayQty.toFixed(2)}
+                                                                {displayQty != null ? displayQty.toFixed(2) : '—'}
                                                             </span>
                                                             {hasFormula && (
                                                                 <FunctionSquare className="w-2.5 h-2.5 text-emerald-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            )}
+                                                            {hasFormulaOverride && mat?.code && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-orange-400 hover:bg-orange-500 cursor-pointer"
+                                                                    title="Formula overridden for this project — click to revert"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        revertFormulaOverrides(
+                                                                            mat.code,
+                                                                            isCeilingAssembly
+                                                                                ? ['formulaCeilQty', 'formulaCeilSecQty']
+                                                                                : ['formulaQty', 'formulaSecQty'],
+                                                                        );
+                                                                    }}
+                                                                />
                                                             )}
                                                         </div>
                                                     )}
                                                 </td>
 
-                                                {/* UOM — Qty MOU from material DB (ceiling vs wall) */}
-                                                <td className="border-r border-slate-200 text-center px-1 font-medium">
-                                                    {(isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) || getUnitSuffix(comp.selectedUnit || details.unit)}
+                                                {/* UOM — Qty MOU from material DB (ceiling vs wall), click to edit */}
+                                                <td
+                                                    className="border-r border-slate-200 text-center px-1 font-medium relative group/mou"
+                                                    title={mat?.code ? 'Click to edit UOM' : undefined}
+                                                >
+                                                    {displayQty != null || hasFormula ? (
+                                                        editingMouCell?.compId === comp.id && editingMouCell.type === 'qty' ? (
+                                                            <input
+                                                                autoFocus
+                                                                className="w-full text-center text-xs border border-emerald-400 rounded outline-none px-1"
+                                                                value={mouInputValue}
+                                                                onChange={(e) => setMouInputValue(e.target.value)}
+                                                                onBlur={() => {
+                                                                    const original = (isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) || '';
+                                                                    if (mouInputValue.trim() && mouInputValue.trim() !== original && mat?.code) {
+                                                                        setPendingMouSave({
+                                                                            materialCode: mat.code,
+                                                                            materialName: mat.description || mat.code,
+                                                                            field: isCeilingAssembly ? 'mouCeil' : 'mouWall',
+                                                                            fieldLabel: 'UOM (Qty)',
+                                                                            newValue: mouInputValue.trim(),
+                                                                        });
+                                                                    }
+                                                                    setEditingMouCell(null);
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                                                    if (e.key === 'Escape') setEditingMouCell(null);
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div
+                                                                className="flex items-center justify-center gap-0.5 cursor-pointer hover:bg-slate-100 rounded px-0.5"
+                                                                onClick={() => {
+                                                                    if (!mat?.code) return;
+                                                                    const val = (isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) || getUnitSuffix(comp.selectedUnit || details.unit);
+                                                                    setMouInputValue(val);
+                                                                    setEditingMouCell({ compId: comp.id, type: 'qty' });
+                                                                }}
+                                                            >
+                                                                <span>{(isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) || getUnitSuffix(comp.selectedUnit || details.unit)}</span>
+                                                                {mat?.code && <Edit2 className="w-2 h-2 text-slate-300 opacity-0 group-hover/mou:opacity-100" />}
+                                                                {hasMouQtyOverride && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" title="UOM overridden for this project" />
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    ) : '-'}
                                                 </td>
 
                                                 {/* Se.Qty */}
@@ -1079,7 +1411,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                         'border-r border-slate-200 text-center px-1',
                                                         hasFormula ? 'cursor-pointer group' : 'text-slate-600',
                                                     ].join(' ')}
-                                                    onClick={hasFormula ? () => setFormulaEditState({ comp, openedFrom: 'seqty' }) : undefined}
+                                                    onClick={hasFormula ? () => setFormulaEditState({ comp, openedFrom: 'seqty', extractedDimensions: extractedDims }) : undefined}
                                                     title={hasFormula ? 'Click to edit formula' : undefined}
                                                 >
                                                     <div className={[
@@ -1097,9 +1429,54 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                     </div>
                                                 </td>
 
-                                                {/* MOU — Se.Qty MOU from material DB (ceiling vs wall) */}
-                                                <td className="border-r border-slate-200 text-center px-1 text-slate-600 truncate">
-                                                    {(isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || mouVal}
+                                                {/* MOU — Se.Qty MOU from material DB (ceiling vs wall), click to edit */}
+                                                <td
+                                                    className="border-r border-slate-200 text-center px-1 text-slate-600 truncate relative group/mou2"
+                                                    title={mat?.code ? 'Click to edit Se.Qty UOM' : undefined}
+                                                >
+                                                    {displaySeQty != null ? (
+                                                        editingMouCell?.compId === comp.id && editingMouCell.type === 'seqty' ? (
+                                                            <input
+                                                                autoFocus
+                                                                className="w-full text-center text-xs border border-emerald-400 rounded outline-none px-1"
+                                                                value={mouInputValue}
+                                                                onChange={(e) => setMouInputValue(e.target.value)}
+                                                                onBlur={() => {
+                                                                    const original = (isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || '';
+                                                                    if (mouInputValue.trim() && mouInputValue.trim() !== original && mat?.code) {
+                                                                        setPendingMouSave({
+                                                                            materialCode: mat.code,
+                                                                            materialName: mat.description || mat.code,
+                                                                            field: isCeilingAssembly ? 'mouCeilSec' : 'mouWallSec',
+                                                                            fieldLabel: 'UOM (Se.Qty)',
+                                                                            newValue: mouInputValue.trim(),
+                                                                        });
+                                                                    }
+                                                                    setEditingMouCell(null);
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                                                    if (e.key === 'Escape') setEditingMouCell(null);
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div
+                                                                className="flex items-center justify-center gap-0.5 cursor-pointer hover:bg-slate-100 rounded px-0.5"
+                                                                onClick={() => {
+                                                                    if (!mat?.code) return;
+                                                                    const val = (isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || mouVal;
+                                                                    setMouInputValue(val);
+                                                                    setEditingMouCell({ compId: comp.id, type: 'seqty' });
+                                                                }}
+                                                            >
+                                                                <span>{(isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || mouVal}</span>
+                                                                {mat?.code && <Edit2 className="w-2 h-2 text-slate-300 opacity-0 group-hover/mou2:opacity-100" />}
+                                                                {hasMouSeQtyOverride && (
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" title="Se.Qty UOM overridden for this project" />
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    ) : '-'}
                                                 </td>
 
                                                 {/* Unit Cost = Production rate (per unit) from database, matched by Code column */}
@@ -1112,7 +1489,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                                                             <NumberInput cellMode
                                                                 className="w-full h-full bg-transparent text-center outline-none font-medium"
                                                                 value={displayValue}
-                                                                onChange={(val) => handleUpdateComponent(assembly.id, comp.id, 'overrideMatCost', val)}
+                                                                onChange={(val) => updateComp(assembly.id, comp.id, 'overrideMatCost', val)}
                                                                 placeholder={prodRate != null ? prodRate.toFixed(2) : (details.unitPrice ? details.unitPrice.toFixed(2) : '-')}
                                                             />
                                                         );
@@ -1149,13 +1526,23 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                             </table>
                         </div>
 
-                        <div className="bg-slate-100 p-2 border-t border-slate-200 flex justify-end">
+                        <div className="bg-slate-100 p-2 border-t border-slate-200 flex justify-end items-center gap-2">
+                            {isDirty && onSaveAssembly && (
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    isLoading={isSavingAssembly}
+                                    onClick={handleSaveClick}
+                                >
+                                    Save
+                                </Button>
+                            )}
                             <Button
-                                variant="primary"
+                                variant={isDirty ? "ghost" : "primary"}
                                 size="sm"
                                 onClick={onClose}
                             >
-                                Close
+                                {isDirty ? "Close without saving" : "Close"}
                             </Button>
                         </div>
                     </div>
@@ -1170,8 +1557,8 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                     component={debugComponent.comp}
                     variables={debugComponent.vars}
                     onUpdateFormula={(formula) => {
-                        handleUpdateComponent(assembly.id, debugComponent.comp.id, 'usage', 'Custom Formula');
-                        handleUpdateComponent(assembly.id, debugComponent.comp.id, 'customFormula', formula);
+                        updateComp(assembly.id, debugComponent.comp.id, 'usage', 'Custom Formula');
+                        updateComp(assembly.id, debugComponent.comp.id, 'customFormula', formula);
                     }}
                 />
             )}
@@ -1186,20 +1573,74 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                     assembly={assembly}
                     takeoffInstances={takeoffInstances}
                     openedFrom={formulaEditState.openedFrom}
+                    extractedDimensions={formulaEditState.extractedDimensions}
                     onSaveFormulas={(overrides) => {
-                        const id = formulaEditState.comp.id;
-                        if (overrides.formulaQtyOverride !== undefined)
-                            handleUpdateComponent(assembly.id, id, 'formulaQtyOverride', overrides.formulaQtyOverride || undefined);
-                        if (overrides.formulaSecQtyOverride !== undefined)
-                            handleUpdateComponent(assembly.id, id, 'formulaSecQtyOverride', overrides.formulaSecQtyOverride || undefined);
-                        if (overrides.formulaCeilQtyOverride !== undefined)
-                            handleUpdateComponent(assembly.id, id, 'formulaCeilQtyOverride', overrides.formulaCeilQtyOverride || undefined);
-                        if (overrides.formulaCeilSecQtyOverride !== undefined)
-                            handleUpdateComponent(assembly.id, id, 'formulaCeilSecQtyOverride', overrides.formulaCeilSecQtyOverride || undefined);
+                        const comp = formulaEditState.comp;
+                        const mat = getMaterialByRowCode(comp);
                         setFormulaEditState(null);
+
+                        // Determine which formula fields actually changed from the DB baseline
+                        const materialFieldUpdates: Partial<Pick<MaterialDefinition, 'formulaQty' | 'formulaSecQty' | 'formulaCeilQty' | 'formulaCeilSecQty'>> = {};
+                        if (overrides.formulaQtyOverride !== undefined && overrides.formulaQtyOverride !== '')
+                            materialFieldUpdates.formulaQty = overrides.formulaQtyOverride;
+                        if (overrides.formulaSecQtyOverride !== undefined && overrides.formulaSecQtyOverride !== '')
+                            materialFieldUpdates.formulaSecQty = overrides.formulaSecQtyOverride;
+                        if (overrides.formulaCeilQtyOverride !== undefined && overrides.formulaCeilQtyOverride !== '')
+                            materialFieldUpdates.formulaCeilQty = overrides.formulaCeilQtyOverride;
+                        if (overrides.formulaCeilSecQtyOverride !== undefined && overrides.formulaCeilSecQtyOverride !== '')
+                            materialFieldUpdates.formulaCeilSecQty = overrides.formulaCeilSecQtyOverride;
+
+                        const hasAnyChange = Object.keys(overrides).some(
+                            (k) => overrides[k as keyof typeof overrides] !== undefined,
+                        );
+                        if (!hasAnyChange) return;
+
+                        // If there are changes that differ from DB, show Local/Global dialog
+                        const hasMaterialUpdate = Object.keys(materialFieldUpdates).length > 0;
+                        if (hasMaterialUpdate && mat?.code) {
+                            setPendingFormulaSave({
+                                materialCode: mat.code,
+                                materialName: mat.description || mat.code,
+                                componentId: comp.id,
+                                componentOverrides: overrides,
+                                materialFieldUpdates,
+                            });
+                        } else {
+                            // All changes are clearing overrides (empty string) — just save locally
+                            if (overrides.formulaQtyOverride !== undefined)
+                                updateComp(assembly.id, comp.id, 'formulaQtyOverride', overrides.formulaQtyOverride || undefined);
+                            if (overrides.formulaSecQtyOverride !== undefined)
+                                updateComp(assembly.id, comp.id, 'formulaSecQtyOverride', overrides.formulaSecQtyOverride || undefined);
+                            if (overrides.formulaCeilQtyOverride !== undefined)
+                                updateComp(assembly.id, comp.id, 'formulaCeilQtyOverride', overrides.formulaCeilQtyOverride || undefined);
+                            if (overrides.formulaCeilSecQtyOverride !== undefined)
+                                updateComp(assembly.id, comp.id, 'formulaCeilSecQtyOverride', overrides.formulaCeilSecQtyOverride || undefined);
+                        }
                     }}
                 />
             )}
+
+            {/* Local / Global confirm dialog for formula saves */}
+            <LocalGlobalConfirmModal
+                isOpen={!!pendingFormulaSave}
+                materialName={pendingFormulaSave?.materialName ?? ''}
+                fieldLabel="Formula"
+                isSaving={isSavingFormula}
+                onLocal={applyFormulaLocal}
+                onGlobal={applyFormulaGlobal}
+                onCancel={() => setPendingFormulaSave(null)}
+            />
+
+            {/* Local / Global confirm dialog for MOU saves */}
+            <LocalGlobalConfirmModal
+                isOpen={!!pendingMouSave}
+                materialName={pendingMouSave?.materialName ?? ''}
+                fieldLabel={pendingMouSave?.fieldLabel ?? 'UOM'}
+                isSaving={isSavingMou}
+                onLocal={applyMouLocal}
+                onGlobal={applyMouGlobal}
+                onCancel={() => setPendingMouSave(null)}
+            />
 
             {/* Render Component Detail Modal */}
             {detailComp && (
@@ -1212,7 +1653,7 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
                     component={detailComp}
                     material={getMaterialByRowCode(detailComp)}
                     assemblyId={assembly.id}
-                    onUpdateField={handleUpdateComponent}
+                    onUpdateField={updateComp}
                     onSelectMaterial={handleMaterialSelect}
                     materials={materials}
                     isLabor={getIsLaborRow(detailComp)}

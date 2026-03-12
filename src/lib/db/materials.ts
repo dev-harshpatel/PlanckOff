@@ -36,6 +36,7 @@ const transformToMaterial = (row: any): MaterialDefinition => ({
   sheetBagBoxSizeUnits: row.sheet_bag_box_size_units ?? undefined,
   size: row.size ?? undefined,
   screwSpacing: row.screw_spacing ?? undefined,
+  sizeOfUnit: row.size_of_unit != null ? parseFloat(row.size_of_unit) : undefined,
   lengthCover: row.length_cover ?? undefined,
   lengthCoverUnits: row.length_cover_units ?? undefined,
   formulaQty: row.formula_qty ?? undefined,
@@ -75,6 +76,7 @@ const transformToDbRow = (material: MaterialDefinition) => ({
   sheet_bag_box_size_units: material.sheetBagBoxSizeUnits ?? null,
   size: material.size ?? null,
   screw_spacing: material.screwSpacing ?? null,
+  size_of_unit: material.sizeOfUnit ?? null,
   length_cover: material.lengthCover ?? null,
   length_cover_units: material.lengthCoverUnits ?? null,
   formula_qty: material.formulaQty ?? null,
@@ -212,6 +214,7 @@ export async function updateMaterial(
   if (updates.sheetBagBoxSizeUnits !== undefined) dbUpdates.sheet_bag_box_size_units = updates.sheetBagBoxSizeUnits;
   if (updates.size !== undefined) dbUpdates.size = updates.size;
   if (updates.screwSpacing !== undefined) dbUpdates.screw_spacing = updates.screwSpacing;
+  if (updates.sizeOfUnit !== undefined) dbUpdates.size_of_unit = updates.sizeOfUnit;
   if (updates.lengthCover !== undefined) dbUpdates.length_cover = updates.lengthCover;
   if (updates.lengthCoverUnits !== undefined) dbUpdates.length_cover_units = updates.lengthCoverUnits;
   if (updates.formulaQty !== undefined) dbUpdates.formula_qty = updates.formulaQty;

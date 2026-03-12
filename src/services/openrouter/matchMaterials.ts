@@ -1,112 +1,27 @@
-const PROMPT = `You are a construction cost estimator. Match each extracted assembly material to database entries. Output ONLY valid JSON.
+import { repairJSONForMaterialMatch, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
+import {
+  trimMaterialDbForMatching,
+  type TrimmedMaterialDbEntry,
+} from "@/lib/utils/materialDbTrim";
+import type { AssemblyMeta, MatchResult } from "@/types/pipeline";
+
+const MATCH_PROMPT = `You are a construction cost estimator. Match each extracted assembly material to database entries. Output ONLY valid JSON.
 
 INPUTS: (1) Extracted assemblies (assemblies, materials, raw_text, thickness_mm, layers, fire_rating). (2) Material & labor DB (code, section, type, description, category, matCost, per, manufacturer).
 
 RULES:
 1) Material match: Use category, thickness (mm→inch OK), keywords (Type X, Regular, Shaftliner, Furring, CH Stud). No match → null.
-2) Metal stud — EXACTLY ONE stud and ONE track per framing member:
-   - Select EXACTLY ONE stud gauge from DB. Use the gauge specified in the assembly; if unspecified, default to 25ga (18mil).
-   - Attach EXACTLY ONE standard track of the SAME gauge as the selected stud.
-   - Only add ONE Deflection or Slotted track if the assembly explicitly requires head-of-wall deflection (e.g. fire-rated, seismic, or slotted track is mentioned). Otherwise omit.
-   - NEVER return multiple studs or tracks of different gauges for the same framing member.
+2) Metal stud: Also attach matching TRACK and Deflection/Slotted track from DB (same width).
 3) Screws: Add from DB — drywall screws for gypsum, fire-rated for Type X, framing/tek for metal studs & furring. No labor unless in DB.
 4) Fire rating non-null: Attach fire sealant/caulking material + fire-stop labor from DB. STC/sound: acoustic sealant + labor if in DB.
-5) Labor: Gypsum→Hang Drywall + Tape & Finish; Sheathing/Shaftliner→Shaftliner install; Metal studs→Install Metal Studs; CH→Shaftwall Framing; Furring→Furring Channel; Batt→Install Batt; Sealants→Fire-Stop/Caulking. Labor additive.
+5) Labor: Gypsum→Hang Drywall + Type X premium if Type X; Sheathing/Shaftliner→Shaftliner install; Metal studs→Install Metal Studs; CH→Shaftwall Framing; Furring→Furring Channel; Batt→Install Batt; Sealants→Fire-Stop/Caulking. Labor additive.
 6) Do NOT invent codes, SKUs, or sealants. Only use DB entries.
 7) SKIP null/empty materials: If an extracted material has null or empty raw_text, OMIT it entirely from the output. Do not match, do not guess, do not assign any materials or labor to it. Only process materials that have a real, non-null raw_text value.
 8) REQUIRED — section: Each matched_materials and matched_labor entry MUST include the "section" field. Copy the exact "section" value (e.g. "09 22 16", "09 29 00", "01 00 00") from the DB entry you matched. Never omit section.
-9) Insulation: Match batt R-value to stud cavity depth — 92mm/3-5/8" studs → R-13 (3.5" batt); 140mm/5-1/2" studs → R-21; 152mm/6" studs → R-19 (6.25" batt). Use extracted thickness_mm to determine the correct insulation. When uncertain, prefer the shallower/lighter R-value that fits the stud depth.
 
 OUTPUT (valid JSON only, no markdown):
 {"assemblies":[{"assembly_id":"string","materials_costing":[{"extracted_material":{...},"matched_materials":[{"code","section","description","manufacturer","unit","unit_cost"}],"matched_labor":[{"code","section","description","unit","unit_cost"}]}]}]}
-Required fields: "unit" = per from DB, "unit_cost" = number from matCost, "section" = exact section code from DB (REQUIRED for every matched_materials and matched_labor entry). Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
-
-function repairJSON(input: string): string {
-  try {
-    JSON.parse(input);
-    return input;
-  } catch {
-    // continue to repair
-  }
-
-  const assemblyEndPattern = /\}\s*\]\s*\}\s*(?=,|\])/g;
-  let lastCompleteEnd = -1;
-  let match;
-  while ((match = assemblyEndPattern.exec(input)) !== null) {
-    lastCompleteEnd = match.index + match[0].length;
-  }
-
-  if (lastCompleteEnd > 0) {
-    let fixed = input.substring(0, lastCompleteEnd);
-    fixed = fixed.replace(/,\s*$/, "");
-    fixed += "\n  ]\n}";
-    try {
-      JSON.parse(fixed);
-      return fixed;
-    } catch {
-      // fall through
-    }
-  }
-
-  let fixed = input;
-
-  let inString = false;
-  let escape = false;
-  for (const ch of fixed) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; }
-  }
-  if (inString) fixed += '"';
-
-  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*"[^"]*"\s*$/, "");
-  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*$/, "");
-  fixed = fixed.replace(/,\s*"[^"]*$/, "");
-  fixed = fixed.replace(/,\s*$/, "");
-
-  const closeMap: Record<string, string> = { "{": "}", "[": "]" };
-  const stack: string[] = [];
-  inString = false;
-  escape = false;
-  for (const ch of fixed) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (ch === "{" || ch === "[") stack.push(ch);
-    if (ch === "}" || ch === "]") stack.pop();
-  }
-  while (stack.length > 0) {
-    const open = stack.pop()!;
-    fixed += closeMap[open];
-  }
-
-  return fixed;
-}
-
-type TrimmedDbEntry = {
-  code: string;
-  section: string;
-  type: string;
-  description: string;
-  category: string;
-  matCost: string;
-  per: string;
-  manufacturer: string;
-};
-
-function trimDatabaseForMatch(db: Record<string, unknown>[]): TrimmedDbEntry[] {
-  return db.map((row) => ({
-    code: String(row.code ?? ""),
-    section: String(row.section ?? ""),
-    type: String(row.type ?? ""),
-    description: String(row.description ?? ""),
-    category: String(row.category ?? ""),
-    matCost: String(row.matCost ?? ""),
-    per: String(row.per ?? ""),
-    manufacturer: String(row.manufacturer ?? ""),
-  }));
-}
+Required fields: "unit" = per from DB, "unit_cost" = number from matCost (this is the production rate per unit for materials, or cost per labor unit for labor), "section" = exact section code from DB (REQUIRED for every matched_materials and matched_labor entry). Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
 
 /** Collect keywords from a batch of assemblies for optional DB filtering (e.g. raw_text, categories). */
 function getBatchKeywords(assemblies: unknown[]): Set<string> {
@@ -133,10 +48,13 @@ function getBatchKeywords(assemblies: unknown[]): Set<string> {
 }
 
 /** Optionally reduce DB to rows that might match this batch (saves tokens, keeps quality). */
-function filterDbForBatch(db: TrimmedDbEntry[], batchAssemblies: unknown[]): TrimmedDbEntry[] {
+const filterDbForBatch = (
+  db: TrimmedMaterialDbEntry[],
+  batchAssemblies: unknown[],
+): TrimmedMaterialDbEntry[] => {
   const keywords = getBatchKeywords(batchAssemblies);
   if (keywords.size === 0) return db;
-  const include = (row: TrimmedDbEntry): boolean => {
+  const include = (row: TrimmedMaterialDbEntry): boolean => {
     const parts = [
       row.code,
       row.section,
@@ -160,7 +78,7 @@ function filterDbForBatch(db: TrimmedDbEntry[], batchAssemblies: unknown[]): Tri
   const filtered = db.filter(include);
   if (filtered.length < db.length * 0.5) return db;
   return filtered;
-}
+};
 
 const MAX_BATCH_RETRIES = 2;
 const BATCH_SIZE = 15;
@@ -168,10 +86,7 @@ const MODEL = "google/gemini-2.5-flash";
 /** When true, send a smaller DB per batch (saves tokens, no cache benefit). When false, send full DB first for prompt-cache hits on batches 2+. */
 const USE_PER_BATCH_DB_FILTER = false;
 
-export interface MatchResult {
-  assemblies: unknown[];
-  usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-}
+export type { MatchResult };
 
 export async function matchMaterialsToDatabase(
   extraction: { assemblies: unknown[] },
@@ -180,8 +95,33 @@ export async function matchMaterialsToDatabase(
   routeStartMs: number = Date.now(),
 ): Promise<MatchResult> {
   const elapsed = () => ((Date.now() - routeStartMs) / 1000).toFixed(2);
+  const trimmedDb = trimMaterialDbForMatching(materialDb);
 
-  const trimmedDb = trimDatabaseForMatch(materialDb);
+  // Preserve fire_rating and stc_rating from extraction so they survive the match step.
+  const metaById = new Map<string, AssemblyMeta>();
+  for (const assembly of extraction.assemblies ?? []) {
+    const src = assembly as {
+      assembly_id?: unknown;
+      fire_rating?: unknown;
+      stc_rating?: unknown;
+    };
+    const id =
+      typeof src.assembly_id === "string" && src.assembly_id.trim() !== ""
+        ? src.assembly_id.trim()
+        : null;
+    if (!id) continue;
+
+    const fireRating =
+      src.fire_rating === undefined || src.fire_rating === null
+        ? null
+        : String(src.fire_rating);
+    const stcRating =
+      src.stc_rating === undefined || src.stc_rating === null
+        ? null
+        : String(src.stc_rating);
+
+    metaById.set(id, { fire_rating: fireRating, stc_rating: stcRating });
+  }
 
   // Pre-filter: strip out materials with null/empty raw_text from each assembly
   const MATERIAL_CATEGORIES = [
@@ -236,7 +176,7 @@ export async function matchMaterialsToDatabase(
       model: MODEL,
       max_tokens: 32768,
       messages: [
-        { role: "system", content: PROMPT },
+        { role: "system", content: MATCH_PROMPT },
         { role: "user", content: userMessage },
       ],
     };
@@ -276,17 +216,14 @@ export async function matchMaterialsToDatabase(
       if (lastUsage.prompt_tokens !== undefined) totalPromptTokens += lastUsage.prompt_tokens;
       if (lastUsage.completion_tokens !== undefined) totalCompletionTokens += lastUsage.completion_tokens;
 
-      const cleaned = lastRaw
-        .replace(/^```(?:json)?\s*\n?/, "")
-        .replace(/\n?```\s*$/, "")
-        .trim();
+      const cleaned = stripMarkdownAndTrim(lastRaw);
 
       try {
         parsed = JSON.parse(cleaned) as { assemblies?: unknown[] };
         break;
       } catch {
         try {
-          parsed = JSON.parse(repairJSON(cleaned)) as { assemblies?: unknown[] };
+          parsed = JSON.parse(repairJSONForMaterialMatch(cleaned)) as { assemblies?: unknown[] };
           console.log(`[match] Batch ${batchNum} — repaired successfully`);
           break;
         } catch (repairErr) {
@@ -309,8 +246,30 @@ export async function matchMaterialsToDatabase(
   console.log(`[match] Total matched: ${allMatched.length} assemblies`);
   console.log(`[match] Tokens: ${totalPromptTokens} prompt + ${totalCompletionTokens} completion`);
 
+  const propagatedAssemblies = allMatched.map((assembly) => {
+    const obj = assembly as Record<string, unknown>;
+    const idValue = obj.assembly_id;
+    if (typeof idValue !== "string" || idValue.trim() === "") {
+      return obj;
+    }
+
+    const meta = metaById.get(idValue.trim());
+    if (!meta) {
+      return obj;
+    }
+
+    const existingFire = obj.fire_rating as string | null | undefined;
+    const existingStc = obj.stc_rating as string | null | undefined;
+
+    return {
+      ...obj,
+      fire_rating: existingFire ?? meta.fire_rating,
+      stc_rating: existingStc ?? meta.stc_rating,
+    };
+  });
+
   return {
-    assemblies: allMatched,
+  assemblies: propagatedAssemblies,
     usage: {
       prompt_tokens: totalPromptTokens,
       completion_tokens: totalCompletionTokens,

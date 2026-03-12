@@ -2,7 +2,7 @@ import {
   AssemblyData,
   MaterialCosting,
   MaterialDetailRow,
-} from "@/types/assemblyData";
+} from "@/types/assembly";
 
 /**
  * Maps assembly and costing data to rows for display in the material details table

@@ -1,0 +1,623 @@
+'use client';
+
+import React, { useCallback, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Download } from 'lucide-react';
+import { Button } from '@/components/ui';
+import { ExportModal } from '@/components/features/reports/ExportModal';
+import type { ExportColumnDef, ExportRow } from '@/lib/utils/exportUtils';
+import {
+  MaterialsFilterDropdown,
+  MaterialsFilterState,
+} from '@/components/features/reports/MaterialsFilterDropdown';
+import type {
+  MaterialCosting,
+  MaterialsCostingItem,
+  MatchedMaterial,
+  MatchedLabor,
+} from "@/types/assembly";
+
+interface MatLabViewProps {
+  materialCostingData: MaterialCosting[];
+  priceMap: Record<string, { cost: number; per: number }>;
+}
+
+interface AggregatedLaborRow {
+  labKey: string;
+  code: string;
+  item: string;
+  section: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  areas: string[];
+}
+
+interface AggregatedMaterialGroup {
+  matKey: string;
+  code: string;
+  item: string;
+  section: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  areas: string[];
+  labor: AggregatedLaborRow[];
+}
+
+const LOG_DEBUG = process.env.NEXT_PUBLIC_LOG_MATLAB_DEBUG === 'true';
+
+const formatCurrency = (val: number) =>
+  val.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const parseLevels = (levelStr: string): string[] => {
+  if (!levelStr || levelStr === 'Unknown') return [];
+  return levelStr.split(',').map((l) => l.trim()).filter(Boolean);
+};
+
+const sortLevels = (levels: string[]): string[] =>
+  [...levels].sort((a, b) => {
+    const nA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+    const nB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+    return nA - nB;
+  });
+
+const getQuantityFromExtracted = (
+  ext: MaterialsCostingItem['extracted_material'],
+  unit: string
+): number => {
+  if (!ext) return 0;
+  const totalLength = (ext as { total_length?: number }).total_length ?? 0;
+  const heightFt = (ext as { height_ft?: number }).height_ft ?? 0;
+  const ceilingArea = (ext as { ceiling_area?: number }).ceiling_area ?? 0;
+  const u = unit.toUpperCase();
+  if (u === 'SF' || u === 'SQFT' || u === 'SQF') {
+    if (ceilingArea > 0) return ceilingArea;
+    return totalLength * heightFt;
+  }
+  if (u === 'LF') return totalLength;
+  if (u === 'EA' || u === 'HR') return 1;
+  if (ceilingArea > 0) return ceilingArea;
+  return totalLength * heightFt;
+};
+
+const getMatUnitCost = (
+  mat: MatchedMaterial,
+  priceMap: Record<string, { cost: number; per: number }>
+): number => {
+  // Prefer final_output (project-specific) over priceMap (global spec_database)
+  if (mat.unit_cost != null) {
+    return mat.unit_cost;
+  }
+  const pricing = priceMap[mat.description];
+  if (pricing && pricing.per > 0) return pricing.cost / pricing.per;
+  return 0;
+};
+
+const getLabUnitCost = (
+  lab: MatchedLabor,
+  priceMap: Record<string, { cost: number; per: number }>
+): number => {
+  // Prefer final_output (project-specific) over priceMap (global spec_database)
+  if (lab.unit_cost != null) {
+    return lab.unit_cost;
+  }
+  const pricing = priceMap[lab.description];
+  if (pricing && pricing.per > 0) return pricing.cost / pricing.per;
+  return 0;
+};
+
+export const MatLabView = ({
+  materialCostingData,
+  priceMap,
+}: MatLabViewProps) => {
+  const [filterState, setFilterState] = useState<MaterialsFilterState>({
+    selectedItems: new Set(),
+    selectedLevels: new Set(),
+    selectedSections: new Set(),
+    selectedCostCodes: new Set(),
+  });
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const { groups, totalCost, availableItems, availableLevels, availableSections, availableCostCodes } =
+    useMemo(() => {
+      // Step 1: filter assemblies by selected levels
+      const assembliesToProcess =
+        filterState.selectedLevels.size > 0
+          ? materialCostingData.filter((a) => {
+              const levelStr = (a as { level?: string }).level ?? 'Unknown';
+              const levels = parseLevels(levelStr);
+              return levels.some((l) => filterState.selectedLevels.has(l));
+            })
+          : materialCostingData;
+
+      // Step 2: aggregate unique materials and labor-by-section
+      const matMap = new Map<
+        string,
+        {
+          code: string;
+          item: string;
+          section: string;
+          quantity: number;
+          unit: string;
+          unitCost: number;
+          totalCostSum: number;
+          areas: Set<string>;
+        }
+      >();
+
+      // labBySectionMap: section → (labKey → aggregate)
+      const labBySectionMap = new Map<
+        string,
+        Map<
+          string,
+          {
+            code: string;
+            item: string;
+            section: string;
+            quantity: number;
+            unit: string;
+            unitCost: number;
+            totalCostSum: number;
+            areas: Set<string>;
+          }
+        >
+      >();
+
+      // For available filter options — built from ALL (unfiltered) assemblies
+      const allLevelsSet = new Set<string>();
+      const allItemsSet = new Set<string>();
+      const allSectionsSet = new Set<string>();
+
+      materialCostingData.forEach((assembly) => {
+        const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
+        parseLevels(levelStr).forEach((l) => allLevelsSet.add(l));
+        (assembly.materials_costing ?? []).forEach((costingItem) => {
+          costingItem.matched_materials.forEach((mat: MatchedMaterial) => {
+            allItemsSet.add(mat.description);
+            if (mat.section) allSectionsSet.add(mat.section);
+          });
+          (costingItem.matched_labor ?? []).forEach((lab: MatchedLabor) => {
+            allItemsSet.add(lab.description);
+          });
+        });
+      });
+
+      assembliesToProcess.forEach((assembly) => {
+        const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
+        const assemblyLevels = parseLevels(levelStr);
+        const areas = assemblyLevels.length > 0 ? assemblyLevels : ['Unknown'];
+
+        (assembly.materials_costing ?? []).forEach((costingItem) => {
+          const { extracted_material, matched_materials, matched_labor } = costingItem;
+
+          // Aggregate materials
+          matched_materials.forEach((mat: MatchedMaterial) => {
+            const qty =
+              mat.quantity != null && typeof mat.quantity === 'number'
+                ? mat.quantity
+                : getQuantityFromExtracted(extracted_material, mat.unit);
+            const unitCost = getMatUnitCost(mat, priceMap);
+            const matKey = `${mat.code}|${mat.description}|${mat.unit}`;
+
+            if (matMap.has(matKey)) {
+              const existing = matMap.get(matKey)!;
+              existing.quantity += qty;
+              existing.totalCostSum += qty * unitCost;
+              areas.forEach((a) => existing.areas.add(a));
+            } else {
+              matMap.set(matKey, {
+                code: mat.code,
+                item: mat.description,
+                section: mat.section ?? '—',
+                quantity: qty,
+                unit: mat.unit,
+                unitCost,
+                totalCostSum: qty * unitCost,
+                areas: new Set(areas),
+              });
+            }
+          });
+
+          // Aggregate labor — keyed under its section
+          (matched_labor ?? []).forEach((lab: MatchedLabor) => {
+            const labSection = lab.section ?? '—';
+            const qty =
+              lab.quantity != null && typeof lab.quantity === 'number'
+                ? lab.quantity
+                : getQuantityFromExtracted(extracted_material, lab.unit);
+            const unitCost = getLabUnitCost(lab, priceMap);
+            const labKey = `${lab.code}|${lab.description}|${lab.unit}`;
+
+            if (!labBySectionMap.has(labSection)) {
+              labBySectionMap.set(labSection, new Map());
+            }
+            const sectionMap = labBySectionMap.get(labSection)!;
+
+            if (sectionMap.has(labKey)) {
+              const existing = sectionMap.get(labKey)!;
+              existing.quantity += qty;
+              existing.totalCostSum += qty * unitCost;
+              areas.forEach((a) => existing.areas.add(a));
+            } else {
+              sectionMap.set(labKey, {
+                code: lab.code,
+                item: lab.description,
+                section: labSection,
+                quantity: qty,
+                unit: lab.unit === 'EA' ? 'Hrs' : lab.unit,
+                unitCost,
+                totalCostSum: qty * unitCost,
+                areas: new Set(areas),
+              });
+            }
+          });
+        });
+      });
+
+      // ─── Debug verification ──────────────────────────────────────────────────
+      if (LOG_DEBUG) {
+        // Raw JSON totals (from assembliesToProcess — respects level filter)
+        let rawMatCount = 0;
+        let rawLabCount = 0;
+        let rawMatTotal = 0;
+        let rawLabTotal = 0;
+        const rawMatRows: { code: string; description: string; unit: string; qty: number; unitCost: number; total: number }[] = [];
+        const rawLabRows: { code: string; description: string; unit: string; qty: number; unitCost: number; total: number }[] = [];
+
+        assembliesToProcess.forEach((assembly) => {
+          (assembly.materials_costing ?? []).forEach((costingItem) => {
+            const { extracted_material, matched_materials, matched_labor } = costingItem;
+            matched_materials.forEach((mat: MatchedMaterial) => {
+              const qty = mat.quantity != null ? mat.quantity : getQuantityFromExtracted(extracted_material, mat.unit);
+              const uc = getMatUnitCost(mat, priceMap);
+              rawMatCount++;
+              rawMatTotal += qty * uc;
+              rawMatRows.push({ code: mat.code, description: mat.description, unit: mat.unit, qty, unitCost: uc, total: qty * uc });
+            });
+            (matched_labor ?? []).forEach((lab: MatchedLabor) => {
+              const qty = lab.quantity != null ? lab.quantity : getQuantityFromExtracted(extracted_material, lab.unit);
+              const uc = getLabUnitCost(lab, priceMap);
+              rawLabCount++;
+              rawLabTotal += qty * uc;
+              rawLabRows.push({ code: lab.code, description: lab.description, unit: lab.unit, qty, unitCost: uc, total: qty * uc });
+            });
+          });
+        });
+
+        // Aggregated totals (after deduplication)
+        const aggMatRows = Array.from(matMap.values()).map((m) => ({
+          code: m.code, item: m.item, section: m.section, unit: m.unit,
+          qty: m.quantity, unitCost: m.unitCost, total: m.totalCostSum,
+        }));
+        const aggLabRows = Array.from(labBySectionMap.entries()).flatMap(([section, smap]) =>
+          Array.from(smap.values()).map((l) => ({
+            code: l.code, item: l.item, section, unit: l.unit,
+            qty: l.quantity, unitCost: l.unitCost, total: l.totalCostSum,
+          }))
+        );
+        const aggMatTotal = aggMatRows.reduce((s, r) => s + r.total, 0);
+        const aggLabTotal = aggLabRows.reduce((s, r) => s + r.total, 0);
+
+        console.group('[MatLab Debug] Raw JSON vs Aggregated');
+        console.log(`Raw entries  → Materials: ${rawMatCount} rows, Total: $${rawMatTotal.toFixed(2)}`);
+        console.log(`Raw entries  → Labor:     ${rawLabCount} rows, Total: $${rawLabTotal.toFixed(2)}`);
+        console.log(`Aggregated   → Materials: ${aggMatRows.length} unique, Total: $${aggMatTotal.toFixed(2)}`);
+        console.log(`Aggregated   → Labor:     ${aggLabRows.length} unique, Total: $${aggLabTotal.toFixed(2)}`);
+        console.log('─── Raw Material rows (from JSON) ───');
+        console.table(rawMatRows.sort((a, b) => a.code.localeCompare(b.code)));
+        console.log('─── Aggregated Material rows (displayed) ───');
+        console.table(aggMatRows.sort((a, b) => a.code.localeCompare(b.code)));
+        console.log('─── Raw Labor rows (from JSON) ───');
+        console.table(rawLabRows.sort((a, b) => a.code.localeCompare(b.code)));
+        console.log('─── Aggregated Labor rows (displayed) ───');
+        console.table(aggLabRows.sort((a, b) => a.code.localeCompare(b.code)));
+        console.groupEnd();
+      }
+      // ────────────────────────────────────────────────────────────────────────
+
+      // Step 3: build display groups — each unique material + its section's labor
+      let allGroups: AggregatedMaterialGroup[] = Array.from(matMap.entries()).map(
+        ([matKey, mat]) => {
+          const labForSection = labBySectionMap.get(mat.section);
+          const labor: AggregatedLaborRow[] = labForSection
+            ? Array.from(labForSection.entries()).map(([labKey, lab]) => ({
+                labKey,
+                code: lab.code,
+                item: lab.item,
+                section: lab.section,
+                quantity: lab.quantity,
+                unit: lab.unit,
+                unitCost: lab.unitCost,
+                totalCost: lab.totalCostSum,
+                areas: sortLevels(Array.from(lab.areas).filter((a) => a !== 'Unknown')),
+              }))
+            : [];
+
+          return {
+            matKey,
+            code: mat.code,
+            item: mat.item,
+            section: mat.section,
+            quantity: mat.quantity,
+            unit: mat.unit,
+            unitCost: mat.unitCost,
+            totalCost: mat.totalCostSum,
+            areas: sortLevels(Array.from(mat.areas).filter((a) => a !== 'Unknown')),
+            labor,
+          };
+        }
+      );
+
+      // Step 4: apply item/section/cost-code filters
+      if (filterState.selectedItems.size > 0) {
+        allGroups = allGroups.filter((g) => filterState.selectedItems.has(g.item));
+      }
+      if (filterState.selectedSections.size > 0) {
+        allGroups = allGroups.filter((g) => filterState.selectedSections.has(g.section));
+      }
+      if (filterState.selectedCostCodes.size > 0) {
+        allGroups = allGroups.filter((g) => filterState.selectedCostCodes.has(g.section));
+      }
+
+      const filteredTotal = allGroups.reduce(
+        (s, g) =>
+          s +
+          g.totalCost +
+          g.labor.reduce((ls, l) => ls + l.totalCost, 0),
+        0
+      );
+
+      return {
+        groups: allGroups,
+        totalCost: filteredTotal,
+        availableItems: Array.from(allItemsSet).filter(Boolean).sort(),
+        availableLevels: sortLevels(
+          Array.from(allLevelsSet).filter((l) => l && l !== 'Unknown')
+        ),
+        availableSections: Array.from(allSectionsSet).filter(Boolean).sort(),
+        availableCostCodes: Array.from(allSectionsSet).filter(Boolean).sort(),
+      };
+    }, [materialCostingData, priceMap, filterState]);
+
+  const handleFilterChange = useCallback((state: MaterialsFilterState) => {
+    setFilterState(state);
+  }, []);
+
+  const allGroupKeys = useMemo(() => groups.map((g) => g.matKey), [groups]);
+  const allCollapsed = allGroupKeys.length > 0 && allGroupKeys.every((k) => collapsedGroups.has(k));
+
+  const toggleAll = useCallback(() => {
+    setCollapsedGroups(allCollapsed ? new Set() : new Set(allGroupKeys));
+  }, [allCollapsed, allGroupKeys]);
+
+  const [showExport, setShowExport] = useState(false);
+
+  const MATLAB_COLUMNS: ExportColumnDef[] = [
+    { key: 'type',      label: 'Type',         defaultEnabled: true,  format: 'string' },
+    { key: 'code',      label: 'Code',         defaultEnabled: true,  format: 'string' },
+    { key: 'item',      label: 'Description',  defaultEnabled: true,  format: 'string' },
+    { key: 'section',   label: 'Section',      defaultEnabled: true,  format: 'string' },
+    { key: 'areas',     label: 'Level',        defaultEnabled: true,  format: 'string' },
+    { key: 'quantity',  label: 'Qty',          defaultEnabled: true,  format: 'number',   align: 'right' },
+    { key: 'unit',      label: 'UOM',          defaultEnabled: true,  format: 'string',   align: 'center' },
+    { key: 'unitCost',  label: 'Unit Cost',    defaultEnabled: true,  format: 'currency', align: 'right' },
+    { key: 'totalCost', label: 'Total Cost',   defaultEnabled: true,  format: 'currency', align: 'right' },
+  ];
+
+  // Flatten material + labor rows for export (material row first, then its labor children)
+  const exportRows = useMemo<ExportRow[]>(() => {
+    const rows: ExportRow[] = [];
+    groups.forEach((g) => {
+      rows.push({
+        type:      'Material',
+        code:      g.code,
+        item:      g.item,
+        section:   g.section,
+        areas:     g.areas.join(', ') || '—',
+        quantity:  g.quantity,
+        unit:      g.unit,
+        unitCost:  g.unitCost,
+        totalCost: g.totalCost,
+      });
+      g.labor.forEach((lab) => {
+        rows.push({
+          type:      'Labor',
+          code:      lab.code,
+          item:      lab.item,
+          section:   lab.section,
+          areas:     lab.areas.join(', ') || '—',
+          quantity:  lab.quantity,
+          unit:      lab.unit,
+          unitCost:  lab.unitCost,
+          totalCost: lab.totalCost,
+        });
+      });
+    });
+    return rows;
+  }, [groups]);
+
+  const filtersActive =
+    filterState.selectedItems.size > 0 ||
+    filterState.selectedLevels.size > 0 ||
+    filterState.selectedCostCodes.size > 0;
+
+  const showLevelCol = filterState.selectedLevels.size > 0;
+  const colSpan = showLevelCol ? 9 : 8;
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50">
+      {/* Toolbar */}
+      <div className="bg-white p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between shrink-0 shadow-sm">
+        <div className="flex items-center gap-4">
+          <MaterialsFilterDropdown
+            availableItems={availableItems}
+            availableLevels={availableLevels}
+            availableSections={availableSections}
+            availableCostCodes={availableCostCodes}
+            filterState={filterState}
+            onFilterChange={handleFilterChange}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={allCollapsed ? ChevronsUpDown : ChevronsDownUp}
+            iconPosition="left"
+            onClick={toggleAll}
+          >
+            {allCollapsed ? 'Expand All' : 'Collapse All'}
+          </Button>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 border border-emerald-100">
+            <span className="text-sm font-medium text-emerald-800">Total</span>
+            <span className="text-base font-bold text-emerald-900">
+              ${formatCurrency(totalCost)}
+            </span>
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" icon={Download} onClick={() => setShowExport(true)}>
+          Export
+        </Button>
+      </div>
+
+      <ExportModal
+        isOpen={showExport}
+        onClose={() => setShowExport(false)}
+        filename="mat-lab-export"
+        sheetName="Mat+Lab"
+        columns={MATLAB_COLUMNS}
+        rows={exportRows}
+        filtersActive={filtersActive}
+      />
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        {groups.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 text-sm bg-white m-4 rounded-xl border border-slate-200">
+            No items match the selected filters. Run the pipeline to load assembly data.
+          </div>
+        ) : (
+          <div className="m-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <table className="w-full text-xs text-left">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-100 text-slate-500">
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider w-8" />
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider">Code</th>
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider">Item / Description</th>
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider">Sect</th>
+                  {showLevelCol && (
+                    <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider">Level</th>
+                  )}
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider text-right">Qty</th>
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider text-center">UOM</th>
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider text-right">Unit Cost</th>
+                  <th className="px-3 py-3 border-b border-slate-200 font-semibold uppercase tracking-wider text-right">Total Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((group, gIdx) => {
+                  const isCollapsed = collapsedGroups.has(group.matKey);
+                  const hasLabor = group.labor.length > 0;
+
+                  return (
+                    <React.Fragment key={group.matKey}>
+                      {gIdx > 0 && (
+                        <tr>
+                          <td colSpan={colSpan} className="h-px bg-slate-200" />
+                        </tr>
+                      )}
+
+                      {/* Material row */}
+                      <tr
+                        className="bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={hasLabor ? () => toggleGroup(group.matKey) : undefined}
+                      >
+                        <td className="pl-3 pr-1 py-2.5 text-slate-400">
+                          {hasLabor ? (
+                            isCollapsed
+                              ? <ChevronRight size={14} className="text-slate-400" />
+                              : <ChevronDown size={14} className="text-slate-400" />
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-slate-800">{group.code}</span>
+                            <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-cyan-100 text-cyan-700">
+                              Mat.
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 font-medium text-slate-800">{group.item}</td>
+                        <td className="px-3 py-2.5 text-slate-500 font-mono">{group.section}</td>
+                        {showLevelCol && (
+                          <td className="px-3 py-2.5 text-slate-500">
+                            {group.areas.length > 0 ? group.areas.join(', ') : '—'}
+                          </td>
+                        )}
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-700">
+                          {group.quantity.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                        </td>
+                        <td className="px-3 py-2.5 text-center text-slate-500">{group.unit}</td>
+                        <td className="px-3 py-2.5 text-right text-slate-600">${formatCurrency(group.unitCost)}</td>
+                        <td className="px-3 py-2.5 text-right font-bold text-slate-800">${formatCurrency(group.totalCost)}</td>
+                      </tr>
+
+                      {/* Labor rows — hidden when collapsed */}
+                      {!isCollapsed && group.labor.map((lab) => (
+                        <tr
+                          key={lab.labKey}
+                          className="bg-amber-50/40 hover:bg-amber-50/70 transition-colors"
+                        >
+                          <td className="pl-3 pr-1 py-2" />
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-slate-600 text-[11px]">{lab.code}</span>
+                              <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700">
+                                Labor
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            <span className="flex items-center gap-1.5 pl-3">
+                              <span className="text-amber-400 font-bold">›</span>
+                              {lab.item}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-400 font-mono">{lab.section}</td>
+                          {showLevelCol && (
+                            <td className="px-3 py-2 text-slate-400">
+                              {lab.areas.length > 0 ? lab.areas.join(', ') : '—'}
+                            </td>
+                          )}
+                          <td className="px-3 py-2 text-right text-slate-600">
+                            {lab.quantity.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                          </td>
+                          <td className="px-3 py-2 text-center text-slate-400">{lab.unit}</td>
+                          <td className="px-3 py-2 text-right text-slate-500">${formatCurrency(lab.unitCost)}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-slate-700">${formatCurrency(lab.totalCost)}</td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

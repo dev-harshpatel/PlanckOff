@@ -497,6 +497,23 @@ Combine material match with takeoff quantities, aggregate by assembly and height
 
 ---
 
+## Service Structure
+
+Pipeline services are organized under `src/services/`:
+
+| Layer | Path | Purpose |
+|-------|------|---------|
+| Pipeline index | `pipeline/index.ts` | Re-exports for both flows |
+| Extract | `openrouter/extractAssemblies.ts` | PDF → assembly JSON |
+| Match | `openrouter/matchMaterials.ts` | Assembly + DB → matched JSON |
+| Finalize (merge) | `finalize/mergeTakeoffWithMaterialMatch.ts` | Matched + takeoff → final (code) |
+| Finalize (AI fallback) | `openrouter/finalizeAssemblies.ts` | When no takeoff |
+| Unified flow | `openrouter/processWithUnifiedPrompt.ts` | One-shot flow (future) |
+
+**Unified flow** (`/api/process-pipeline`): PDF + Excel in one request → extract → parse takeoff → load DB → `finalizeWithUnifiedPrompt` (prompt.txt). Kept for future use; UI currently uses sequential flow.
+
+---
+
 ## Future Optimizations
 
 - **Caching**: Material DB already cached in Redis

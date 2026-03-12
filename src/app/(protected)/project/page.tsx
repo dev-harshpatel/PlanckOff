@@ -8,13 +8,16 @@ import {
   Box,
   Briefcase,
   FileText,
+  Layers,
   LogOut,
   Percent,
   Users,
   Loader2,
 } from "lucide-react";
 import { AppState, ProjectSummary, WallAssembly } from "@/types";
-import { AssemblyData, MaterialCosting } from "@/types/assemblyData";
+import { AssemblyData, MaterialCosting } from "@/types/assembly";
+import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
+import { resolveProjectMaterials } from "@/lib/utils/resolveProjectMaterial";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
 import { identifyWallAssemblies } from "@/services/gemini/client";
 import { useApp } from "@/context/AppContext";
@@ -23,7 +26,7 @@ import {
   mapJsonToWallAssemblies,
 } from "@/lib/utils/assemblyJsonMapper";
 
-const REPORT_TABS = ["materials", "labor", "markups", "proposal", "bidding"] as const;
+const REPORT_TABS = ["materials", "matlab", "labor", "markups", "proposal", "bidding"] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
 
 const isReportTab = (t: string | null): t is ReportTab =>
@@ -43,7 +46,7 @@ function ProjectContent() {
   const [error, setError] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<
-    "proposal" | "bidding" | "markups" | "materials" | "labor"
+    "proposal" | "bidding" | "markups" | "materials" | "matlab" | "labor"
   >("proposal");
 
   // Sync report view from URL so refresh keeps Materials/Labor tab
@@ -92,6 +95,8 @@ function ProjectContent() {
   const [isLoadingAssemblyData, setIsLoadingAssemblyData] = useState(true);
   const [assemblyDataRefreshTrigger, setAssemblyDataRefreshTrigger] =
     useState(0);
+  const [finalOutputId, setFinalOutputId] = useState<string | null>(null);
+  const [overrideMap, setOverrideMap] = useState<ProjectOverrideMap>({});
 
   // Fetch project data
   useEffect(() => {
@@ -181,10 +186,6 @@ function ProjectContent() {
         const assemblyDataArray = (data.assemblyData?.assemblies || []) as AssemblyData[];
         const costingDataArray = (data.materialData?.assemblies || []) as MaterialCosting[];
 
-        setAssemblyData(assemblyDataArray);
-        setMaterialCostingData(costingDataArray);
-        setRawTakeoffRows(data.rawTakeoffRows ?? []);
-
         const hasFinalOutputFormat =
           costingDataArray.length > 0 &&
           costingDataArray.every(
@@ -201,10 +202,29 @@ function ProjectContent() {
             );
 
         const newAssemblyIds = new Set(mappedAssemblies.map((a) => a.id));
+
+        // Batch all primary state updates together (before any await) so EstimateResult's
+        // useEffect receives updated initialAssemblies and materialCostingData in the same
+        // render. Without this, materialCostingData updating first triggers the useEffect
+        // with stale initialAssemblies, causing the wasteFactor (and other overrides) to
+        // flicker back to the old value while the overrides fetch is in-flight.
+        setAssemblyData(assemblyDataArray);
+        setMaterialCostingData(costingDataArray);
+        setRawTakeoffRows(data.rawTakeoffRows ?? []);
+        setFinalOutputId((data as { finalOutputId?: string }).finalOutputId ?? null);
         setAssemblies((prev) => [
           ...prev.filter((a) => !newAssemblyIds.has(a.id)),
           ...mappedAssemblies,
         ]);
+
+        // Load project-specific material overrides (non-critical — runs after primary data)
+        try {
+          const ovRes = await fetch(`/api/projects/${projectId}/material-overrides`, { credentials: 'include' });
+          const ovJson = await ovRes.json();
+          if (ovJson.success) setOverrideMap(ovJson.data ?? {});
+        } catch {
+          // Non-critical — overrides simply won't apply if load fails
+        }
       } catch (err) {
         console.error("[Project] Failed to load assembly data:", err);
       } finally {
@@ -252,6 +272,103 @@ function ProjectContent() {
       setError("Unexpected error");
       setState(AppState.ERROR);
     }
+  };
+
+  const handleUnitCostChange = async (
+    code: string,
+    newCost: number,
+    type: "material" | "labor",
+  ) => {
+    if (!finalOutputId) {
+      console.warn("[UnitCost] finalOutputId is null — unit cost change will not be persisted. Check that the project has a final output loaded.");
+      return;
+    }
+
+    const updatedData = materialCostingData.map((assembly) => ({
+      ...assembly,
+      materials_costing: assembly.materials_costing.map((item) => ({
+        ...item,
+        matched_materials:
+          type === "material"
+            ? item.matched_materials.map((mat) =>
+                mat.code === code ? { ...mat, unit_cost: newCost } : mat,
+              )
+            : item.matched_materials,
+        matched_labor:
+          type === "labor"
+            ? (item.matched_labor ?? []).map((lab) =>
+                lab.code === code ? { ...lab, unit_cost: newCost } : lab,
+              )
+            : item.matched_labor,
+      })),
+    }));
+
+    setMaterialCostingData(updatedData);
+
+    // Also update overrideMatCost on assembly components so the Assembly modal reflects the change.
+    // The modal reads comp.overrideMatCost ?? mat?.productivity, so setting overrideMatCost overrides spec_db.
+    setAssemblies((prev) =>
+      prev.map((assembly) => ({
+        ...assembly,
+        components: (assembly.components ?? []).map((comp) =>
+          comp.materialCode === code
+            ? { ...comp, overrideMatCost: newCost }
+            : comp,
+        ),
+      })),
+    );
+
+    try {
+      const res = await fetch(`/api/final-output/${finalOutputId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ assemblies: updatedData }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        console.log("[UnitCost] PATCH succeeded", {
+          status: res.status,
+          finalOutputId,
+          dbFilename: json.debug?.filename,
+          localFileStatus: json.debug?.localFileStatus,
+        });
+        setAssemblyDataRefreshTrigger((t) => t + 1);
+      } else {
+        console.error("[UnitCost] PATCH failed", { status: res.status, error: json });
+      }
+    } catch (err) {
+      console.error("[UnitCost] Network error during PATCH:", err);
+    }
+  };
+
+  /**
+   * Updates materialCostingData state when the user changes waste% in the Assembly modal.
+   * This gives immediate cost-recalculation feedback in the UI without touching the DB —
+   * the actual DB write happens only when the Save button is clicked (handleSaveAssembly).
+   */
+  const handleWasteChange = (
+    code: string,
+    wastePercent: number,
+    isLabor: boolean,
+  ) => {
+    const updatedData = materialCostingData.map((assembly) => ({
+      ...assembly,
+      materials_costing: assembly.materials_costing.map((item) => ({
+        ...item,
+        matched_materials: isLabor
+          ? item.matched_materials
+          : item.matched_materials.map((mat) =>
+              mat.code === code ? { ...mat, waste_percent: wastePercent } : mat,
+            ),
+        matched_labor: isLabor
+          ? (item.matched_labor ?? []).map((lab) =>
+              lab.code === code ? { ...lab, waste_percent: wastePercent } : lab,
+            )
+          : item.matched_labor,
+      })),
+    }));
+    setMaterialCostingData(updatedData);
   };
 
   const handleReset = () => {
@@ -328,6 +445,21 @@ function ProjectContent() {
                 }`}
             >
               <Box className="w-4 h-4" /> Materials
+            </button>
+
+            <button
+              onClick={() => {
+                if (showReport && activeReportTab === "matlab") closeReport();
+                else openReportTab("matlab");
+              }}
+              className={`text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2
+                ${
+                  showReport && activeReportTab === "matlab"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm"
+                    : "text-slate-600 hover:bg-slate-50 border-transparent"
+                }`}
+            >
+              <Layers className="w-4 h-4" /> Mat+Lab
             </button>
 
             <button
@@ -429,7 +561,15 @@ function ProjectContent() {
           materialCostingData={materialCostingData}
           rawTakeoffRows={rawTakeoffRows}
           projectId={projectId}
+          finalOutputId={finalOutputId}
+          onUnitCostChange={handleUnitCostChange}
+          onWasteChange={handleWasteChange}
+          overrideMap={overrideMap}
+          onOverrideMapChange={setOverrideMap}
           onImportComplete={() =>
+            setAssemblyDataRefreshTrigger((t) => t + 1)
+          }
+          onAssemblySaveComplete={() =>
             setAssemblyDataRefreshTrigger((t) => t + 1)
           }
         />
