@@ -6,8 +6,8 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { RoleName } from '@/types/team';
+import { isRoleName } from '@/constants/roles';
 import {
-  ROLE_HIERARCHY,
   hasRoleAccess,
   meetsMinRoleRequirement,
   canAccessRoute,
@@ -45,7 +45,10 @@ export interface RBACHook {
 export function useRBAC(): RBACHook {
   const { user, isAuthenticated } = useAuth();
 
-  const userRole = (isAuthenticated && user?.role) as RoleName | null;
+  const userRole =
+    isAuthenticated && isRoleName(user?.role)
+      ? user.role
+      : null;
 
   // Check if user has a specific role
   const hasRole = (role: RoleName): boolean => {

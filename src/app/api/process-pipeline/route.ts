@@ -1,7 +1,7 @@
 /**
  * POST /api/process-pipeline
  * Single-prompt flow: PDF + Excel → assembly + takeoff + final output.
- * Saves all outputs to database (and optionally to local for backup).
+ * Saves all outputs to database (local folder backup disabled — see writeJsonToLocal).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +17,7 @@ import {
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
 import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 // Hobby plan max: 300s. Pro allows up to 900s.
 export const maxDuration = 300;
@@ -25,7 +25,7 @@ export const maxDuration = 300;
 const TAG = "[process-pipeline]";
 const elapsed = (start: number) => `${((performance.now() - start) / 1000).toFixed(2)}s`;
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   const pipelineStart = performance.now();
   console.log(`\n${"=".repeat(70)}`);
   console.log(`${TAG} POST /api/process-pipeline — started at ${new Date().toISOString()}`);
@@ -87,7 +87,14 @@ export async function POST(req: NextRequest) {
       assemblyFilename,
       projectId,
     );
-    const assemblyPath = await writeJsonToLocal("assembly", assemblyPayload);
+    // Local data/output folder writes disabled (writeJsonToLocal).
+    // if (process.env.NODE_ENV === "development") {
+    //   void writeJsonToLocal("assembly", assemblyPayload).then((path) => {
+    //     if (path) {
+    //       console.log(`${TAG}   → Local assembly file written: ${path}`);
+    //     }
+    //   });
+    // }
     console.log(`${TAG} Step 1 done [${elapsed(step1Start)}] — ${extractResult.assemblies.length} assemblies`);
     console.log(`${TAG}   → DB: ${assemblySaved?.id ?? "ok"} | Local: (disabled)`);
 
@@ -103,7 +110,13 @@ export async function POST(req: NextRequest) {
       takeoffFilename,
       projectId,
     );
-    const takeoffPath = await writeJsonToLocal("takeoff", takeoffPayload);
+    // if (process.env.NODE_ENV === "development") {
+    //   void writeJsonToLocal("takeoff", takeoffPayload).then((path) => {
+    //     if (path) {
+    //       console.log(`${TAG}   → Local takeoff file written: ${path}`);
+    //     }
+    //   });
+    // }
     console.log(`${TAG} Step 2 done [${elapsed(step2Start)}] — ${takeoffRecords.length} takeoff rows`);
     console.log(`${TAG}   → DB: ${takeoffSaved?.id ?? "ok"} | Local: (disabled)`);
 
@@ -146,9 +159,15 @@ export async function POST(req: NextRequest) {
       assemblySaved?.id,
       takeoffSaved?.id,
     );
-    const finalPath = await writeJsonToLocal("final_output", finalPayload);
+    // if (process.env.NODE_ENV === "development") {
+    //   void writeJsonToLocal("final_output", finalPayload).then((path) => {
+    //     if (path) {
+    //       console.log(`${TAG}   → Local final output file written: ${path}`);
+    //     }
+    //   });
+    // }
     console.log(
-      `${TAG}   → DB: ${finalSaved?.id ?? "ok"} | Local: ${finalPath || "(failed)"}`,
+      `${TAG}   → DB: ${finalSaved?.id ?? "ok"} | Local: (disabled)`,
     );
 
     // ── Summary ──────────────────────────────────────────────────────
@@ -183,4 +202,4 @@ export async function POST(req: NextRequest) {
     if (stack) console.error(`${TAG} Stack: ${stack}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

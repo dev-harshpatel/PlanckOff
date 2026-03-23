@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -18,6 +18,8 @@ import { AppState, ProjectSummary, WallAssembly } from "@/types";
 import { AssemblyData, MaterialCosting } from "@/types/assembly";
 import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
 import { resolveProjectMaterials } from "@/lib/utils/resolveProjectMaterial";
+import { applyProjectCostingOverrides } from "@/lib/utils/projectPricing";
+import { syncProjectOverrides } from "@/lib/utils/projectOverrideSync";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
 import { identifyWallAssemblies } from "@/services/gemini/client";
 import { useApp } from "@/context/AppContext";
@@ -96,7 +98,11 @@ function ProjectContent() {
   const [assemblyDataRefreshTrigger, setAssemblyDataRefreshTrigger] =
     useState(0);
   const [finalOutputId, setFinalOutputId] = useState<string | null>(null);
+  const [takeoffOutputId, setTakeoffOutputId] = useState<string | null>(null);
   const [overrideMap, setOverrideMap] = useState<ProjectOverrideMap>({});
+  // Always-current ref so useEffect([overrideMap]) reads the latest materialCostingData
+  // rather than the stale closure value from when the effect was last registered.
+  const materialCostingDataRef = useRef<MaterialCosting[]>(materialCostingData);
 
   // Fetch project data
   useEffect(() => {
@@ -169,6 +175,8 @@ function ProjectContent() {
           materialFilename?: string;
           rawTakeoffRows?: unknown[];
           error?: string;
+          finalOutputId?: string | null;
+          takeoffOutputId?: string | null;
         };
         try {
           data = JSON.parse(rawText);
@@ -186,27 +194,6 @@ function ProjectContent() {
         const assemblyDataArray = (data.assemblyData?.assemblies || []) as AssemblyData[];
         const costingDataArray = (data.materialData?.assemblies || []) as MaterialCosting[];
 
-        const sample = costingDataArray[0];
-        console.log("[AsmSave DEBUG] loadAssemblyData: from API", {
-          projectId,
-          assembliesCount: costingDataArray.length,
-          sampleAssembly: sample,
-        });
-        if (sample) {
-          const allMatched = sample.materials_costing?.flatMap(
-            (mc: any) => mc.matched_materials ?? [],
-          );
-          console.log("[AsmSave DEBUG] loadAssemblyData: sample matched_materials", {
-            codes: Array.isArray(allMatched) ? allMatched.map((m: any) => ({
-              code: m.code,
-              waste_percent: m.waste_percent,
-              unit_cost: m.unit_cost,
-              quantity: m.quantity,
-              height_ft_override: (m as Record<string, unknown>).height_ft_override,
-            })) : [],
-          });
-        }
-
         const hasFinalOutputFormat =
           costingDataArray.length > 0 &&
           costingDataArray.every(
@@ -215,11 +202,29 @@ function ProjectContent() {
               typeof (a as { total_length?: number }).total_length === "number",
           );
 
+        let effectiveOverrideMap: ProjectOverrideMap = {};
+        try {
+          const ovRes = await fetch(`/api/projects/${projectId}/material-overrides`, {
+            credentials: "include",
+          });
+          const ovJson = await ovRes.json();
+          if (ovJson.success) {
+            effectiveOverrideMap = ovJson.data ?? {};
+          }
+        } catch {
+          // Non-critical — overrides simply won't apply if load fails
+        }
+
+        const effectiveCostingData = applyProjectCostingOverrides(
+          costingDataArray,
+          effectiveOverrideMap,
+        );
+
         const mappedAssemblies = hasFinalOutputFormat
-          ? mapFinalOutputToWallAssemblies(costingDataArray)
+          ? mapFinalOutputToWallAssemblies(effectiveCostingData)
           : mapJsonToWallAssemblies(
               assemblyDataArray,
-              costingDataArray,
+              effectiveCostingData,
             );
 
         const newAssemblyIds = new Set(mappedAssemblies.map((a) => a.id));
@@ -230,22 +235,15 @@ function ProjectContent() {
         // with stale initialAssemblies, causing the wasteFactor (and other overrides) to
         // flicker back to the old value while the overrides fetch is in-flight.
         setAssemblyData(assemblyDataArray);
-        setMaterialCostingData(costingDataArray);
+        setMaterialCostingData(effectiveCostingData);
         setRawTakeoffRows(data.rawTakeoffRows ?? []);
-        setFinalOutputId((data as { finalOutputId?: string }).finalOutputId ?? null);
+        setFinalOutputId(data.finalOutputId ?? null);
+        setTakeoffOutputId(data.takeoffOutputId ?? null);
+        setOverrideMap(effectiveOverrideMap);
         setAssemblies((prev) => [
           ...prev.filter((a) => !newAssemblyIds.has(a.id)),
           ...mappedAssemblies,
         ]);
-
-        // Load project-specific material overrides (non-critical — runs after primary data)
-        try {
-          const ovRes = await fetch(`/api/projects/${projectId}/material-overrides`, { credentials: 'include' });
-          const ovJson = await ovRes.json();
-          if (ovJson.success) setOverrideMap(ovJson.data ?? {});
-        } catch {
-          // Non-critical — overrides simply won't apply if load fails
-        }
       } catch (err) {
         console.error("[Project] Failed to load assembly data:", err);
       } finally {
@@ -255,6 +253,44 @@ function ProjectContent() {
 
     loadAssemblyData();
   }, [projectId, assemblyDataRefreshTrigger]);
+
+  useEffect(() => {
+    // Use the ref (not closure) so we always apply overrides on top of the
+    // LATEST materialCostingData — including height_ft_override written by a
+    // just-completed save — even if the state update and the overrideMap update
+    // land in different render cycles.
+    const current = materialCostingDataRef.current;
+    const nextCostingData = applyProjectCostingOverrides(current, overrideMap);
+    if (nextCostingData === current) return;
+    syncUiFromCostingData(nextCostingData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overrideMap]);
+
+  const syncProjectUnitCostOverride = async (
+    code: string,
+    newCost: number,
+    type: "material" | "labor",
+  ) => {
+    if (!projectId) return;
+
+    const field = type === "labor" ? "hourlyRate" : "productivity";
+    const baselineMaterial = materials.find((material) => material.code === code);
+    const baselineValue =
+      field === "hourlyRate" ? baselineMaterial?.hourlyRate : baselineMaterial?.productivity;
+    await syncProjectOverrides({
+      projectId,
+      items: [
+        {
+          materialCode: code,
+          field,
+          value: newCost,
+          baselineValue,
+          existingValue: overrideMap[code]?.[field] as number | undefined,
+        },
+      ],
+      onOverrideMapChange: setOverrideMap,
+    });
+  };
 
   const handleAnalyze = async (file: File) => {
     setState(AppState.ANALYZING);
@@ -295,49 +331,70 @@ function ProjectContent() {
     }
   };
 
+  // Keep the ref always in sync with state so useEffect([overrideMap]) can read
+  // the freshest materialCostingData without adding it to the deps array.
+  materialCostingDataRef.current = materialCostingData;
+
+  const syncUiFromCostingData = (updatedCostingData: MaterialCosting[]) => {
+    const mappedAssemblies = mapFinalOutputToWallAssemblies(updatedCostingData);
+    materialCostingDataRef.current = updatedCostingData;
+    setMaterialCostingData(updatedCostingData);
+    setAssemblies(mappedAssemblies);
+  };
+
+  const applyProjectWideCostingUpdate = ({
+    code,
+    isLabor,
+    updater,
+  }: {
+    code: string;
+    isLabor: boolean;
+    updater: {
+      material: (
+        item: MaterialCosting["materials_costing"][number]["matched_materials"][number],
+      ) => MaterialCosting["materials_costing"][number]["matched_materials"][number];
+      labor: (
+        item: NonNullable<MaterialCosting["materials_costing"][number]["matched_labor"]>[number],
+      ) => NonNullable<MaterialCosting["materials_costing"][number]["matched_labor"]>[number];
+    };
+  }) =>
+    materialCostingData.map((assembly) => ({
+      ...assembly,
+      materials_costing: assembly.materials_costing.map((item) => ({
+        ...item,
+        matched_materials: isLabor
+          ? item.matched_materials
+          : item.matched_materials.map((mat) =>
+              mat.code === code ? updater.material(mat) : mat,
+            ),
+        matched_labor: isLabor
+          ? (item.matched_labor ?? []).map((lab) =>
+              lab.code === code ? updater.labor(lab) : lab,
+            )
+          : item.matched_labor,
+      })),
+    }));
+
   const handleUnitCostChange = async (
     code: string,
     newCost: number,
     type: "material" | "labor",
   ) => {
     if (!finalOutputId) {
-      console.warn("[UnitCost] finalOutputId is null — unit cost change will not be persisted. Check that the project has a final output loaded.");
       return;
     }
 
-    const updatedData = materialCostingData.map((assembly) => ({
-      ...assembly,
-      materials_costing: assembly.materials_costing.map((item) => ({
-        ...item,
-        matched_materials:
-          type === "material"
-            ? item.matched_materials.map((mat) =>
-                mat.code === code ? { ...mat, unit_cost: newCost } : mat,
-              )
-            : item.matched_materials,
-        matched_labor:
-          type === "labor"
-            ? (item.matched_labor ?? []).map((lab) =>
-                lab.code === code ? { ...lab, unit_cost: newCost } : lab,
-              )
-            : item.matched_labor,
-      })),
-    }));
+    const previousCostingData = materialCostingData;
+    const updatedData = applyProjectWideCostingUpdate({
+      code,
+      isLabor: type === "labor",
+      updater: {
+        material: (item) => ({ ...item, unit_cost: newCost }),
+        labor: (item) => ({ ...item, unit_cost: newCost }),
+      },
+    });
 
-    setMaterialCostingData(updatedData);
-
-    // Also update overrideMatCost on assembly components so the Assembly modal reflects the change.
-    // The modal reads comp.overrideMatCost ?? mat?.productivity, so setting overrideMatCost overrides spec_db.
-    setAssemblies((prev) =>
-      prev.map((assembly) => ({
-        ...assembly,
-        components: (assembly.components ?? []).map((comp) =>
-          comp.materialCode === code
-            ? { ...comp, overrideMatCost: newCost }
-            : comp,
-        ),
-      })),
-    );
+    syncUiFromCostingData(updatedData);
 
     try {
       const res = await fetch(`/api/final-output/${finalOutputId}`, {
@@ -348,18 +405,14 @@ function ProjectContent() {
       });
       const json = await res.json();
       if (res.ok) {
-        console.log("[UnitCost] PATCH succeeded", {
-          status: res.status,
-          finalOutputId,
-          dbFilename: json.debug?.filename,
-          localFileStatus: json.debug?.localFileStatus,
-        });
-        setAssemblyDataRefreshTrigger((t) => t + 1);
+        await syncProjectUnitCostOverride(code, newCost, type);
       } else {
         console.error("[UnitCost] PATCH failed", { status: res.status, error: json });
+        syncUiFromCostingData(previousCostingData);
       }
     } catch (err) {
       console.error("[UnitCost] Network error during PATCH:", err);
+      syncUiFromCostingData(previousCostingData);
     }
   };
 
@@ -373,30 +426,19 @@ function ProjectContent() {
     wastePercent: number,
     isLabor: boolean,
   ) => {
-    const updatedData = materialCostingData.map((assembly) => ({
-      ...assembly,
-      materials_costing: assembly.materials_costing.map((item) => ({
-        ...item,
-        matched_materials: isLabor
-          ? item.matched_materials
-          : item.matched_materials.map((mat) =>
-              mat.code === code ? { ...mat, waste_percent: wastePercent } : mat,
-            ),
-        matched_labor: isLabor
-          ? (item.matched_labor ?? []).map((lab) =>
-              lab.code === code ? { ...lab, waste_percent: wastePercent } : lab,
-            )
-          : item.matched_labor,
-      })),
-    }));
+    const updatedData = applyProjectWideCostingUpdate({
+      code,
+      isLabor,
+      updater: {
+        material: (item) => ({ ...item, waste_percent: wastePercent }),
+        labor: (item) => ({ ...item, waste_percent: wastePercent }),
+      },
+    });
     setMaterialCostingData(updatedData);
   };
 
   const handleAssemblySaveComplete = (updatedCostingData: MaterialCosting[]) => {
-    setMaterialCostingData(updatedCostingData);
-
-    const mappedAssemblies = mapFinalOutputToWallAssemblies(updatedCostingData);
-    setAssemblies(mappedAssemblies);
+    syncUiFromCostingData(updatedCostingData);
   };
 
   const handleReset = () => {
@@ -590,6 +632,7 @@ function ProjectContent() {
           rawTakeoffRows={rawTakeoffRows}
           projectId={projectId}
           finalOutputId={finalOutputId}
+          takeoffOutputId={takeoffOutputId}
           onUnitCostChange={handleUnitCostChange}
           onWasteChange={handleWasteChange}
           overrideMap={overrideMap}

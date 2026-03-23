@@ -24,7 +24,7 @@ const transformToMaterial = (row: any): MaterialDefinition => ({
   type: row.type,
   manufacturer: row.manufacturer,
   description: row.description,
-  matCost: parseFloat(row.mat_cost),
+  matCost: row.mat_cost != null ? (parseFloat(row.mat_cost) || 0) : 0,
   unitCost: row.unit_cost != null ? parseFloat(row.unit_cost) : undefined,
   per: row.per,
   priceUpdated: row.price_updated,
@@ -48,9 +48,9 @@ const transformToMaterial = (row: any): MaterialDefinition => ({
   mouCeil: row.mou_ceil ?? undefined,
   mouCeilSec: row.mou_ceil_sec ?? undefined,
   note: row.note ?? undefined,
-  productivity: row.productivity ? parseFloat(row.productivity) : undefined,
-  hourlyRate: row.hourly_rate ? parseFloat(row.hourly_rate) : undefined,
-  coverPerHour: row.cover_per_hour ? parseFloat(row.cover_per_hour) : undefined,
+  productivity: (() => { const v = parseFloat(row.productivity); return Number.isFinite(v) ? v : undefined; })(),
+  hourlyRate: (() => { const v = parseFloat(row.hourly_rate); return Number.isFinite(v) ? v : undefined; })(),
+  coverPerHour: (() => { const v = parseFloat(row.cover_per_hour); return Number.isFinite(v) ? v : undefined; })(),
 });
 
 /**
@@ -258,7 +258,19 @@ export async function bulkUpsertMaterials(
   materials: MaterialDefinition[],
 ): Promise<{
   data: MaterialDefinition[] | null;
-  error: { message: string; code: string } | null;
+  error:
+    | {
+        message: string;
+        code: string;
+        details?: {
+          processedChunks: number;
+          failedChunkIndex: number;
+          failedChunkStartRow: number;
+          failedChunkEndRow: number;
+          failedCodes: string[];
+        };
+      }
+    | null;
 }> {
   // Deduplicate by code - keep last occurrence (Excel-style: later row overwrites)
   const seen = new Map<string, MaterialDefinition>();
@@ -272,6 +284,7 @@ export async function bulkUpsertMaterials(
   for (let i = 0; i < deduped.length; i += UPSERT_CHUNK_SIZE) {
     const chunk = deduped.slice(i, i + UPSERT_CHUNK_SIZE);
     const dbRows = chunk.map(transformToDbRow);
+    const chunkIndex = Math.floor(i / UPSERT_CHUNK_SIZE);
 
     const { data, error } = await supabaseAdmin
       .from(TABLES.MATERIALS)
@@ -279,7 +292,20 @@ export async function bulkUpsertMaterials(
       .select();
 
     if (error) {
-      return { data: null, error };
+      return {
+        data: null,
+        error: {
+          message: error.message,
+          code: error.code,
+          details: {
+            processedChunks: chunkIndex,
+            failedChunkIndex: chunkIndex + 1,
+            failedChunkStartRow: i + 1,
+            failedChunkEndRow: i + chunk.length,
+            failedCodes: chunk.map((material) => material.code).slice(0, 25),
+          },
+        },
+      };
     }
 
     allData.push(...(data?.map(transformToMaterial) ?? []));

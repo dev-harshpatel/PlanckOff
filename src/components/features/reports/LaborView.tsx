@@ -10,6 +10,8 @@ import {
   LaborFilterDropdown,
   LaborFilterState,
 } from '@/components/features/reports/LaborFilterDropdown';
+import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
+import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type { ExtendedLineItem } from '@/components/features/reports/MaterialsView';
 import type {
   MaterialCosting,
@@ -24,6 +26,7 @@ interface LaborViewProps {
   materialCostingData?: MaterialCosting[];
   priceMap: Record<string, { cost: number; per: number }>;
   materials?: MaterialDefinition[];
+  filterStorageKey?: string;
   onUnitCostChange?: (code: string, newCost: number) => void;
 }
 
@@ -39,6 +42,21 @@ interface AggregatedLaborItem {
   secUnit: string | null;
   unitCost: number;
   totalCost: number | null;
+  areas: string[];
+  dimensions: { totalLength: number; heightFt: number; ceilingArea: number };
+}
+
+interface LaborContribution {
+  rowKey: string;
+  itemCode: string;
+  costCode: string;
+  item: string;
+  conditionType: string;
+  quantity: number | null;
+  secQuantity: number | null;
+  unit: string;
+  secUnit: string | null;
+  unitCost: number;
   areas: string[];
   dimensions: { totalLength: number; heightFt: number; ceilingArea: number };
 }
@@ -91,13 +109,24 @@ const TableHeader = ({
   </tr>
 );
 
-export const LaborView = ({ items, materialCostingData = [], priceMap, materials = [], onUnitCostChange }: LaborViewProps) => {
-  const [filterState, setFilterState] = useState<LaborFilterState>({
+export const LaborView = ({
+  items,
+  materialCostingData = [],
+  priceMap,
+  materials = [],
+  filterStorageKey = 'project-report:labor',
+  onUnitCostChange,
+}: LaborViewProps) => {
+  const createDefaultFilterState = useCallback((): LaborFilterState => ({
     selectedItems: new Set(),
     selectedLevels: new Set(),
     selectedCostCodes: new Set(),
     selectedConditions: new Set(),
-  });
+  }), []);
+  const [filterState, setFilterState] = useSessionStorageSetState<LaborFilterState>(
+    filterStorageKey,
+    createDefaultFilterState,
+  );
 
   const [qtyOverrides, setQtyOverrides] = useState<Record<string, { qty: number | null; secQty: number | null }>>({});
 
@@ -155,236 +184,113 @@ export const LaborView = ({ items, materialCostingData = [], priceMap, materials
     return map;
   }, [materials]);
 
-  const { aggregatedItems, totalCost, availableLevels, availableItems, availableCostCodes } = useMemo(() => {
-    if (useCostingData) {
-      const aggMap = new Map<
-        string,
-        {
-          itemCode: string;
-          costCode: string;
-          matCostCode: string;
-          item: string;
-          conditions: Set<string>;
-          quantity: number | null;
-          secQuantity: number | null;
-          unit: string;
-          secUnit: string | null;
-          areas: Set<string>;
-          unitCost: number;
-          dimensions: { totalLength: number; heightFt: number; ceilingArea: number };
-        }
-      >();
+  const costingBaseData = useMemo(() => {
+    if (!useCostingData) return null;
 
-      const assembliesToProcess = materialCostingData.filter((a) => {
-        const extA = a as { assembly_id?: string; level?: string; height_ft?: number; total_length?: number };
-        if (filterState.selectedLevels.size > 0) {
-          const levelStr = extA.level ?? 'Unknown';
-          const levels = parseLevels(levelStr);
-          if (!levels.some((l) => filterState.selectedLevels.has(l))) return false;
-        }
-        return true;
-      });
+    const contributions: LaborContribution[] = [];
+    const availableItems = new Set<string>();
+    const availableLevels = new Set<string>();
+    const availableCostCodes = new Set<string>();
 
-      const allAssembliesForAvailability = materialCostingData;
-      const availabilityMap = new Map<
-        string,
-        { matCostCode: string; item: string; conditions: Set<string>; areas: Set<string> }
-      >();
-      allAssembliesForAvailability.forEach((assembly) => {
-        const extAssembly = assembly as {
-          assembly_id?: string;
-          level?: string;
-          height_ft?: number;
-          total_length?: number;
-        };
-        const assemblyId = extAssembly.assembly_id ?? '—';
-        const levelStr = extAssembly.level ?? 'Unknown';
-        const levels = parseLevels(levelStr);
-        const conditionType =
-          typeof extAssembly.height_ft === 'number' && typeof extAssembly.total_length === 'number'
-            ? `Assembly ${assemblyId} (${extAssembly.height_ft}' : ${extAssembly.total_length} LF)`
-            : `Assembly ${assemblyId}`;
-        (assembly.materials_costing ?? []).forEach((costingItem) => {
-          const { matched_labor } = costingItem;
-          (matched_labor ?? []).forEach((lab: MatchedLabor) => {
-            const key = `${lab.code}|${lab.description}|${lab.unit}`;
-            if (availabilityMap.has(key)) {
-              const existing = availabilityMap.get(key)!;
-              levels.forEach((l) => existing.areas.add(l));
-              existing.conditions.add(conditionType);
-            } else {
-              availabilityMap.set(key, {
-                matCostCode: matCostCodeMap.get(lab.code) ?? '',
-                item: lab.description,
-                conditions: new Set([conditionType]),
-                areas: new Set(levels.length > 0 ? levels : ['Unknown']),
-              });
-            }
-          });
-        });
-      });
-
-      assembliesToProcess.forEach((assembly) => {
-        const extAssembly = assembly as {
-          assembly_id?: string;
-          level?: string;
-          height_ft?: number;
-          total_length?: number;
-        };
-        const assemblyId = extAssembly.assembly_id ?? '—';
-        const levelStr = extAssembly.level ?? 'Unknown';
-        const levels = parseLevels(levelStr);
-        const conditionType =
-          typeof extAssembly.height_ft === 'number' && typeof extAssembly.total_length === 'number'
-            ? `Assembly ${assemblyId} (${extAssembly.height_ft}' : ${extAssembly.total_length} LF)`
-            : `Assembly ${assemblyId}`;
-
-        (assembly.materials_costing ?? []).forEach((costingItem) => {
-          const { extracted_material, matched_labor } = costingItem;
-          const ext = extracted_material as { total_length?: number; height_ft?: number; ceiling_area?: number } | null;
-          (matched_labor ?? []).forEach((lab: MatchedLabor) => {
-            const qty = lab.quantity != null && typeof lab.quantity === "number" ? lab.quantity : null;
-            const secQty = lab.sec_quantity != null && typeof lab.sec_quantity === "number" ? lab.sec_quantity : null;
-            const secUnit = lab.sec_unit ?? null;
-            const unitCost = lab.unit_cost;
-            const costCode = lab.section ?? '—';
-            const matCostCode = matCostCodeMap.get(lab.code) ?? '';
-            const key = `${lab.code}|${lab.description}|${lab.unit}`;
-            if (aggMap.has(key)) {
-              const existing = aggMap.get(key)!;
-              if (qty != null) existing.quantity = (existing.quantity ?? 0) + qty;
-              if (secQty != null) existing.secQuantity = (existing.secQuantity ?? 0) + secQty;
-              levels.forEach((l) => existing.areas.add(l));
-              existing.conditions.add(conditionType);
-            } else {
-              aggMap.set(key, {
-                itemCode: lab.code,
-                costCode,
-                matCostCode,
-                item: lab.description,
-                conditions: new Set([conditionType]),
-                quantity: qty,
-                secQuantity: secQty,
-                unit: lab.unit === 'EA' ? 'Hrs' : lab.unit,
-                secUnit,
-                areas: new Set(levels.length > 0 ? levels : ['Unknown']),
-                unitCost,
-                dimensions: {
-                  totalLength: ext?.total_length ?? 0,
-                  heightFt: ext?.height_ft ?? 0,
-                  ceilingArea: ext?.ceiling_area ?? 0,
-                },
-              });
-            }
-          });
-        });
-      });
-
-      let rows: AggregatedLaborItem[] = Array.from(aggMap.entries()).map(([key, v]) => ({
-        rowKey: key,
-        itemCode: v.itemCode,
-        costCode: v.matCostCode,
-        item: v.item,
-        conditionType: Array.from(v.conditions).sort().join(', '),
-        quantity: v.quantity,
-        secQuantity: v.secQuantity,
-        unit: v.unit,
-        secUnit: v.secUnit,
-        unitCost: v.unitCost,
-        totalCost: v.quantity != null ? v.quantity * v.unitCost : null,
-        areas: sortLevels(Array.from(v.areas)),
-        dimensions: v.dimensions,
-      }));
-
-      if (LOG_LABOR_QTY_VERIFICATION) {
-        for (const target of LOG_TARGETS) {
-          const targetRows = rows.filter((r) => r.item === target);
-          const sumQty = targetRows.reduce((s, r) => s + (r.quantity ?? 0), 0);
-          const sumSecQty = targetRows.reduce((s, r) => s + (r.secQuantity ?? 0), 0);
-          console.group(`[Labor] "${target}" Qty verification`);
-          console.table(
-            targetRows.map((r) => ({
-              condition: r.conditionType,
-              area: r.areas.join(', '),
-              qty: r.quantity,
-              secQty: r.secQuantity,
-            })),
-          );
-          console.log('Sum Qty:', sumQty);
-          console.log('Sum Sec.Qty:', sumSecQty);
-          console.groupEnd();
-        }
-      }
-
-      if (filterState.selectedLevels.size > 0) {
-        rows = rows.filter((r) => r.areas.some((a) => filterState.selectedLevels.has(a)));
-      }
-      if (filterState.selectedItems.size > 0) {
-        rows = rows.filter((r) => filterState.selectedItems.has(r.item));
-      }
-      if (filterState.selectedCostCodes.size > 0) {
-        rows = rows.filter((r) => filterState.selectedCostCodes.has(r.costCode));
-      }
-
-      const total = rows.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
-      const availabilityValues = Array.from(availabilityMap.values());
-      return {
-        aggregatedItems: rows,
-        totalCost: total,
-        availableItems: Array.from(new Set(availabilityValues.map((i) => i.item).filter(Boolean))).sort(),
-        availableLevels: sortLevels(
-          Array.from(
-            new Set(
-              availabilityValues.flatMap((i) =>
-                Array.from(i.areas).filter((l) => l && l !== 'Unknown')
-              )
-            )
-          )
-        ),
-        availableCostCodes: Array.from(new Set(availabilityValues.map((i) => i.matCostCode).filter(Boolean))).sort(),
-        availableConditions: Array.from(
-          new Set(availabilityValues.flatMap((i) => Array.from(i.conditions))),
-        ).filter(Boolean).sort(),
+    materialCostingData.forEach((assembly) => {
+      const extAssembly = assembly as {
+        assembly_id?: string;
+        level?: string;
+        height_ft?: number;
+        total_length?: number;
       };
-    }
+      const assemblyId = extAssembly.assembly_id ?? '—';
+      const parsedLevels = parseLevels(extAssembly.level ?? 'Unknown');
+      const areas = parsedLevels.length > 0 ? parsedLevels : ['Unknown'];
+      const conditionType =
+        typeof extAssembly.height_ft === 'number' && typeof extAssembly.total_length === 'number'
+          ? `Assembly ${assemblyId} (${extAssembly.height_ft}' : ${extAssembly.total_length} LF)`
+          : `Assembly ${assemblyId}`;
 
-    const levels = sortLevels(
-      Array.from(
-        new Set(
-          items.flatMap((i) => parseLevels(i.area ?? 'Unknown'))
-        )
-      ).filter((l) => l && l !== 'Unknown')
-    );
-    const descs = Array.from(
-      new Set(items.map((i) => i.item).filter(Boolean))
-    ).sort();
-    const costCodes = Array.from(
-      new Set(items.map((i) => i.costCode).filter(Boolean))
-    ).sort();
-    const conditions = Array.from(
-      new Set(items.map((i) => i.conditionType).filter(Boolean))
-    ).sort();
+      parsedLevels.forEach((level) => availableLevels.add(level));
 
-    let filtered = items;
-    if (filterState.selectedLevels.size > 0) {
-      filtered = filtered.filter((i) => {
-        const itemLevels = parseLevels(i.area ?? 'Unknown');
-        return itemLevels.some((l) => filterState.selectedLevels.has(l));
+      (assembly.materials_costing ?? []).forEach((costingItem) => {
+        const ext = costingItem.extracted_material as { total_length?: number; height_ft?: number; ceiling_area?: number } | null;
+        (costingItem.matched_labor ?? []).forEach((lab: MatchedLabor) => {
+          const costCode = matCostCodeMap.get(lab.code) ?? '';
+          contributions.push({
+            rowKey: `${lab.code}|${lab.description}|${lab.unit}|${assemblyId}|${areas.join(',')}`,
+            itemCode: lab.code,
+            costCode,
+            item: lab.description,
+            conditionType,
+            quantity: lab.quantity != null && typeof lab.quantity === 'number' ? lab.quantity : null,
+            secQuantity: lab.sec_quantity != null && typeof lab.sec_quantity === 'number' ? lab.sec_quantity : null,
+            unit: lab.unit === 'EA' ? 'Hrs' : lab.unit,
+            secUnit: lab.sec_unit ?? null,
+            unitCost: lab.unit_cost,
+            areas,
+            dimensions: {
+              totalLength: ext?.total_length ?? 0,
+              heightFt: ext?.height_ft ?? 0,
+              ceilingArea: ext?.ceiling_area ?? 0,
+            },
+          });
+          availableItems.add(lab.description);
+          if (costCode) availableCostCodes.add(costCode);
+        });
       });
+    });
+
+    return {
+      contributions,
+      availableItems: Array.from(availableItems).sort(),
+      availableLevels: sortLevels(Array.from(availableLevels)),
+      availableCostCodes: Array.from(availableCostCodes).sort(),
+    };
+  }, [matCostCodeMap, materialCostingData, useCostingData]);
+
+  const fallbackBaseData = useMemo(() => ({
+    contributions: items.map((item) => {
+      const price = priceMap[item.item] || { cost: 0, per: 1 };
+      const parsedLevels = parseLevels(item.area ?? 'Unknown');
+      return {
+        rowKey: `${item.item}|${item.unit}|${item.code ?? ''}|${item.area ?? 'Unknown'}`,
+        itemCode: item.costCode ?? item.laborCode ?? '—',
+        costCode: item.costCode ?? item.laborCode ?? '—',
+        item: item.item,
+        conditionType: item.conditionType ?? '—',
+        quantity: item.quantity ?? null,
+        secQuantity: null,
+        unit: item.unit === 'EA' ? 'Hrs' : item.unit,
+        secUnit: null,
+        unitCost: price.per ? price.cost / price.per : price.cost,
+        areas: parsedLevels.length > 0 ? parsedLevels : ['Unknown'],
+        dimensions: { totalLength: 0, heightFt: 0, ceilingArea: 0 },
+      } satisfies LaborContribution;
+    }),
+    availableItems: Array.from(new Set(items.map((item) => item.item).filter(Boolean))).sort(),
+    availableLevels: sortLevels(
+      Array.from(
+        new Set(items.flatMap((item) => parseLevels(item.area ?? 'Unknown')))
+      ).filter((level) => level && level !== 'Unknown')
+    ),
+    availableCostCodes: Array.from(new Set(items.map((item) => item.costCode).filter(Boolean))).sort(),
+  }), [items, priceMap]);
+
+  const { aggregatedItems, totalCost, availableLevels, availableItems, availableCostCodes } = useMemo(() => {
+    const source = useCostingData && costingBaseData ? costingBaseData.contributions : fallbackBaseData.contributions;
+
+    let filtered = source;
+    if (filterState.selectedLevels.size > 0) {
+      filtered = filtered.filter((item) => item.areas.some((area) => filterState.selectedLevels.has(area)));
     }
     if (filterState.selectedItems.size > 0) {
-      filtered = filtered.filter((i) => filterState.selectedItems.has(i.item));
+      filtered = filtered.filter((item) => filterState.selectedItems.has(item.item));
     }
     if (filterState.selectedCostCodes.size > 0) {
-      filtered = filtered.filter((i) => filterState.selectedCostCodes.has(i.costCode));
-    }
-    if (filterState.selectedConditions.size > 0) {
-      filtered = filtered.filter((i) => filterState.selectedConditions.has(i.conditionType));
+      filtered = filtered.filter((item) => filterState.selectedCostCodes.has(item.costCode));
     }
 
     const aggMap = new Map<
       string,
       {
+        itemCode: string;
         costCode: string;
         item: string;
         conditions: Set<string>;
@@ -393,65 +299,106 @@ export const LaborView = ({ items, materialCostingData = [], priceMap, materials
         unit: string;
         secUnit: string | null;
         areas: Set<string>;
+        unitCost: number;
+        dimensions: { totalLength: number; heightFt: number; ceilingArea: number };
       }
     >();
+
     filtered.forEach((item) => {
-      const costCode = item.costCode ?? item.laborCode ?? '—';
-      const key = `${item.item}|${item.unit}|${item.code ?? ''}`;
-      const itemLevels = parseLevels(item.area ?? 'Unknown');
-      const levelsToAdd = itemLevels.length > 0 ? itemLevels : ['Unknown'];
+      const key = `${item.itemCode}|${item.item}|${item.unit}`;
       if (aggMap.has(key)) {
         const existing = aggMap.get(key)!;
         if (item.quantity != null) existing.quantity = (existing.quantity ?? 0) + item.quantity;
-        levelsToAdd.forEach((l) => existing.areas.add(l));
-        existing.conditions.add(item.conditionType ?? '—');
+        if (item.secQuantity != null) existing.secQuantity = (existing.secQuantity ?? 0) + item.secQuantity;
+        item.areas.forEach((area) => existing.areas.add(area));
+        existing.conditions.add(item.conditionType);
       } else {
         aggMap.set(key, {
-          costCode,
+          itemCode: item.itemCode,
+          costCode: item.costCode,
           item: item.item,
-          conditions: new Set([item.conditionType ?? '—']),
-          quantity: item.quantity ?? null,
-          secQuantity: null,
-          unit: item.unit === 'EA' ? 'Hrs' : item.unit,
-          secUnit: null,
-          areas: new Set(levelsToAdd),
+          conditions: new Set([item.conditionType]),
+          quantity: item.quantity,
+          secQuantity: item.secQuantity,
+          unit: item.unit,
+          secUnit: item.secUnit,
+          areas: new Set(item.areas),
+          unitCost: item.unitCost,
+          dimensions: item.dimensions,
         });
       }
     });
 
-    const rows: AggregatedLaborItem[] = Array.from(aggMap.entries()).map(([key, v]) => {
-      const price = priceMap[v.item] || { cost: 0, per: 1 };
-      const unitCost = price.per ? price.cost / price.per : price.cost;
-      return {
-        rowKey: key,
-        itemCode: v.costCode,
-        costCode: v.costCode,
-        item: v.item,
-        conditionType: Array.from(v.conditions).sort().join(', '),
-        quantity: v.quantity,
-        secQuantity: v.secQuantity,
-        unit: v.unit,
-        secUnit: v.secUnit,
-        areas: sortLevels(Array.from(v.areas)),
-        unitCost,
-        totalCost: v.quantity != null ? v.quantity * unitCost : null,
-        dimensions: { totalLength: 0, heightFt: 0, ceilingArea: 0 },
-      };
-    });
-    const total = rows.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
+    const rows: AggregatedLaborItem[] = Array.from(aggMap.entries()).map(([key, value]) => ({
+      rowKey: key,
+      itemCode: value.itemCode,
+      costCode: value.costCode,
+      item: value.item,
+      conditionType: Array.from(value.conditions).sort().join(', '),
+      quantity: value.quantity,
+      secQuantity: value.secQuantity,
+      unit: value.unit,
+      secUnit: value.secUnit,
+      unitCost: value.unitCost,
+      totalCost: value.quantity != null ? value.quantity * value.unitCost : null,
+      areas: sortLevels(Array.from(value.areas)),
+      dimensions: value.dimensions,
+    }));
+
+    if (LOG_LABOR_QTY_VERIFICATION) {
+      for (const target of LOG_TARGETS) {
+        const targetRows = rows.filter((row) => row.item === target);
+        const sumQty = targetRows.reduce((sum, row) => sum + (row.quantity ?? 0), 0);
+        const sumSecQty = targetRows.reduce((sum, row) => sum + (row.secQuantity ?? 0), 0);
+        console.group(`[Labor] "${target}" Qty verification`);
+        console.table(
+          targetRows.map((row) => ({
+            condition: row.conditionType,
+            area: row.areas.join(', '),
+            qty: row.quantity,
+            secQty: row.secQuantity,
+          })),
+        );
+        console.log('Sum Qty:', sumQty);
+        console.log('Sum Sec.Qty:', sumSecQty);
+        console.groupEnd();
+      }
+    }
+
+    const total = rows.reduce((acc, row) => acc + (row.totalCost ?? 0), 0);
+    const availableData = useCostingData && costingBaseData ? costingBaseData : fallbackBaseData;
+
     return {
       aggregatedItems: rows,
       totalCost: total,
-      availableItems: descs,
-      availableLevels: levels,
-      availableCostCodes: costCodes,
-      availableConditions: conditions,
+      availableItems: availableData.availableItems,
+      availableLevels: availableData.availableLevels,
+      availableCostCodes: availableData.availableCostCodes,
     };
-  }, [items, materialCostingData, priceMap, filterState, useCostingData, matCostCodeMap]);
+  }, [costingBaseData, fallbackBaseData, filterState, useCostingData]);
 
   const handleFilterChange = useCallback((state: LaborFilterState) => {
     setFilterState(state);
   }, []);
+
+  React.useEffect(() => {
+    setFilterState((prev) => {
+      const nextState: LaborFilterState = {
+        selectedItems: pruneSelectedFilterValues(prev.selectedItems, availableItems),
+        selectedLevels: pruneSelectedFilterValues(prev.selectedLevels, availableLevels),
+        selectedCostCodes: pruneSelectedFilterValues(prev.selectedCostCodes, availableCostCodes),
+        selectedConditions: prev.selectedConditions,
+      };
+
+      const unchanged =
+        nextState.selectedItems === prev.selectedItems &&
+        nextState.selectedLevels === prev.selectedLevels &&
+        nextState.selectedCostCodes === prev.selectedCostCodes &&
+        nextState.selectedConditions === prev.selectedConditions;
+
+      return unchanged ? prev : nextState;
+    });
+  }, [availableCostCodes, availableItems, availableLevels, setFilterState]);
 
   const handleFormulaApply = useCallback((rowKey: string, qty: number | null, secQty: number | null) => {
     setQtyOverrides((prev) => ({ ...prev, [rowKey]: { qty, secQty } }));
@@ -503,6 +450,15 @@ export const LaborView = ({ items, materialCostingData = [], priceMap, materials
       })),
     [displayItems]
   );
+  const summaryRows = useMemo<ExportRow[]>(
+    () => [
+      {
+        item: 'Total',
+        totalCost: displayTotal,
+      },
+    ],
+    [displayTotal],
+  );
 
   const filtersActive =
     filterState.selectedItems.size > 0 ||
@@ -542,6 +498,7 @@ export const LaborView = ({ items, materialCostingData = [], priceMap, materials
         sheetName="Labor"
         columns={LABOR_COLUMNS}
         rows={exportRows}
+        summaryRows={summaryRows}
         filtersActive={filtersActive}
       />
 

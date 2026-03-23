@@ -88,6 +88,8 @@ export interface MatchedLabor {
   sec_unit?: string;
   /** Waste % override saved via Assembly modal Save button */
   waste_percent?: number;
+  /** UI mute state for labor rows that are irrelevant for selected material height */
+  muted?: boolean;
 }
 
 export interface MaterialsCostingItem {

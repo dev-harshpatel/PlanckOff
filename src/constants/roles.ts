@@ -7,6 +7,12 @@ export const ROLE_LEVELS = {
   Estimator: 3,
 } as const;
 
+export const PROTECTED_ROLE_NAMES: RoleName[] = [
+  "Administrator",
+  "Team Lead",
+  "Estimator",
+];
+
 // Role colors for UI
 export const ROLE_COLORS: Record<
   RoleName,
@@ -35,6 +41,10 @@ export const ROLE_OPTIONS: { value: RoleName; label: string }[] = [
   { value: "Team Lead", label: "Team Lead" },
   { value: "Estimator", label: "Estimator" },
 ];
+
+export function isRoleName(value: string | null | undefined): value is RoleName {
+  return !!value && value in ROLE_LEVELS;
+}
 
 // Invitation token expiry (7 days in milliseconds)
 export const INVITATION_EXPIRY_DAYS = 7;
@@ -113,6 +123,5 @@ export function getInvitableRoles(userRole: RoleName): RoleName[] {
 
 // Check if a role is protected (cannot be deleted or renamed)
 export function isProtectedRole(roleName: string): boolean {
-  const protectedRoles = ["Administrator", "Team Lead", "Estimator"];
-  return protectedRoles.includes(roleName);
+  return PROTECTED_ROLE_NAMES.includes(roleName as RoleName);
 }

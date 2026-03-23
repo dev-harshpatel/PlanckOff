@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Calculator, FlaskConical, Save, RotateCcw, ChevronRight } from 'lucide-react';
 import {
     AssemblyComponent,
@@ -45,6 +45,8 @@ interface FormulaEditModalProps {
         formulaSecQtyOverride?: string;
         formulaCeilQtyOverride?: string;
         formulaCeilSecQtyOverride?: string;
+        /** Variable values the user changed in the editor — map to component override fields */
+        varOverrides?: Record<string, number>;
     }) => void;
 }
 
@@ -110,8 +112,10 @@ function buildContextVarMap(
         }
     }
 
-    // Length: use total_length from final_output when available
-    if (extractedDimensions?.totalLength) {
+    // Length: comp override > total_length from final_output > aggregated from takeoff
+    if (comp.lengthOverride != null) {
+        totalLinearFeet = comp.lengthOverride;
+    } else if (extractedDimensions?.totalLength) {
         totalLinearFeet = extractedDimensions.totalLength;
     }
 
@@ -157,7 +161,10 @@ const FormulaPane: React.FC<FormulaPaneProps> = ({
 }) => {
     const activeVars = useMemo(() => getActiveFormulaVars(formula || baseFormula), [formula, baseFormula]);
     const result = useMemo(() => evaluateMaterialFormula(formula, varValues), [formula, varValues]);
-    const hasOverride = formula !== baseFormula && formula !== '';
+    // "Override" = user changed an existing DB formula. "New" = user added where none existed.
+    const isChanged = formula !== baseFormula && formula !== '';
+    const isOverride = isChanged && baseFormula !== '';
+    const isNew = isChanged && baseFormula === '';
     const isEmpty = !formula && !baseFormula;
 
     return (
@@ -178,9 +185,14 @@ const FormulaPane: React.FC<FormulaPaneProps> = ({
                 <div className="flex items-center gap-2">
                     <Calculator className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                     <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600">{label}</span>
-                    {hasOverride && (
+                    {isOverride && (
                         <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200 uppercase tracking-wide">
                             Override
+                        </span>
+                    )}
+                    {isNew && (
+                        <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 uppercase tracking-wide">
+                            New
                         </span>
                     )}
                 </div>
@@ -227,7 +239,7 @@ const FormulaPane: React.FC<FormulaPaneProps> = ({
                         spellCheck={false}
                     />
                     {/* DB formula hint when override is active */}
-                    {hasOverride && baseFormula && (
+                    {isOverride && baseFormula && (
                         <div className="mt-1 px-2 py-1 bg-slate-50 rounded text-[10px] text-slate-400 font-mono border border-slate-100">
                             <span className="font-bold text-slate-500">DB: </span>{baseFormula}
                         </div>
@@ -367,6 +379,8 @@ export const FormulaEditModal: React.FC<FormulaEditModalProps> = ({
 
     // Variable values (editable for live preview)
     const [varValues, setVarValues] = useState<Record<string, number>>({});
+    // Snapshot of varValues when the modal opened — used to detect user changes on save
+    const initialVarValuesRef = useRef<Record<string, number>>({});
 
     // DB formula baseline (read-only reference)
     const dbFormulas = useMemo(() => ({
@@ -385,7 +399,9 @@ export const FormulaEditModal: React.FC<FormulaEditModalProps> = ({
         setWallSeQty(component.formulaSecQtyOverride ?? material?.formulaSecQty ?? '');
         setCeilQty(component.formulaCeilQtyOverride ?? material?.formulaCeilQty ?? '');
         setCeilSeQty(component.formulaCeilSecQtyOverride ?? material?.formulaCeilSecQty ?? '');
-        setVarValues(buildContextVarMap(component, assembly, takeoffInstances, material, extractedDimensions));
+        const initialVars = buildContextVarMap(component, assembly, takeoffInstances, material, extractedDimensions);
+        setVarValues(initialVars);
+        initialVarValuesRef.current = initialVars;
     }, [isOpen, component, material]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleVarChange = useCallback((key: string, val: number) => {
@@ -407,11 +423,21 @@ export const FormulaEditModal: React.FC<FormulaEditModalProps> = ({
             return undefined;                                   // no change needed
         };
 
+        // Collect variable values that the user changed from their initial (project) values
+        const varOverrides: Record<string, number> = {};
+        const initial = initialVarValuesRef.current;
+        for (const key of Object.keys(varValues)) {
+            if (varValues[key] !== initial[key]) {
+                varOverrides[key] = varValues[key];
+            }
+        }
+
         onSaveFormulas({
             formulaQtyOverride:        resolveOverride(wallQty,   dbFormulas.wallQty,   component.formulaQtyOverride),
             formulaSecQtyOverride:     resolveOverride(wallSeQty, dbFormulas.wallSeQty, component.formulaSecQtyOverride),
             formulaCeilQtyOverride:    resolveOverride(ceilQty,   dbFormulas.ceilQty,   component.formulaCeilQtyOverride),
             formulaCeilSecQtyOverride: resolveOverride(ceilSeQty, dbFormulas.ceilSeQty, component.formulaCeilSecQtyOverride),
+            ...(Object.keys(varOverrides).length > 0 && { varOverrides }),
         });
         onClose();
     };
@@ -504,7 +530,7 @@ export const FormulaEditModal: React.FC<FormulaEditModalProps> = ({
                 </div>
 
                 {/* Two-pane formula editor */}
-                <div className="flex gap-3 h-[500px]">
+                <div className="flex gap-3 h-[580px]">
                     <FormulaPane
                         label="Qty. Formula"
                         formula={activeQtyFormula}

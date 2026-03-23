@@ -123,7 +123,7 @@ export const TeamManagement: React.FC = () => {
       const data = await response.json();
 
       if (data.success) {
-        setSubmitSuccess('Invitation sent successfully!');
+        setSubmitSuccess(data.message || 'Invitation sent successfully!');
         // Refresh members list after a short delay
         setTimeout(() => {
           setIsModalOpen(false);
@@ -443,9 +443,14 @@ export const TeamManagement: React.FC = () => {
             />
 
             {modalMode === 'invite' && (
-              <p className="text-xs text-slate-500">
-                An invitation email will be sent to this address with a link to set their password.
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs text-slate-500">
+                  An invitation email will be sent to this address with a link to set their password.
+                </p>
+                <p className="text-xs text-slate-500">
+                  If this email already has a pending invitation, sending again will resend it and refresh the expiry.
+                </p>
+              </div>
             )}
           </ModalBody>
 
@@ -472,7 +477,7 @@ export const TeamManagement: React.FC = () => {
                   ? 'Sending...'
                   : 'Saving...'
                 : modalMode === 'invite'
-                  ? 'Send Invitation'
+                  ? 'Send / Resend Invitation'
                   : 'Save Changes'}
             </Button>
           </ModalFooter>

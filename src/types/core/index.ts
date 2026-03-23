@@ -98,6 +98,12 @@ export interface AssemblyComponent {
   productionRate?: number;
   selectedUnit?: string;
   overrideHeight?: number;
+  heightCategory?: string;
+  muted?: boolean;
+  /** Index of the materials_costing group this component belongs to (from final_output).
+   *  Used to scope height propagation and override maps so that changing one
+   *  material's height only affects labors within the same spec-line group. */
+  groupId?: number;
   overrideLayers?: number;
   overrideQuantity?: number;
   overrideMatCost?: number;
@@ -110,6 +116,7 @@ export interface AssemblyComponent {
   formulaSecQtyOverride?: string;
   formulaCeilQtyOverride?: string;
   formulaCeilSecQtyOverride?: string;
+  lengthOverride?: number;
 }
 
 export interface WallAssembly {

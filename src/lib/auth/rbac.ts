@@ -6,13 +6,10 @@
  */
 
 import { RoleName } from '@/types/team';
+import { ROLE_LEVELS } from '@/constants/roles';
 
 // Role hierarchy levels (lower number = higher authority)
-export const ROLE_HIERARCHY: Record<RoleName, number> = {
-  'Administrator': 1,
-  'Team Lead': 2,
-  'Estimator': 3,
-};
+export const ROLE_HIERARCHY: Record<RoleName, number> = ROLE_LEVELS;
 
 /**
  * Route permission configuration
@@ -71,7 +68,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
   {
     path: '/database',
-    minRole: 'Estimator',
+    allowedRoles: ['Administrator', 'Team Lead'],
     description: 'Materials database',
   },
   {
@@ -88,6 +85,21 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     path: '/estimates',
     minRole: 'Estimator',
     description: 'Estimates',
+  },
+  {
+    path: '/project',
+    minRole: 'Estimator',
+    description: 'Project workspace',
+  },
+  {
+    path: '/profile',
+    minRole: 'Estimator',
+    description: 'Profile settings',
+  },
+  {
+    path: '/admin/roles',
+    allowedRoles: ['Administrator'],
+    description: 'Role management',
   },
 ];
 

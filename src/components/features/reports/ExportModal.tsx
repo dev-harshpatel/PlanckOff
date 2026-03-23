@@ -13,6 +13,7 @@ interface ExportModalProps {
   sheetName: string;
   columns: ExportColumnDef[];
   rows: ExportRow[];
+  summaryRows?: ExportRow[];
   /** True when any filter is currently active */
   filtersActive: boolean;
 }
@@ -26,6 +27,7 @@ export const ExportModal = ({
   sheetName,
   columns,
   rows,
+  summaryRows,
   filtersActive,
 }: ExportModalProps) => {
   const [format, setFormat] = useState<ExportFormat>('excel');
@@ -75,9 +77,9 @@ export const ExportModal = ({
     if (!canExport) return;
     setIsExporting(true);
     try {
-      const config = { filename, sheetName, columns, rows };
+      const config = { filename, sheetName, columns, rows, summaryRows };
       if (format === 'excel') {
-        exportToExcel(config, enabledKeys);
+        await exportToExcel(config, enabledKeys);
       } else {
         await exportToPdf(config, enabledKeys);
       }
@@ -85,7 +87,7 @@ export const ExportModal = ({
     } finally {
       setIsExporting(false);
     }
-  }, [canExport, format, filename, sheetName, columns, rows, enabledKeys, onClose]);
+  }, [canExport, format, filename, sheetName, columns, rows, summaryRows, enabledKeys, onClose]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Export Data" size="lg" closeOnOverlayClick>
@@ -207,6 +209,11 @@ export const ExportModal = ({
               {enabledCount > 0 && (
                 <span className="ml-1 text-slate-400">
                   · {enabledCount} column{enabledCount !== 1 ? 's' : ''}
+                </span>
+              )}
+              {summaryRows && summaryRows.length > 0 && (
+                <span className="ml-1 text-slate-400">
+                  · {summaryRows.length} summary row{summaryRows.length !== 1 ? 's' : ''}
                 </span>
               )}
             </span>

@@ -4,10 +4,10 @@
  */
 
 import { cookies } from 'next/headers';
-import { findSessionByToken, isSessionExpired } from '@/lib/db/auth';
 import { getTeamMemberByEmail } from '@/lib/db/team';
 import { AUTH_CONFIG } from '@/constants/auth';
 import { RoleName, TeamMemberWithRole } from '@/types/team';
+import { resolveSessionFromToken } from './sessionResolver';
 
 export interface SessionUser {
   id: string;
@@ -23,6 +23,8 @@ export interface SessionValidationResult {
   teamMember: TeamMemberWithRole | null;
   error: string | null;
   statusCode: number;
+  sessionToken: string | null;
+  shouldRefreshCookie: boolean;
 }
 
 /**
@@ -42,54 +44,48 @@ export async function validateSession(): Promise<SessionValidationResult> {
         teamMember: null,
         error: 'Unauthorized',
         statusCode: 401,
+        sessionToken: null,
+        shouldRefreshCookie: false,
       };
     }
 
-    // Find session with user data
-    const { data: session, error: sessionError } = await findSessionByToken(sessionToken);
+    const resolvedSession = await resolveSessionFromToken(sessionToken, {
+      loadTeamMember: async (email) => {
+        const { data } = await getTeamMemberByEmail(email);
+        return data || null;
+      },
+      cleanupExpired: true,
+      renewIfExpiring: true,
+    });
 
-    if (sessionError || !session || isSessionExpired(session.expires_at)) {
+    if (!resolvedSession) {
       return {
         isValid: false,
         user: null,
         teamMember: null,
         error: 'Invalid or expired session',
         statusCode: 401,
+        sessionToken: null,
+        shouldRefreshCookie: false,
       };
     }
 
-    // Get user from session (team_member or legacy admin)
-    const userEmail = session.team_member?.email || session.admin?.email;
-    const userRole = session.team_member?.role?.name || session.admin?.role;
-
-    if (!userEmail || !userRole) {
-      return {
-        isValid: false,
-        user: null,
-        teamMember: null,
-        error: 'Invalid session',
-        statusCode: 401,
-      };
-    }
-
-    // Get full team member record
-    const { data: teamMember } = await getTeamMemberByEmail(userEmail);
-
-    // Build session user object
     const user: SessionUser = {
-      id: session.team_member?.id || session.admin?.id || '',
-      email: userEmail,
-      name: session.team_member?.name || session.admin?.name || '',
-      role: userRole as RoleName,
-      initials: session.team_member?.initials || session.admin?.initials || '',
+      id: resolvedSession.user.id,
+      email: resolvedSession.user.email,
+      name: resolvedSession.user.name,
+      role: resolvedSession.user.role as RoleName,
+      initials: resolvedSession.user.initials,
     };
 
     return {
       isValid: true,
       user,
-      teamMember: teamMember || null,
+      teamMember: resolvedSession.teamMember,
       error: null,
       statusCode: 200,
+      sessionToken,
+      shouldRefreshCookie: resolvedSession.renewed,
     };
   } catch (error) {
     console.error('Session validation error:', error);
@@ -99,6 +95,8 @@ export async function validateSession(): Promise<SessionValidationResult> {
       teamMember: null,
       error: 'Internal server error',
       statusCode: 500,
+      sessionToken: null,
+      shouldRefreshCookie: false,
     };
   }
 }

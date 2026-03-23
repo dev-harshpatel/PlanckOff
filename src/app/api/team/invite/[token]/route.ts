@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getInvitationByToken, isInvitationValid } from '@/lib/db/team';
+import { cleanupExpiredInvitations, getInvitationByToken, isInvitationValid } from '@/lib/db/team';
 import { ValidateInvitationResponse, RoleName } from '@/types/team';
 
 export async function GET(
@@ -13,6 +13,7 @@ export async function GET(
 ) {
   try {
     const { token } = await params;
+    await cleanupExpiredInvitations();
 
     if (!token) {
       const response: ValidateInvitationResponse = {

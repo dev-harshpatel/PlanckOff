@@ -4,7 +4,7 @@ import type { MaterialDefinition } from '@/types/core';
  * Fields of MaterialDefinition that can be overridden per-project.
  * Identity / display fields (code, description, section, etc.) are intentionally excluded.
  */
-export type OverrideableField = keyof Pick<MaterialDefinition,
+type MaterialOverrideValues = Partial<Pick<MaterialDefinition,
   | 'formulaQty'
   | 'formulaSecQty'
   | 'formulaCeilQty'
@@ -18,9 +18,14 @@ export type OverrideableField = keyof Pick<MaterialDefinition,
   | 'hourlyRate'
   | 'sheetBagBox'
   | 'lengthCover'
->;
+>>;
 
-export type OverrideValues = Partial<Pick<MaterialDefinition, OverrideableField>>;
+export interface OverrideValues extends MaterialOverrideValues {
+  /** Project-wide waste percent override stored outside the final_output blob. */
+  wastePercent?: number;
+}
+
+export type OverrideableField = keyof OverrideValues;
 
 /** One record per material per project in project_material_overrides */
 export interface ProjectMaterialOverride {

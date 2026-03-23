@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s.
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   console.log("\n" + "-".repeat(70));
   console.log("[extract] POST request received — Sequential Pipeline Step 1/3");
   console.log("-".repeat(70));
@@ -63,9 +63,7 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
-    // const localPath = await writeJsonToLocal("assembly", {
-    //   assemblies: result.assemblies,
-    // });
+    // Local folder backup disabled — see process-pipeline / localJsonStorage.
     console.log(`[extract] DB: ${savedData?.id} | Local: (disabled)`);
 
     const totalMs = Date.now() - totalStart;
@@ -88,4 +86,4 @@ export async function POST(req: NextRequest) {
     if (stack) console.error("[extract] Stack:", stack);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

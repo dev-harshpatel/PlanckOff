@@ -150,6 +150,9 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
         setTakeoffData(json.data.aggregated);
         takeoffOutputIdRef.current = json.takeoffOutputId || null; // Store takeoff ID
         setExcelSlot({ file, status: 'ready' });
+        if (Array.isArray(json.warnings) && json.warnings.length > 0) {
+          toast.warning("Takeoff Import Warnings", json.warnings.join(" "));
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Parse error';
         setExcelSlot({ file, status: 'error', error: message });
@@ -311,9 +314,14 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       console.log("=".repeat(70) + "\n");
 
       setStage("done");
-      setStatusMessage(
-        `Complete! ${assemblyCount} assemblies, ${takeoffCount} takeoff rows, ${finalCount} final assemblies.`,
-      );
+      const summaryParts: string[] = [
+        `${assemblyCount} assemblies`,
+        `${finalCount} final assemblies`,
+      ];
+      if (takeoffCount > 0) {
+        summaryParts.splice(1, 0, `${takeoffCount} takeoff rows`);
+      }
+      setStatusMessage(`Complete! ${summaryParts.join(", ")}.`);
       toast.success("Pipeline Complete", `${assemblyCount} assemblies, ${finalCount} final output.`);
     } catch (err) {
       if ((err as Error).name === "AbortError") {

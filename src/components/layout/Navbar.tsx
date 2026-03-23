@@ -13,13 +13,12 @@ import {
 } from "lucide-react";
 import { ProfileDropdown } from "@/components/features/auth";
 import { useRBAC } from "@/hooks/useRBAC";
-import { RoleName } from "@/types/team";
+import { getNavItemsForRole } from "@/lib/auth/rbac";
 
 interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  allowedRoles?: RoleName[]; // If undefined, all authenticated users can access
 }
 
 /**
@@ -40,19 +39,16 @@ const NAV_ITEMS: NavItem[] = [
     href: "/team",
     label: "Team Management",
     icon: Users,
-    allowedRoles: ["Administrator", "Team Lead"],
   },
   {
     href: "/admin/roles",
     label: "Role Management",
     icon: Shield,
-    allowedRoles: ["Administrator"],
   },
   {
     href: "/database",
     label: "Database",
     icon: Database,
-    allowedRoles: ["Administrator", "Team Lead"],
   },
   {
     href: "/assemblies",
@@ -67,15 +63,12 @@ interface NavbarProps {
 
 export function Navbar({ onOpenSettings }: NavbarProps) {
   const pathname = usePathname();
-  const { userRole, hasAnyRole } = useRBAC();
+  const { userRole } = useRBAC();
 
-  // Filter nav items based on user's role
-  const visibleNavItems = NAV_ITEMS.filter((item) => {
-    // If no allowedRoles specified, everyone can see it
-    if (!item.allowedRoles) return true;
-    // Check if user has one of the allowed roles
-    return hasAnyRole(item.allowedRoles);
-  });
+  const accessiblePaths = new Set(
+    userRole ? getNavItemsForRole(userRole).map((item) => item.path) : [],
+  );
+  const visibleNavItems = NAV_ITEMS.filter((item) => accessiblePaths.has(item.href));
 
   const isActive = (href: string) => {
     if (href === "/dashboard") {

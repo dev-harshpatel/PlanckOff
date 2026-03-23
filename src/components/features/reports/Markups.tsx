@@ -8,12 +8,33 @@ import {
 } from '@/components/features/reports/MarkupFilterDropdown';
 import type { ExtendedLineItem } from '@/components/features/reports/MaterialsView';
 import type { MaterialCosting } from '@/types/assembly';
+import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
+import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
+import { ProjectInfoPanel } from '@/components/features/reports/markups/ProjectInfoPanel';
+import { StaffingSection } from '@/components/features/reports/markups/StaffingSection';
+import { GeneralConditionsSection } from '@/components/features/reports/markups/GeneralConditionsSection';
+import { TravelHotelSection } from '@/components/features/reports/markups/TravelHotelSection';
+import {
+  DEFAULT_PROJECT_INFO,
+  DEFAULT_STAFFING_ROWS,
+  DEFAULT_GENERAL_CONDITIONS_ROWS,
+  DEFAULT_TRAVEL_HOTEL_CONFIG,
+  calcStaffingRowTotal,
+  calcGcRowTotal,
+  calcTravelHotel,
+  type ProjectInfo,
+  type StaffingRow,
+  type GeneralConditionsRow,
+  type GcNumericField,
+  type TravelHotelConfig,
+} from '@/components/features/reports/markups/types';
 
 interface MarkupsProps {
   markupItems: ExtendedLineItem[];
   materialCostingData?: MaterialCosting[];
   priceMap: Record<string, { cost: number; per: number }>;
   currencySymbol?: string;
+  filterStorageKey?: string;
 }
 
 const normalizeAssemblyTypeForCategory = (raw: string): string => {
@@ -185,6 +206,7 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
   materialCostingData = [],
   priceMap,
   currencySymbol = '$',
+  filterStorageKey = 'project-report:markups',
 }) => {
   // Prefer pipeline output (materialCostingData) when available. For categories with empty materials_costing
   // (e.g. Ceiling, Bulkhead — "Assembly not found in material match"), fall back to markupItems from calculateMaterials.
@@ -213,6 +235,33 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     );
     return [...fromCosting, ...fallbackItems];
   }, [markupItems, materialCostingData, priceMap]);
+
+  const markupBaseData = useMemo(() => {
+    const availableLevels = new Set<string>();
+    const normalizedItems = effectiveMarkupItems.map((item) => {
+      const levels = parseLevels(item.area || '');
+      levels.forEach((level) => availableLevels.add(level));
+      const cost = getItemCost(item, priceMap);
+      const isLabor =
+        item.category === 'Labor' ||
+        (item.item || '').toLowerCase().includes('install') ||
+        (item.item || '').toLowerCase().includes('labor');
+      return {
+        ...item,
+        parsedLevels: levels,
+        normalizedAssemblyType: normalizeCategoryForDisplay(item.assemblyType),
+        trade: getTradeFromCategory(item.category || '', item.item || ''),
+        cost,
+        isLabor,
+      };
+    });
+
+    return {
+      items: normalizedItems,
+      availableLevels: sortLevels(Array.from(availableLevels).filter((level) => level && level !== 'Unknown')),
+    };
+  }, [effectiveMarkupItems, priceMap]);
+
   const [config, setConfig] = useState<MarkupConfig>({
     escalation: 0,
     tax: 8.25,
@@ -221,22 +270,56 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     profit: 15,
   });
 
-  const [filterState, setFilterState] = useState<MarkupFilterState>({
-    selectedBreakdownTypes: new Set(),
-    selectedLevels: new Set(),
-  });
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo>(DEFAULT_PROJECT_INFO);
+  const [staffingRows, setStaffingRows] = useState<StaffingRow[]>(DEFAULT_STAFFING_ROWS);
 
+  const handleProjectInfoChange = useCallback((info: ProjectInfo) => {
+    setProjectInfo(info);
+  }, []);
+
+  const handleStaffingRowChange = useCallback(
+    (id: string, field: 'workers' | 'percentTime' | 'hourlyRate', value: number) => {
+      setStaffingRows((prev) =>
+        prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+      );
+    },
+    [],
+  );
+
+  const [gcRows, setGcRows] = useState<GeneralConditionsRow[]>(DEFAULT_GENERAL_CONDITIONS_ROWS);
+
+  const handleGcRowChange = useCallback(
+    (id: string, field: GcNumericField, value: number) => {
+      setGcRows((prev) =>
+        prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+      );
+    },
+    [],
+  );
+
+  const [travelHotelConfig, setTravelHotelConfig] = useState<TravelHotelConfig>(
+    DEFAULT_TRAVEL_HOTEL_CONFIG,
+  );
+
+  const handleTravelHotelChange = useCallback((cfg: TravelHotelConfig) => {
+    setTravelHotelConfig(cfg);
+  }, []);
+
+  const createDefaultFilterState = useCallback(
+    (): MarkupFilterState => ({
+      selectedBreakdownTypes: new Set(),
+      selectedLevels: new Set(),
+    }),
+    [],
+  );
+  const [filterState, setFilterState] =
+    useSessionStorageSetState<MarkupFilterState>(
+      filterStorageKey,
+      createDefaultFilterState,
+    );
+
+  // Only Admin free-form items remain here; Site items are now in gcRows (GeneralConditionsSection).
   const [generalConditions, setGeneralConditions] = useState<GeneralRequirement[]>([
-    { id: 'st1', category: 'Staffing', description: 'Site Supervisor', quantity: 20, unit: 'wk', rate: 70 * 40, total: 0 },
-    { id: 'st2', category: 'Staffing', description: 'Non-working Foreman', quantity: 0, unit: 'wk', rate: 70 * 40, total: 0 },
-    { id: 'st3', category: 'Staffing', description: 'Project Manager', quantity: 15, unit: 'wk', rate: 65 * 10, total: 0 },
-    { id: 'st4', category: 'Staffing', description: 'Health & Safety', quantity: 5, unit: 'wk', rate: 45 * 10, total: 0 },
-    { id: 'gc1', category: 'Site', description: 'Weekly Cleaning', quantity: 0, unit: 'wk', rate: 600, total: 0 },
-    { id: 'gc2', category: 'Site', description: 'Site Safety & Signage', quantity: 1, unit: 'ls', rate: 250, total: 0 },
-    { id: 'gc3', category: 'Site', description: 'Small Tools & Supplies', quantity: 1, unit: 'ls', rate: 500, total: 0 },
-    { id: 'gc4', category: 'Site', description: 'Scissor Lift', quantity: 1, unit: 'mo', rate: 1500, total: 0 },
-    { id: 'gc5', category: 'Site', description: 'Deliveries / Hoisting', quantity: 5, unit: 'ea', rate: 250, total: 0 },
-    { id: 'gc6', category: 'Site', description: 'Disposal / Bins', quantity: 5, unit: 'ea', rate: 600, total: 0 },
     { id: 'ad1', category: 'Admin', description: 'Project Documentation', quantity: 1, unit: 'ls', rate: 1000, total: 0 },
     { id: 'ad2', category: 'Admin', description: 'Fuel & Oil', quantity: 0, unit: 'wk', rate: 125, total: 0 },
   ]);
@@ -258,21 +341,14 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     []
   );
 
-  const availableLevels = useMemo(() => {
-    const levels = new Set<string>();
-    effectiveMarkupItems.forEach((m) =>
-      parseLevels(m.area || '').forEach((l) => levels.add(l))
-    );
-    return sortLevels(Array.from(levels).filter((l) => l && l !== 'Unknown'));
-  }, [effectiveMarkupItems]);
+  const availableLevels = markupBaseData.availableLevels;
 
   const filteredItems = useMemo(() => {
-    if (filterState.selectedLevels.size === 0) return effectiveMarkupItems;
-    return effectiveMarkupItems.filter((m) => {
-      const levels = parseLevels(m.area || '');
-      return levels.some((l) => filterState.selectedLevels.has(l));
+    if (filterState.selectedLevels.size === 0) return markupBaseData.items;
+    return markupBaseData.items.filter((item) => {
+      return item.parsedLevels.some((level) => filterState.selectedLevels.has(level));
     });
-  }, [effectiveMarkupItems, filterState.selectedLevels]);
+  }, [markupBaseData, filterState.selectedLevels]);
 
   const tradeBreakdown = useMemo(() => {
     const trades: Record<string, { material: number; labor: number }> = {
@@ -281,38 +357,27 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
       Insulation: { material: 0, labor: 0 },
       Other: { material: 0, labor: 0 },
     };
-    filteredItems.forEach((m) => {
-      const cost = getItemCost(m, priceMap);
-      const trade = getTradeFromCategory(m.category || '', m.item || '');
-      const isLabor =
-        m.category === 'Labor' ||
-        (m.item || '').toLowerCase().includes('install') ||
-        (m.item || '').toLowerCase().includes('labor');
-      if (isLabor) trades[trade].labor += cost;
-      else trades[trade].material += cost;
+    filteredItems.forEach((item) => {
+      if (item.isLabor) trades[item.trade].labor += item.cost;
+      else trades[item.trade].material += item.cost;
     });
     return trades;
-  }, [filteredItems, priceMap]);
+  }, [filteredItems]);
 
   const floorWiseBreakdown = useMemo(() => {
     const byLevel: Record<string, { material: number; labor: number }> = {};
-    effectiveMarkupItems.forEach((m) => {
-      const levels = parseLevels(m.area || '');
+    markupBaseData.items.forEach((item) => {
+      const levels = item.parsedLevels;
       const toProcess =
         filterState.selectedLevels.size > 0
           ? levels.filter((l) => filterState.selectedLevels.has(l))
           : levels.length > 0
             ? levels
             : ['Unknown'];
-      const cost = getItemCost(m, priceMap);
-      const isLabor =
-        m.category === 'Labor' ||
-        (m.item || '').toLowerCase().includes('install') ||
-        (m.item || '').toLowerCase().includes('labor');
       toProcess.forEach((lvl) => {
         if (!byLevel[lvl]) byLevel[lvl] = { material: 0, labor: 0 };
-        if (isLabor) byLevel[lvl].labor += cost / toProcess.length;
-        else byLevel[lvl].material += cost / toProcess.length;
+        if (item.isLabor) byLevel[lvl].labor += item.cost / toProcess.length;
+        else byLevel[lvl].material += item.cost / toProcess.length;
       });
     });
     return Object.entries(byLevel)
@@ -322,41 +387,51 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
         const nB = parseInt(b[0].replace(/\D/g, ''), 10) || 0;
         return nA - nB;
       });
-  }, [effectiveMarkupItems, filterState.selectedLevels, priceMap]);
+  }, [filterState.selectedLevels, markupBaseData]);
 
   const categoryBreakdown = useMemo(() => {
     const byCategory: Record<string, { material: number; labor: number }> = {};
     ASSEMBLY_CATEGORIES.forEach((c) => {
       byCategory[c] = { material: 0, labor: 0 };
     });
-    filteredItems.forEach((m) => {
-      const cat =
-        m.assemblyType && ASSEMBLY_CATEGORIES.includes(m.assemblyType as (typeof ASSEMBLY_CATEGORIES)[number])
-          ? m.assemblyType
-          : 'Interior Walls';
-      const norm =
-        cat === 'Interior Wall'
-          ? 'Interior Walls'
-          : cat === 'Exterior Wall'
-            ? 'Exterior Walls'
-            : cat === 'Access Panel'
-              ? 'Access Pannel'
-              : cat === 'Bulkhead'
-                ? 'BulkHead'
-                : cat === 'Hollow Metal Frame'
-                  ? 'HM Frames'
-                  : cat;
-      if (!byCategory[norm]) byCategory[norm] = { material: 0, labor: 0 };
-      const cost = getItemCost(m, priceMap);
-      const isLabor =
-        m.category === 'Labor' ||
-        (m.item || '').toLowerCase().includes('install') ||
-        (m.item || '').toLowerCase().includes('labor');
-      if (isLabor) byCategory[norm].labor += cost;
-      else byCategory[norm].material += cost;
+    filteredItems.forEach((item) => {
+      if (!byCategory[item.normalizedAssemblyType]) {
+        byCategory[item.normalizedAssemblyType] = { material: 0, labor: 0 };
+      }
+      if (item.isLabor) byCategory[item.normalizedAssemblyType].labor += item.cost;
+      else byCategory[item.normalizedAssemblyType].material += item.cost;
     });
     return byCategory;
-  }, [filteredItems, priceMap]);
+  }, [filteredItems]);
+
+  const staffingTotal = useMemo(
+    () =>
+      staffingRows.reduce(
+        (sum, row) => sum + calcStaffingRowTotal(row, projectInfo.durationWeeks),
+        0,
+      ),
+    [staffingRows, projectInfo.durationWeeks],
+  );
+
+  const gcConditionsTotal = useMemo(
+    () =>
+      gcRows.reduce(
+        (sum, row) => sum + calcGcRowTotal(row, projectInfo.durationWeeks, projectInfo.durationMonths),
+        0,
+      ),
+    [gcRows, projectInfo.durationWeeks, projectInfo.durationMonths],
+  );
+
+  // Derived separately to avoid circular dependency inside the `totals` useMemo
+  const totalLaborFromTrades = useMemo(
+    () => Object.values(tradeBreakdown).reduce((sum, v) => sum + v.labor, 0),
+    [tradeBreakdown],
+  );
+
+  const travelHotelTotal = useMemo(
+    () => calcTravelHotel(travelHotelConfig, totalLaborFromTrades).total,
+    [travelHotelConfig, totalLaborFromTrades],
+  );
 
   const totals = useMemo(() => {
     let totalMaterial = 0;
@@ -365,10 +440,11 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
       totalMaterial += v.material;
       totalLabor += v.labor;
     });
-    const gcTotal = generalConditions.reduce(
-      (s, i) => s + i.quantity * i.rate,
-      0
-    );
+    const gcTotal =
+      generalConditions.reduce((s, i) => s + i.quantity * i.rate, 0) +
+      staffingTotal +
+      gcConditionsTotal +
+      travelHotelTotal;
     const netDirectCost = totalMaterial + totalLabor;
     const grossCost = netDirectCost + gcTotal;
     const escalationCost = grossCost * (config.escalation / 100);
@@ -394,7 +470,7 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
       profitCost,
       finalTotal,
     };
-  }, [tradeBreakdown, generalConditions, config]);
+  }, [tradeBreakdown, generalConditions, staffingTotal, gcConditionsTotal, travelHotelTotal, config]);
 
   const pieData = useMemo(
     () =>
@@ -423,6 +499,22 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
   const handleFilterChange = useCallback((state: MarkupFilterState) => {
     setFilterState(state);
   }, []);
+
+  React.useEffect(() => {
+    setFilterState((prev) => {
+      const nextLevels = pruneSelectedFilterValues(
+        prev.selectedLevels,
+        availableLevels,
+      );
+
+      if (nextLevels === prev.selectedLevels) return prev;
+
+      return {
+        ...prev,
+        selectedLevels: nextLevels,
+      };
+    });
+  }, [availableLevels, setFilterState]);
 
   const renderBreakdownTable = (
     rows: Array<{ name: string; material: number; labor: number }>,
@@ -578,6 +670,8 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="p-6 flex-1 overflow-y-auto">
+            <ProjectInfoPanel info={projectInfo} onChange={handleProjectInfoChange} />
+
             <div className="flex gap-8 mb-8">
               <div className="w-1/4 bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center justify-start shrink-0">
                 <h3 className="text-sm font-medium text-slate-500 mb-4 w-full text-left">
@@ -703,9 +797,34 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
                       {formatCurrency(totals.gcTotal)}
                     </span>
                   </h2>
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-6">
-                    {renderGcSection('Staffing / Supervision', 'Staffing')}
-                    {renderGcSection('General Conditions', 'Site')}
+
+                  {/* Staffing — full width, formula-driven */}
+                  <StaffingSection
+                    rows={staffingRows}
+                    durationWeeks={projectInfo.durationWeeks}
+                    onRowChange={handleStaffingRowChange}
+                    currencySymbol={currencySymbol}
+                  />
+
+                  {/* General Conditions — full width, formula-driven */}
+                  <GeneralConditionsSection
+                    rows={gcRows}
+                    durationWeeks={projectInfo.durationWeeks}
+                    durationMonths={projectInfo.durationMonths}
+                    onRowChange={handleGcRowChange}
+                    currencySymbol={currencySymbol}
+                  />
+
+                  {/* Travel & Hotel — formula-driven */}
+                  <TravelHotelSection
+                    config={travelHotelConfig}
+                    totalLaborCost={totalLaborFromTrades}
+                    onChange={handleTravelHotelChange}
+                    currencySymbol={currencySymbol}
+                  />
+
+                  {/* Administrative — free-form rows */}
+                  <div className="mt-2">
                     {renderGcSection('Administrative', 'Admin')}
                   </div>
                 </div>

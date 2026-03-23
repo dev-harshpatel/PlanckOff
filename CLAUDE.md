@@ -55,6 +55,17 @@ Examples that trigger this:
 - "Add a constant"
 - "Refactor types in `src/types/`"
 
+### If the task involves the Markups tab, General Requirements (Division 01), or any section under `src/components/features/reports/markups/`:
+→ **READ `.claude/rules/markups-general-requirements.md` before writing a single line of code.**
+
+Examples that trigger this:
+- "Add a new section to General Requirements"
+- "Add a formula-driven row or table to the Markups tab"
+- "Change how staffing / supervision is calculated"
+- "Add equipment, subcontractor, or any other GC section"
+- "Modify ProjectInfoPanel or StaffingSection"
+- "Change how durationWeeks flows into GC calculations"
+
 ### Most tasks touch multiple layers — read all relevant rule files.
 Example: "Add a form that saves to the database" → read `frontend.md` + `backend.md` + `database.md`.
 

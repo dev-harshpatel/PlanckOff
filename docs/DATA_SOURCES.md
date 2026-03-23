@@ -417,7 +417,8 @@ PATCH /api/materials/[code]   (formula/UOM global save)
 | Project-specific quantity override | `final_outputs` | Yes (Assembly modal Component Details → Save button) |
 | Project-specific waste factor | `final_outputs` | Yes (Assembly modal inline Wst% cell or Component Details — saves immediately project-wide on blur, same as unit cost) |
 | Quantities (Qty, Se.Qty) at finalize | `final_outputs` | No (computed at finalize; overridable per-component) |
-| Wall height, total length | `final_outputs` (from takeoff) | No |
+| Wall height (`height_ft_override`) | `final_outputs` | Yes — Specs tab in Component Detail Modal. Saves to DB correctly but formula quantities (stud count, board qty) still use takeoff `height_ft`, so formulas do not respond to the override. See `docs/ASSEMBLY_MODAL_SAVE_FLOW.md` BUG-1. |
+| Total length | `final_outputs` (from takeoff) | No |
 | Level labels | `takeoff_outputs` | No |
 | Wall type / assembly ID | `takeoff_outputs` | No |
 | Country / province | `projects` | Yes (project settings) |

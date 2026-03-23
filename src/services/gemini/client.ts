@@ -120,8 +120,8 @@ export function evaluateMath(expression: string, vars: Record<string, number>): 
     cleanExpr = cleanExpr.replace(new RegExp(`\\b${key}\\b`, 'gi'), val.toString());
   });
 
-  // Sanitize: Allow letters (for functions), digits, operators, decimal, parens, and spaces.
-  cleanExpr = cleanExpr.replace(/[^a-zA-Z0-9+\-*/().\s]/g, '');
+  // Sanitize: Allow letters, underscores (for identifiers), digits, operators, decimal, parens, spaces.
+  cleanExpr = cleanExpr.replace(/[^a-zA-Z0-9_+\-*/().\s]/g, '');
 
   try {
     // Use Function constructor for restricted eval

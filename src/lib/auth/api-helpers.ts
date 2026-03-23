@@ -9,6 +9,7 @@ import { validateSession, SessionUser, SessionValidationResult } from './session
 import { canAccessRoute, hasRoleAccess } from './rbac';
 import { RoleName } from '@/types/team';
 import { TeamMemberWithRole } from '@/types/team';
+import { setAuthCookie } from '@/lib/api/cookies';
 
 /**
  * Context passed to authenticated route handlers
@@ -51,10 +52,16 @@ export function withAuth(handler: AuthenticatedHandler) {
 
     const params = routeParams?.params ? await routeParams.params : undefined;
 
-    return handler(request, {
+    const response = await handler(request, {
       user: session.user,
       teamMember: session.teamMember,
     }, params);
+
+    if (session.shouldRefreshCookie && session.sessionToken) {
+      setAuthCookie(response, session.sessionToken);
+    }
+
+    return response;
   };
 }
 
@@ -93,10 +100,16 @@ export function withRoleAuth(allowedRoles: RoleName[], handler: AuthenticatedHan
 
     const params = routeParams?.params ? await routeParams.params : undefined;
 
-    return handler(request, {
+    const response = await handler(request, {
       user: session.user,
       teamMember: session.teamMember,
     }, params);
+
+    if (session.shouldRefreshCookie && session.sessionToken) {
+      setAuthCookie(response, session.sessionToken);
+    }
+
+    return response;
   };
 }
 

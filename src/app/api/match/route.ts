@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
 import { saveMaterialMatch } from "@/lib/db/assemblyData";
 import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s. Without Fluid Compute, Pro max 300s.
 export const maxDuration = 300;
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   console.log("\n" + "-".repeat(70));
   console.log("[match] POST request received — Sequential Pipeline Step 2/3");
   console.log("-".repeat(70));
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     let dbLoadMs = 0;
 
-    let database: Record<string, unknown>[];
+    let database: Awaited<ReturnType<typeof getMaterialDatabase>>;
     try {
       const dbLoadStart = Date.now();
       database = await getMaterialDatabase();
@@ -97,11 +97,18 @@ export async function POST(req: NextRequest) {
       throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
     }
 
-    const localPath = await writeJsonToLocal("material_match", {
-      assemblies: result.assemblies,
-    });
+    // Local data/output folder writes disabled (writeJsonToLocal).
+    // if (process.env.NODE_ENV === "development") {
+    //   void writeJsonToLocal("material_match", {
+    //     assemblies: result.assemblies,
+    //   }).then((path) => {
+    //     if (path) {
+    //       console.log(`[match] Local file written: ${path}`);
+    //     }
+    //   });
+    // }
     console.log(
-      `[match] DB: ${savedData?.id} | Local: ${localPath || "(failed)"}`,
+      `[match] DB: ${savedData?.id} | Local: (disabled)`,
     );
 
     const totalMs = Date.now() - totalStart;
@@ -123,4 +130,4 @@ export async function POST(req: NextRequest) {
     if (stack) console.error("[match] Stack:", stack);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

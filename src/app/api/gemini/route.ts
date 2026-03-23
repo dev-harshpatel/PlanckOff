@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { withAuth } from '@/lib/auth/api-helpers';
 
 // Initialize Gemini client with server-side API key
 function getAIClient() {
@@ -10,7 +11,7 @@ function getAIClient() {
   return new GoogleGenerativeAI(key);
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const { base64Image, mimeType, materialContext } = body;
@@ -110,4 +111,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

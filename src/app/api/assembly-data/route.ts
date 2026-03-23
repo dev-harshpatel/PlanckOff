@@ -11,6 +11,7 @@ import {
   getTakeoffOutputById,
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 /**
  * GET /api/assembly-data?projectId=xxx
@@ -18,7 +19,7 @@ import { getProjectById } from "@/lib/db/project";
  * When material match exists but extraction was saved without project_id,
  * fetches extraction via extraction_id from the material match.
  */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest) => {
   const projectId = req.nextUrl.searchParams.get("projectId") || undefined;
 
   try {
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
     let materialData: { assemblies?: unknown[] };
     let materialFilename: string;
     let rawTakeoffRows: unknown[] = [];
+    let takeoffOutputId: string | null = null;
 
     if (finalResult.data) {
       const rawFinal = finalResult.data.data;
@@ -53,6 +55,7 @@ export async function GET(req: NextRequest) {
         : await getLatestTakeoffOutput(projectId);
 
       if (takeoffResult.data) {
+        takeoffOutputId = takeoffResult.data.id;
         const rawTakeoff = takeoffResult.data.data;
         rawTakeoffRows = Array.isArray(rawTakeoff) ? rawTakeoff : [];
       }
@@ -152,6 +155,7 @@ export async function GET(req: NextRequest) {
       materialFilename,
       rawTakeoffRows,
       finalOutputId: finalResult.data?.id ?? null,
+      takeoffOutputId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -160,13 +164,13 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
 
 /**
  * DELETE /api/assembly-data?projectId=xxx
  * Deletes all assembly extraction and material match data for the project
  */
-export async function DELETE(req: NextRequest) {
+export const DELETE = withAuth(async (req: NextRequest) => {
   const projectId = req.nextUrl.searchParams.get("projectId");
 
   if (!projectId) {
@@ -186,4 +190,4 @@ export async function DELETE(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+});

@@ -288,6 +288,20 @@ export async function updateTeamMember(
   return { data, error };
 }
 
+export async function updateTeamMemberPassword(params: {
+  id: string;
+  passwordHash: string;
+}): Promise<{
+  error: { message: string; code: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from(TABLES.TEAM_MEMBERS)
+    .update({ password_hash: params.passwordHash })
+    .eq('id', params.id);
+
+  return { error };
+}
+
 /**
  * Delete team member
  */
@@ -367,6 +381,45 @@ export async function createInvitation(params: {
       invited_by: params.invited_by,
       expires_at: expiresAt.toISOString(),
     })
+    .select('*')
+    .single();
+
+  return { data, error };
+}
+
+/**
+ * Delete an invitation by ID.
+ */
+export async function deleteInvitationById(id: string): Promise<{
+  error: { message: string; code: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from(TABLES.INVITATIONS)
+    .delete()
+    .eq('id', id);
+
+  return { error };
+}
+
+/**
+ * Refresh invitation metadata for resends/regeneration.
+ */
+export async function updateInvitation(
+  id: string,
+  updates: Partial<{
+    name: string;
+    role_id: string;
+    expires_at: string;
+    used_at: string | null;
+  }>,
+): Promise<{
+  data: Invitation | null;
+  error: { message: string; code: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from(TABLES.INVITATIONS)
+    .update(updates)
+    .eq('id', id)
     .select('*')
     .single();
 
@@ -455,12 +508,14 @@ export async function getPendingInvitationsByEmail(email: string): Promise<{
  * Delete expired invitations (maintenance function)
  */
 export async function cleanupExpiredInvitations(): Promise<{
+  count: number;
   error: { message: string; code: string } | null;
 }> {
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from(TABLES.INVITATIONS)
     .delete()
+    .select('id')
     .lt('expires_at', new Date().toISOString());
 
-  return { error };
+  return { count: data?.length || 0, error };
 }

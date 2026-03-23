@@ -3,6 +3,10 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import type { OverrideableField, OverrideValues, ProjectOverrideMap } from '@/types/core/projectOverrides';
+import {
+  applyProjectOverrideUpdates,
+  removeProjectOverrideFields,
+} from '@/lib/utils/projectOverrideState';
 
 export interface OverridePendingState {
   materialCode: string;
@@ -59,13 +63,11 @@ export function useFieldOverride(
       const json = await res.json();
       if (json.success) {
         // Update the in-memory override map immediately so UI reflects change
-        onOverrideMapChange?.((prev) => ({
-          ...prev,
-          [pendingOverride.materialCode]: {
-            ...(prev[pendingOverride.materialCode] ?? {}),
-            [pendingOverride.field]: pendingOverride.newValue,
-          },
-        }));
+        onOverrideMapChange?.((prev) =>
+          applyProjectOverrideUpdates(prev, pendingOverride.materialCode, [
+            { field: pendingOverride.field, value: pendingOverride.newValue },
+          ]),
+        );
         toast.success('Saved for this project only');
         pendingOverride.onApplied?.();
       } else {
@@ -119,11 +121,9 @@ export function useFieldOverride(
       });
       const json = await res.json();
       if (json.success) {
-        onOverrideMapChange?.((prev) => {
-          const existing = { ...(prev[materialCode] ?? {}) };
-          delete (existing as Record<string, unknown>)[field];
-          return { ...prev, [materialCode]: existing };
-        });
+        onOverrideMapChange?.((prev) =>
+          removeProjectOverrideFields(prev, materialCode, [field]),
+        );
         toast.success('Reverted to database value');
         onReverted?.();
       } else {

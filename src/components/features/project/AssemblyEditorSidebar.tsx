@@ -199,15 +199,10 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                                     onChange={(val) => {
                                         if (assembly.assemblyType === 'Ceiling') {
                                             setTempAssembly({ ...tempAssembly, defaultArea: val });
+                                            if (val !== undefined) updateAssemblyInfo(assembly.id, 'defaultArea', val);
                                         } else {
                                             setTempAssembly({ ...tempAssembly, defaultLength: val });
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        if (assembly.assemblyType === 'Ceiling') {
-                                            updateAssemblyInfo(assembly.id, 'defaultArea', tempAssembly.defaultArea);
-                                        } else {
-                                            updateAssemblyInfo(assembly.id, 'defaultLength', tempAssembly.defaultLength);
+                                            if (val !== undefined) updateAssemblyInfo(assembly.id, 'defaultLength', val);
                                         }
                                     }}
                                     placeholder={assembly.assemblyType === 'Ceiling' ? '1000' : '100'}
@@ -223,15 +218,10 @@ export const AssemblyEditorSidebar: React.FC<AssemblyEditorSidebarProps> = ({
                                     onChange={(val) => {
                                         if (assembly.assemblyType === 'Ceiling') {
                                             setTempAssembly({ ...tempAssembly, defaultPerimeter: val });
+                                            if (val !== undefined) updateAssemblyInfo(assembly.id, 'defaultPerimeter', val);
                                         } else {
                                             setTempAssembly({ ...tempAssembly, defaultHeight: val });
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        if (assembly.assemblyType === 'Ceiling') {
-                                            updateAssemblyInfo(assembly.id, 'defaultPerimeter', tempAssembly.defaultPerimeter);
-                                        } else {
-                                            updateAssemblyInfo(assembly.id, 'defaultHeight', tempAssembly.defaultHeight);
+                                            if (val !== undefined) updateAssemblyInfo(assembly.id, 'defaultHeight', val);
                                         }
                                     }}
                                     placeholder={assembly.assemblyType === 'Ceiling' ? '130' : '10'}

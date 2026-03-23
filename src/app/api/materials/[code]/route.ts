@@ -15,7 +15,10 @@ import {
   getMaterialByCode,
   updateMaterial,
 } from "@/lib/db/materials";
-import { invalidateMaterialDbCache } from "@/lib/cache/materialDbCache";
+import {
+  getMaterialDatabase,
+  refreshMaterialDbCache,
+} from "@/lib/cache/materialDbCache";
 import { MaterialDefinition } from "@/types";
 
 /**
@@ -35,17 +38,9 @@ export const GET = withRoleAuth(
         );
       }
 
-      const { data: material, error } = await getMaterialByCode(
-        decodeURIComponent(code),
-      );
-
-      if (error) {
-        console.error("Failed to fetch material:", error);
-        return NextResponse.json(
-          { success: false, error: "Failed to fetch material" },
-          { status: 500 },
-        );
-      }
+      const decodedCode = decodeURIComponent(code);
+      const materials = await getMaterialDatabase();
+      const material = materials.find((item) => item.code === decodedCode) ?? null;
 
       if (!material) {
         return NextResponse.json(
@@ -121,7 +116,7 @@ export const PUT = withRoleAuth(
         );
       }
 
-      await invalidateMaterialDbCache();
+      await refreshMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "Material updated successfully",
@@ -170,7 +165,7 @@ export const DELETE = withRoleAuth(
         );
       }
 
-      await invalidateMaterialDbCache();
+      await refreshMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "Material deleted successfully",

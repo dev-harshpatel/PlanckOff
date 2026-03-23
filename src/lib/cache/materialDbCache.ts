@@ -1,11 +1,20 @@
 import { Redis } from "@upstash/redis";
 import { getAllMaterials } from "@/lib/db/materials";
+import { MaterialDefinition } from "@/types";
 
 const MATERIAL_DB_CACHE_KEY = "material-database:json";
+const MATERIAL_DB_CACHE_META_KEY = "material-database:meta";
 const CACHE_TTL_SECONDS = 3600; // 1 hour
+const CACHE_VERSION_PREFIX = "material-db";
 
 // In-memory fallback when Redis is not configured (e.g. local dev)
-let memoryCache: { data: Record<string, unknown>[]; cachedAt: number } | null =
+interface MaterialDbCacheEnvelope {
+  version: string;
+  cachedAt: number;
+  data: MaterialDefinition[];
+}
+
+let memoryCache: MaterialDbCacheEnvelope | null =
   null;
 const MEMORY_CACHE_TTL_MS = 3600 * 1000; // 1 hour
 
@@ -16,14 +25,47 @@ const getRedisClient = (): Redis | null => {
   return new Redis({ url, token });
 };
 
-const fetchFromSupabase = async (): Promise<Record<string, unknown>[]> => {
+const fetchFromSupabase = async (): Promise<MaterialDefinition[]> => {
   const { data, error } = await getAllMaterials();
   if (error) {
     throw new Error(
       `Failed to fetch material database from Supabase: ${error.message}`,
     );
   }
-  return (data ?? []) as unknown as Record<string, unknown>[];
+  return data ?? [];
+};
+
+const buildCacheEnvelope = (
+  data: MaterialDefinition[],
+  version = `${CACHE_VERSION_PREFIX}:${Date.now()}`,
+): MaterialDbCacheEnvelope => ({
+  version,
+  cachedAt: Date.now(),
+  data,
+});
+
+const setMemoryCache = (envelope: MaterialDbCacheEnvelope) => {
+  memoryCache = envelope;
+};
+
+const writeCache = async (data: MaterialDefinition[]): Promise<MaterialDbCacheEnvelope> => {
+  const envelope = buildCacheEnvelope(data);
+  setMemoryCache(envelope);
+  const redis = getRedisClient();
+  if (!redis) return envelope;
+  try {
+    await redis.set(MATERIAL_DB_CACHE_KEY, envelope, {
+      ex: CACHE_TTL_SECONDS,
+    });
+    await redis.set(
+      MATERIAL_DB_CACHE_META_KEY,
+      { version: envelope.version, cachedAt: envelope.cachedAt },
+      { ex: CACHE_TTL_SECONDS },
+    );
+  } catch (err) {
+    console.warn("[materialDbCache] Redis set failed:", err);
+  }
+  return envelope;
 };
 
 /**
@@ -35,7 +77,10 @@ export const invalidateMaterialDbCache = async (): Promise<void> => {
   const redis = getRedisClient();
   if (redis) {
     try {
-      await redis.del(MATERIAL_DB_CACHE_KEY);
+      await Promise.all([
+        redis.del(MATERIAL_DB_CACHE_KEY),
+        redis.del(MATERIAL_DB_CACHE_META_KEY),
+      ]);
       console.log("[materialDbCache] Cache invalidated");
     } catch (err) {
       console.warn("[materialDbCache] Redis del failed during invalidation:", err);
@@ -44,13 +89,29 @@ export const invalidateMaterialDbCache = async (): Promise<void> => {
 };
 
 /**
+ * Refresh the cache from Supabase after a write so subsequent reads stay warm.
+ */
+export const refreshMaterialDbCache = async (): Promise<MaterialDefinition[]> => {
+  const data = await fetchFromSupabase();
+  await writeCache(data);
+  return data;
+};
+
+/**
+ * Write-through helper when the caller already has the full dataset.
+ */
+export const primeMaterialDbCache = async (
+  data: MaterialDefinition[],
+): Promise<void> => {
+  await writeCache(data);
+};
+
+/**
  * Get material database with Redis caching when configured.
  * Source of truth is Supabase spec_database.
  * Falls back to in-memory cache, then direct Supabase query when Redis is unavailable.
  */
-export const getMaterialDatabase = async (): Promise<
-  Record<string, unknown>[]
-> => {
+export const getMaterialDatabase = async (): Promise<MaterialDefinition[]> => {
   const redis = getRedisClient();
 
   if (redis) {
@@ -58,11 +119,32 @@ export const getMaterialDatabase = async (): Promise<
       const cached = await redis.get(MATERIAL_DB_CACHE_KEY);
       if (cached) {
         console.log("[materialDbCache] Redis HIT — using cached material DB");
+        if (
+          typeof cached === "object" &&
+          cached !== null &&
+          "data" in cached &&
+          Array.isArray((cached as MaterialDbCacheEnvelope).data)
+        ) {
+          const envelope = cached as MaterialDbCacheEnvelope;
+          setMemoryCache(envelope);
+          return envelope.data;
+        }
         if (Array.isArray(cached)) {
-          return cached as Record<string, unknown>[];
+          const envelope = buildCacheEnvelope(cached as MaterialDefinition[]);
+          setMemoryCache(envelope);
+          return envelope.data;
         }
         if (typeof cached === "string") {
-          return JSON.parse(cached) as Record<string, unknown>[];
+          const parsed = JSON.parse(cached) as
+            | MaterialDbCacheEnvelope
+            | MaterialDefinition[];
+          if (Array.isArray(parsed)) {
+            const envelope = buildCacheEnvelope(parsed);
+            setMemoryCache(envelope);
+            return envelope.data;
+          }
+          setMemoryCache(parsed);
+          return parsed.data;
         }
       }
     } catch (err) {
@@ -76,13 +158,7 @@ export const getMaterialDatabase = async (): Promise<
       "[materialDbCache] Redis MISS — fetching from Supabase and caching",
     );
     const data = await fetchFromSupabase();
-    try {
-      await redis.set(MATERIAL_DB_CACHE_KEY, data, {
-        ex: CACHE_TTL_SECONDS,
-      });
-    } catch (err) {
-      console.warn("[materialDbCache] Redis set failed:", err);
-    }
+    await writeCache(data);
     return data;
   }
 
@@ -95,6 +171,6 @@ export const getMaterialDatabase = async (): Promise<
 
   console.log("[materialDbCache] In-memory MISS — fetching from Supabase");
   const data = await fetchFromSupabase();
-  memoryCache = { data, cachedAt: now };
+  setMemoryCache(buildCacheEnvelope(data));
   return data;
 };

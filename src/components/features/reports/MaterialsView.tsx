@@ -10,7 +10,9 @@ import {
   MaterialsFilterDropdown,
   MaterialsFilterState,
 } from '@/components/features/reports/MaterialsFilterDropdown';
+import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
 import { aggregateMaterialsFromCosting } from '@/lib/utils/aggregateMaterialsFromCosting';
+import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type { MaterialCosting } from "@/types/assembly";
 
 interface MaterialsViewProps {
@@ -18,6 +20,7 @@ interface MaterialsViewProps {
   materialCostingData?: MaterialCosting[];
   materials?: MaterialDefinition[];
   priceMap: Record<string, { cost: number; per: number }>;
+  filterStorageKey?: string;
   onUnitCostChange?: (code: string, newCost: number, unit: string) => void;
 }
 
@@ -44,6 +47,10 @@ interface AggregatedItem {
   wastePercent: number;
   unitCost: number;
   totalCost: number;
+}
+
+interface MaterialContribution extends AggregatedItem {
+  levels: string[];
 }
 
 const formatCurrency = (val: number) =>
@@ -94,14 +101,19 @@ export const MaterialsView = ({
   materialCostingData = [],
   materials = [],
   priceMap,
+  filterStorageKey = 'project-report:materials',
   onUnitCostChange,
 }: MaterialsViewProps) => {
-  const [filterState, setFilterState] = useState<MaterialsFilterState>({
+  const createDefaultFilterState = useCallback((): MaterialsFilterState => ({
     selectedItems: new Set(),
     selectedLevels: new Set(),
     selectedSections: new Set(),
     selectedCostCodes: new Set(),
-  });
+  }), []);
+  const [filterState, setFilterState] = useSessionStorageSetState<MaterialsFilterState>(
+    filterStorageKey,
+    createDefaultFilterState,
+  );
 
   // Local overrides take priority over aggregated unit costs (handles spec_database priority issue)
   const [unitCostOverrides, setUnitCostOverrides] = useState<Record<string, number>>({});
@@ -143,36 +155,72 @@ export const MaterialsView = ({
   // Fall back to items (calculateMaterials) only when no pipeline data exists.
   const useCostingData = materialCostingData.length > 0;
 
+  const costingBaseData = useMemo(() => {
+    if (!useCostingData) return null;
+
+    const contributions: MaterialContribution[] = [];
+    const availableItems = new Set<string>();
+    const availableLevels = new Set<string>();
+    const availableSections = new Set<string>();
+    const availableCostCodes = new Set<string>();
+
+    materialCostingData.forEach((assembly) => {
+      const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
+      const levels = parseLevels(levelStr).filter((level) => level && level !== 'Unknown');
+      const assemblyLevels = levels.length > 0 ? levels : ['Unknown'];
+      const rows = aggregateMaterialsFromCosting([assembly], materials, priceMap);
+
+      rows.forEach((row) => {
+        contributions.push({
+          code: row.code,
+          item: row.item,
+          section: row.section,
+          costCode: row.matCostCode,
+          quantity: row.quantity,
+          unit: row.unit,
+          secQuantity: row.secQuantity,
+          secUnit: row.secUnit,
+          wastePercent: row.wastePercent,
+          unitCost: row.unitCost,
+          totalCost: row.totalCost,
+          levels: assemblyLevels,
+        });
+        availableItems.add(row.item);
+        if (row.section) availableSections.add(row.section);
+        if (row.matCostCode) availableCostCodes.add(row.matCostCode);
+      });
+
+      levels.forEach((level) => availableLevels.add(level));
+    });
+
+    return {
+      contributions,
+      availableItems: Array.from(availableItems).sort(),
+      availableLevels: sortLevels(Array.from(availableLevels)),
+      availableSections: Array.from(availableSections).sort(),
+      availableCostCodes: Array.from(availableCostCodes).sort(),
+    };
+  }, [materialCostingData, materials, priceMap, useCostingData]);
+
+  const fallbackBaseData = useMemo(() => ({
+    contributions: items,
+    availableItems: Array.from(new Set(items.map((item) => item.item).filter(Boolean))).sort(),
+    availableLevels: Array.from(new Set(items.map((item) => String(item.area ?? 'Unknown'))))
+      .filter((level) => level !== 'Unknown')
+      .sort(),
+    availableSections: Array.from(new Set(items.map((item) => item.section).filter(Boolean))).sort(),
+    availableCostCodes: Array.from(new Set(items.map((item) => item.costCode).filter(Boolean))).sort(),
+  }), [items]);
+
   const { aggregatedItems, totalCost, availableItems, availableLevels, availableSections, availableCostCodes } =
     useMemo(() => {
-      if (useCostingData) {
-        const assembliesToProcess =
-          filterState.selectedLevels.size > 0
-            ? materialCostingData.filter((a) => {
-                const levelStr = (a as { level?: string }).level ?? 'Unknown';
-                const levels = parseLevels(levelStr);
-                return levels.some((l) => filterState.selectedLevels.has(l));
-              })
-            : materialCostingData;
-
-        const rows = aggregateMaterialsFromCosting(
-          assembliesToProcess,
-          materials,
-          priceMap
-        );
-
-        const availableLevelsFromData = sortLevels(
-          Array.from(
-            new Set(
-              materialCostingData.flatMap((a) => {
-                const levelStr = (a as { level?: string }).level ?? 'Unknown';
-                return parseLevels(levelStr).filter((l) => l && l !== 'Unknown');
-              })
-            )
-          )
-        );
-
-        let filtered = rows;
+      if (useCostingData && costingBaseData) {
+        let filtered = costingBaseData.contributions;
+        if (filterState.selectedLevels.size > 0) {
+          filtered = filtered.filter((row) =>
+            row.levels.some((level) => filterState.selectedLevels.has(level)),
+          );
+        }
         if (filterState.selectedItems.size > 0) {
           filtered = filtered.filter((r) =>
             filterState.selectedItems.has(r.item)
@@ -185,34 +233,49 @@ export const MaterialsView = ({
         }
         if (filterState.selectedCostCodes.size > 0) {
           filtered = filtered.filter((r) =>
-            filterState.selectedCostCodes.has(r.matCostCode)
+            filterState.selectedCostCodes.has(r.costCode)
           );
         }
 
-        const total = filtered.reduce((acc, r) => acc + r.totalCost, 0);
+        const aggMap = new Map<
+          string,
+          AggregatedItem & { levels: Set<string> }
+        >();
+
+        filtered.forEach((row) => {
+          const key = `${row.code}|${row.item}|${row.unit}|${row.section}`;
+          if (aggMap.has(key)) {
+            const existing = aggMap.get(key)!;
+            existing.quantity += row.quantity;
+            existing.totalCost += row.totalCost;
+            if (row.secQuantity != null) {
+              existing.secQuantity = (existing.secQuantity ?? 0) + row.secQuantity;
+              existing.secUnit = row.secUnit ?? existing.secUnit;
+            }
+            row.levels.forEach((level) => existing.levels.add(level));
+          } else {
+            aggMap.set(key, {
+              ...row,
+              secQuantity: row.secQuantity ?? null,
+              secUnit: row.secUnit ?? null,
+              levels: new Set(row.levels),
+            });
+          }
+        });
+
+        const aggregatedRows = Array.from(aggMap.values()).map(({ levels: _levels, ...row }) => row);
+        const total = aggregatedRows.reduce((acc, row) => acc + row.totalCost, 0);
         return {
-          aggregatedItems: filtered.map((r) => ({
-            code: r.code,
-            item: r.item,
-            section: r.section,
-            costCode: r.matCostCode,
-            quantity: r.quantity,
-            unit: r.unit,
-            secQuantity: r.secQuantity,
-            secUnit: r.secUnit,
-            wastePercent: r.wastePercent,
-            unitCost: r.unitCost,
-            totalCost: r.totalCost,
-          })),
+          aggregatedItems: aggregatedRows,
           totalCost: total,
-          availableItems: Array.from(new Set(rows.map((r) => r.item))).sort(),
-          availableLevels: availableLevelsFromData,
-          availableSections: Array.from(new Set(rows.map((r) => r.section))).sort(),
-          availableCostCodes: Array.from(new Set(rows.map((r) => r.matCostCode).filter(Boolean))).sort(),
+          availableItems: costingBaseData.availableItems,
+          availableLevels: costingBaseData.availableLevels,
+          availableSections: costingBaseData.availableSections,
+          availableCostCodes: costingBaseData.availableCostCodes,
         };
       }
 
-      let filtered = items;
+      let filtered = fallbackBaseData.contributions;
       if (filterState.selectedLevels.size > 0) {
         filtered = filtered.filter((i) =>
           filterState.selectedLevels.has(i.area)
@@ -297,15 +360,14 @@ export const MaterialsView = ({
       return {
         aggregatedItems: aggItems,
         totalCost: total,
-        availableItems: Array.from(new Set(items.map((i) => i.item).filter(Boolean))).sort(),
-        availableLevels: Array.from(new Set(items.map((i) => String(i.area ?? 'Unknown')))).filter((l) => l !== 'Unknown').sort(),
-        availableSections: Array.from(new Set(items.map((i) => i.section).filter(Boolean))).sort(),
-        availableCostCodes: Array.from(new Set(items.map((i) => i.costCode).filter(Boolean))).sort(),
+        availableItems: fallbackBaseData.availableItems,
+        availableLevels: fallbackBaseData.availableLevels,
+        availableSections: fallbackBaseData.availableSections,
+        availableCostCodes: fallbackBaseData.availableCostCodes,
       };
     }, [
-      items,
-      materialCostingData,
-      materials,
+      costingBaseData,
+      fallbackBaseData,
       priceMap,
       filterState,
       useCostingData,
@@ -314,6 +376,25 @@ export const MaterialsView = ({
   const handleFilterChange = useCallback((state: MaterialsFilterState) => {
     setFilterState(state);
   }, []);
+
+  React.useEffect(() => {
+    setFilterState((prev) => {
+      const nextState: MaterialsFilterState = {
+        selectedItems: pruneSelectedFilterValues(prev.selectedItems, availableItems),
+        selectedLevels: pruneSelectedFilterValues(prev.selectedLevels, availableLevels),
+        selectedSections: pruneSelectedFilterValues(prev.selectedSections, availableSections),
+        selectedCostCodes: pruneSelectedFilterValues(prev.selectedCostCodes, availableCostCodes),
+      };
+
+      const unchanged =
+        nextState.selectedItems === prev.selectedItems &&
+        nextState.selectedLevels === prev.selectedLevels &&
+        nextState.selectedSections === prev.selectedSections &&
+        nextState.selectedCostCodes === prev.selectedCostCodes;
+
+      return unchanged ? prev : nextState;
+    });
+  }, [availableCostCodes, availableItems, availableLevels, availableSections, setFilterState]);
 
   // Apply local unit cost overrides — takes priority over aggregated values
   const displayItems = useMemo(
@@ -358,10 +439,20 @@ export const MaterialsView = ({
       })),
     [displayItems]
   );
+  const summaryRows = useMemo<ExportRow[]>(
+    () => [
+      {
+        item: 'Total',
+        totalCost: displayTotalCost,
+      },
+    ],
+    [displayTotalCost],
+  );
 
   const filtersActive =
     filterState.selectedItems.size > 0 ||
     filterState.selectedLevels.size > 0 ||
+    filterState.selectedSections.size > 0 ||
     filterState.selectedCostCodes.size > 0;
 
   return (
@@ -398,6 +489,7 @@ export const MaterialsView = ({
         sheetName="Materials"
         columns={MATERIALS_COLUMNS}
         rows={exportRows}
+        summaryRows={summaryRows}
         filtersActive={filtersActive}
       />
 

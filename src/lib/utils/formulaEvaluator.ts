@@ -17,6 +17,12 @@ const MULTI_WORD_NORMALIZATIONS: [RegExp, string][] = [
     // Unicode math symbols → ASCII operators (must run before multi-word replacements)
     [/×/g, '*'],
     [/÷/g, '/'],
+    // Function-style constants — e.g. Screw_Spacing(12) means "12-inch screw spacing" (literal constant)
+    // Must run before underscore-containing identifiers are processed
+    [/Screw_Spacing\(\s*(\d+(?:\.\d+)?)\s*\)/gi, '$1'],
+    // Underscore-aliased variables → canonical single-word identifiers
+    [/Stud_OC\b/gi, 'OC'],
+    // Multi-word variables
     [/ceiling\s+area/gi, 'CeilingArea'],
     [/sheet\s+area/gi, 'SheetArea'],
     [/bag\s+size/gi, 'BagSize'],
@@ -263,8 +269,8 @@ export function computeFormulaQuantities(
 ): FormulaQuantities {
     // Aggregate height, ceilingArea, perimeter from takeoff instances
     const ctx = aggregateInstances(comp, assembly, instances);
-    // Length: use total_length from final_output when available, otherwise fall back to aggregated value
-    const length      = extractedDimensions?.totalLength ?? ctx.totalLinearFeet;
+    // Length: comp override > total_length from final_output > aggregated from takeoff
+    const length      = comp.lengthOverride ?? extractedDimensions?.totalLength ?? ctx.totalLinearFeet;
     const baseHeight  = ctx.avgHeight;
     const ceilingArea = ctx.totalCeilingArea;
     const perimeter   = ctx.totalPerimeter;

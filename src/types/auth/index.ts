@@ -40,4 +40,6 @@ export interface LoginResponse {
 export interface SessionResponse {
   valid: boolean;
   user?: Admin;
+  error?: string;
+  code?: string;
 }

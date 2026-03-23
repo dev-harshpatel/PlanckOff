@@ -1,61 +1,22 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
-import {
-  WallAssembly,
-  TakeoffInstance,
-  CalculatedMaterial,
-  MaterialDefinition,
-  AssemblyComponent,
-  CalculationMethod,
-} from "@/types";
+import React, { useEffect, useMemo, useCallback, useRef } from "react";
+import { CalculationMethod, MaterialDefinition, TakeoffInstance, WallAssembly } from "@/types";
 import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
 import { resolveProjectMaterials } from "@/lib/utils/resolveProjectMaterial";
-import { calculateMaterials } from "@/services/gemini/calculateMaterials";
-import { evaluateMath } from "@/services/gemini/client";
-import {
-  Download,
-  Plus,
-  Calculator,
-  FileSpreadsheet,
-  Database,
-  Upload,
-  Layers,
-  Ruler,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  ArrowLeftRight,
-  Trash2,
-  Edit2,
-  MoreVertical,
-  Beaker,
-  HelpCircle,
-  Check,
-  RefreshCw,
-  FlaskConical,
-  LayoutTemplate,
-} from "lucide-react";
-import { read, utils, writeFile } from "xlsx";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DatabaseManager } from "@/components/features/database/DatabaseManager";
-import { Reports } from "@/components/features/reports/Reports";
-import { ConditionDetailModal } from "@/components/features/project/ConditionDetailModal";
-import { v4 as uuidv4 } from "uuid";
-import {
-  DEFAULT_TEMPLATES,
-  AssemblyTemplate,
-} from "@/constants/defaultAssemblies";
+import { AssemblyTemplate, DEFAULT_TEMPLATES } from "@/constants/defaultAssemblies";
 import { AssemblyEditorModal } from "@/components/features/project/AssemblyEditorModal";
-import { TakeoffScheduleView } from "@/components/features/project/TakeoffScheduleView";
-import { AssemblySummaryGrid } from "@/components/features/project/AssemblySummaryGrid";
+import { AssemblySummaryTab } from "@/components/features/project/tabs/AssemblySummaryTab";
+import { ReportsTab } from "@/components/features/project/tabs/ReportsTab";
+import { TakeoffTab } from "@/components/features/project/tabs/TakeoffTab";
+import { useAssemblyActions } from "@/components/features/project/hooks/useAssemblyActions";
+import { useAssemblySave } from "@/components/features/project/hooks/useAssemblySave";
+import { useAssemblyState } from "@/components/features/project/hooks/useAssemblyState";
+import { useEstimateCalculations } from "@/components/features/project/hooks/useEstimateCalculations";
+import { useTakeoffSchedule } from "@/components/features/project/hooks/useTakeoffSchedule";
 import { usePipeline } from "@/context/PipelineContext";
-import { AggregatedTakeoff } from "@/types/takeoff";
 import { AssemblyData, MaterialCosting } from "@/types/assembly";
 import { FORMULA_DEFINITIONS } from "@/constants/formulas";
 import {
@@ -63,20 +24,9 @@ import {
   mapRawTakeoffToInstances,
 } from "@/lib/utils/assemblyJsonMapper";
 import { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
-import {
-  detectLengthFt,
-  getFilteredFormulas,
-  getRowDetails,
-  parsePer,
-} from "@/lib/utils/calculationUtils";
-import {
-  Button,
-  IconButton,
-  SearchInput,
-  Modal,
-  ConfirmModal,
-  useToast,
-} from "@/components/ui";
+import { getRowDetails } from "@/lib/utils/calculationUtils";
+import { serializeTakeoffsToRawRows } from "@/lib/utils/takeoffSerializer";
+import { ConfirmModal, Modal, useToast } from "@/components/ui";
 
 interface EstimateResultProps {
   assemblies: WallAssembly[];
@@ -99,6 +49,7 @@ interface EstimateResultProps {
   rawTakeoffRows?: unknown[];
   projectId?: string | null;
   finalOutputId?: string | null;
+  takeoffOutputId?: string | null;
   onUnitCostChange?: (code: string, newCost: number, type: "material" | "labor", unit?: string) => void;
   /** Updates materialCostingData locally so costs recalculate immediately on blur. DB save happens on Save button click. */
   onWasteChange?: (code: string, wastePercent: number, isLabor: boolean) => void;
@@ -107,8 +58,6 @@ interface EstimateResultProps {
   overrideMap?: ProjectOverrideMap;
   onOverrideMapChange?: React.Dispatch<React.SetStateAction<ProjectOverrideMap>>;
 }
-
-// Local definitions moved to calculationUtils.ts
 
 export const EstimateResult: React.FC<EstimateResultProps> = ({
   assemblies: initialAssemblies,
@@ -128,6 +77,7 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   rawTakeoffRows = [],
   projectId: projectIdProp,
   finalOutputId,
+  takeoffOutputId,
   onUnitCostChange,
   onWasteChange,
   onImportComplete,
@@ -142,309 +92,156 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     [materials, overrideMap],
   );
 
-  const [assemblies, setAssemblies] =
-    useState<WallAssembly[]>(initialAssemblies);
-  // Always-current ref — set synchronously during render so handleSaveAssembly
-  // never reads a stale closure value when blur fires just before a Save click.
-  const assembliesRef = useRef<WallAssembly[]>(initialAssemblies);
-  assembliesRef.current = assemblies;
-  const [takeoffs, setTakeoffs] = useState<Record<string, TakeoffInstance[]>>(
-    {},
-  );
-  // viewMode state removed to use prop directly
-  const [editingAssemblyId, setEditingAssemblyId] = useState<string | null>(
-    null,
-  );
-  const [editingHeight, setEditingHeight] = useState<number | null>(null);
-  const [activeAssemblyId, setActiveAssemblyId] = useState<string | null>(null); // For sidebar selection
-  const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"schedule" | "materials">(
-    "schedule",
-  );
-  const [assemblySearch, setAssemblySearch] = useState("");
+  const {
+    assemblies,
+    setAssemblies,
+    assembliesRef,
+    takeoffs,
+    setTakeoffs,
+    localRawTakeoffRows,
+    setLocalRawTakeoffRows,
+    editingAssemblyId,
+    setEditingAssemblyId,
+    editingHeight,
+    setEditingHeight,
+    activeAssemblyId,
+    setActiveAssemblyId,
+    isDatabaseOpen,
+    setIsDatabaseOpen,
+    activeTab,
+    setActiveTab,
+    assemblySearch,
+    setAssemblySearch,
+    manualItems,
+    setManualItems,
+    isSearchOpen,
+    setIsSearchOpen,
+    searchRef,
+    importedPdfFile,
+    setImportedPdfFile,
+    importedTakeoffData,
+    setImportedTakeoffData,
+    skipNextTakeoffPersistRef,
+    takeoffPersistTimeoutRef,
+    lastPersistedTakeoffPayloadRef,
+    isScopeDeleteModalOpen,
+    setIsScopeDeleteModalOpen,
+    scopeToDelete,
+    setScopeToDelete,
+    rowSearchOpen,
+    setRowSearchOpen,
+    rowSearchQuery,
+    setRowSearchQuery,
+    formulaDropdownOpen,
+    setFormulaDropdownOpen,
+    prodCalcOpen,
+    setProdCalcOpen,
+    isTemplateMenuOpen,
+    setIsTemplateMenuOpen,
+    templateMenuRef,
+    sidebarWidth,
+    setSidebarWidth,
+    lastSidebarWidth,
+    setLastSidebarWidth,
+    isResizing,
+    setIsResizing,
+    containerRef,
+  } = useAssemblyState({
+    initialAssemblies,
+    rawTakeoffRows,
+  });
 
-  const [manualItems, setManualItems] = useState<CalculatedMaterial[]>([]);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  const [filterLevel, setFilterLevel] = useState<string>("All");
-
-  const [filterTag, setFilterTag] = useState<string>("All");
-
-  // Alternative Pricing State
-  const [pricingScopes, setPricingScopes] = useState<string[]>([
-    "Base Bid",
-    "Alternate 1",
-    "Alternate 2",
-  ]);
-  const [isManageScopesOpen, setIsManageScopesOpen] = useState(false);
-  const [newScopeName, setNewScopeName] = useState("");
-
-  // Toast and confirmation modals
   const toast = useToast();
   const { openImportModal } = usePipeline();
-  const [importedPdfFile, setImportedPdfFile] = useState<File | null>(null);
-  const [importedTakeoffData, setImportedTakeoffData] = useState<AggregatedTakeoff[] | null>(null);
 
-  const handleImportComplete = useCallback((data: {
-    assemblyResult?: { assemblies: unknown[] };
-    excelFile?: File;
-    finalResult?: { assemblies?: unknown[] };
-    pdfFile: File;
-    takeoffData?: AggregatedTakeoff[];
-    takeoffResult?: unknown[];
-  }) => {
-    setImportedPdfFile(data.pdfFile);
-    onImportComplete?.();
-
-    if (data.assemblyResult) {
-      console.log(
-        "[Import] Assembly result:",
-        data.assemblyResult.assemblies?.length,
-        "assemblies",
-      );
-    }
-    if (data.takeoffResult) {
-      console.log(
-        "[Import] Takeoff result:",
-        Array.isArray(data.takeoffResult) ? data.takeoffResult.length : 0,
-        "rows",
-      );
-    }
-    if (data.finalResult) {
-      console.log(
-        "[Import] Final result:",
-        data.finalResult.assemblies?.length ?? 0,
-        "assemblies (saved to data/output/final_output/)",
-      );
-    }
-
-    // If Excel data present, load into project
-    if (data.excelFile && data.takeoffData) {
-      setImportedTakeoffData(data.takeoffData);
-      const loadExcelIntoProject = async () => {
-        try {
-          const buffer = await data.excelFile!.arrayBuffer();
-          const workbook = read(buffer);
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-          const rows: any[] = (Array.isArray(jsonData) ? jsonData : []) as any[];
-
-          if (rows.length < 2) return;
-
-          const fileHeaders = rows[0] as string[];
-          const colMap = {
-            code: fileHeaders.findIndex((h) => h?.match(/wall type|code|mark/i)),
-            desc: fileHeaders.findIndex((h) => h?.match(/description|name/i)),
-            type: fileHeaders.findIndex((h) => h?.match(/assembly type|type/i)),
-            level: fileHeaders.findIndex((h) => h?.match(/level|floor/i)),
-            length: fileHeaders.findIndex((h) => h?.match(/wall length|length/i)),
-            height: fileHeaders.findIndex((h) => h?.match(/height/i)),
-            area: fileHeaders.findIndex((h) => h?.match(/area parem|area param|ceiling area|net area/i)),
-            perimeter: fileHeaders.findIndex((h) => h?.match(/perimeter|area perimeter|zone perimeter/i)),
-          };
-
-          if (colMap.code === -1) colMap.code = 3;
-          if (colMap.desc === -1) colMap.desc = 1;
-
-          const lengthUnitIdx = colMap.length !== -1 ? colMap.length + 1 : -1;
-          const areaUnitIdx = colMap.area !== -1 ? colMap.area + 1 : -1;
-
-          const currentAssemblies = [...assemblies];
-          const newTakeoffs: Record<string, TakeoffInstance[]> = { ...takeoffs };
-
-          (rows.slice(1) as any[]).forEach((row: any, idx: number) => {
-            const code = String(row[colMap.code] || '').trim();
-            if (!code) return;
-
-            let detectedType: any = 'Wall';
-            if (colMap.type !== -1 && row[colMap.type]) {
-              const val = String(row[colMap.type]).trim();
-              if (val.match(/ceiling/i)) detectedType = 'Ceiling';
-              else if (val.match(/soffit/i)) detectedType = 'Soffit';
-              else if (val.match(/bulkhead/i)) detectedType = 'Bulkhead';
-              else if (val.match(/exterior/i)) detectedType = 'Exterior Wall';
-              else if (val.match(/interior/i)) detectedType = 'Interior Wall';
-              else if (val.match(/frame/i)) detectedType = 'Hollow Metal Frame';
-              else if (val.match(/access/i)) detectedType = 'Access Panel';
-            } else {
-              const desc = String(row[colMap.desc] || '').toLowerCase();
-              if (desc.includes('ceiling')) detectedType = 'Ceiling';
-              else if (desc.includes('soffit')) detectedType = 'Soffit';
-            }
-
-            let assembly = currentAssemblies.find(
-              (a) => a.code.toLowerCase() === code.toLowerCase(),
-            );
-            if (!assembly) {
-              const newId = `auto-${code}-${Date.now()}-${idx}`;
-              assembly = {
-                id: newId,
-                code,
-                description: String(row[colMap.desc] || `Imported ${code}`),
-                framingType: 'Light Metal',
-                assemblyType: detectedType,
-                components: [],
-              };
-              currentAssemblies.push(assembly);
-            }
-
-            if (!newTakeoffs[assembly.id]) newTakeoffs[assembly.id] = [];
-
-            let len = 0, ht = 0, area = 0, perim = 0;
-            if (colMap.length !== -1) len = parseFloat(row[colMap.length]) || 0;
-            if (colMap.height !== -1) ht = parseFloat(row[colMap.height]) || 0;
-            if (colMap.area !== -1) area = parseFloat(row[colMap.area]) || 0;
-            if (colMap.perimeter !== -1) perim = parseFloat(row[colMap.perimeter]) || 0;
-
-            const rawLengthUnit = lengthUnitIdx >= 0 ? String(row[lengthUnitIdx] || '').toUpperCase().trim() : '';
-            const rawAreaUnit = areaUnitIdx >= 0 ? String(row[areaUnitIdx] || '').toUpperCase().trim() : '';
-
-            if (rawLengthUnit === 'SF' || rawLengthUnit === 'M2') {
-              area = len;
-              len = 0;
-            }
-
-            if (detectedType === 'Ceiling') {
-              const colE = parseFloat(row[4]) || 0;
-              const colG = parseFloat(row[6]) || 0;
-              if (colE > 0) area = colE;
-              if (colG > 0) perim = colG;
-              len = 0;
-            } else if (colMap.length === -1 && colMap.height === -1) {
-              len = parseFloat(row[4]) || 0;
-              ht = parseFloat(row[14]) || 0;
-            }
-
-            newTakeoffs[assembly.id].push({
-              id: `imp-${Date.now()}-${idx}`,
-              level: colMap.level !== -1 ? String(row[colMap.level]) : '1',
-              description: String(row[colMap.desc] || row[1] || 'Imported'),
-              quantity: 1,
-              length: len,
-              height: ht,
-              ceilingArea: area,
-              perimeter: perim,
-              lengthUnit: rawLengthUnit || (len > 0 ? 'LF' : ''),
-              areaUnit: rawAreaUnit || (area > 0 ? 'SF' : ''),
-            });
-          });
-
-          setAssemblies(currentAssemblies);
-          setTakeoffs(newTakeoffs);
-          toast.success('Files Imported', `Loaded ${data.takeoffData!.length} assemblies from takeoff schedule.`);
-        } catch {
-          toast.error('Import Failed', 'Error loading schedule data into project.');
-        }
-      };
-
-      loadExcelIntoProject();
-    } else {
-      toast.success('PDF Processed', 'Assemblies extracted and matched successfully.');
-    }
-  }, [assemblies, onImportComplete, takeoffs, toast]);
-
-  const [isScopeDeleteModalOpen, setIsScopeDeleteModalOpen] = useState(false);
-  const [scopeToDelete, setScopeToDelete] = useState<string | null>(null);
-
-  const [rowSearchOpen, setRowSearchOpen] = useState<string | null>(null);
-  const [rowSearchQuery, setRowSearchQuery] = useState("");
-  const [formulaDropdownOpen, setFormulaDropdownOpen] = useState<string | null>(
-    null,
-  );
-  const [prodCalcOpen, setProdCalcOpen] = useState<string | null>(null); // Component ID for calc popup
-  const [prodValues, setProdValues] = useState({
-    dailyOutput: 100,
-    crewSize: 1,
-    hoursPerDay: 8,
-  });
-  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
-  const templateMenuRef = useRef<HTMLDivElement>(null);
-
-  const handleAddFromTemplate = (template: AssemblyTemplate) => {
-    const newAssembly: WallAssembly = {
-      id: uuidv4(),
-      code: `${template.category.substring(0, 1)}A-${assemblies.length + 1}`,
-      description: template.name,
-      assemblyType: template.category,
-      framingType: "Light Metal",
-      components: template.components.map((c) => ({
-        id: uuidv4(),
-        ...c,
-        usage: c.usage || "Fixed Qty", // Fallback
-      })),
-      defaultLength: 100,
-      defaultHeight: 10,
-    };
-    setAssemblies((prev) => [...prev, newAssembly]);
-    setEditingAssemblyId(newAssembly.id);
-    setIsTemplateMenuOpen(false);
-  };
-
-  const handleLoadTemplate = (template: AssemblyTemplate) => {
-    if (!editingAssemblyId) return;
-    setAssemblies((prev) =>
-      prev.map((a) => {
-        if (a.id !== editingAssemblyId) return a;
-        return {
-          ...a,
-          description: a.description || template.name,
-          assemblyType: template.category,
-          components: template.components.map((c) => ({
-            id: uuidv4(),
-            ...c,
-            usage: c.usage || "Fixed Qty",
-          })),
-        };
-      }),
-    );
-  };
-
-  const handleAddScope = () => {
-    if (newScopeName && !pricingScopes.includes(newScopeName)) {
-      setPricingScopes([...pricingScopes, newScopeName]);
-      setNewScopeName("");
-    }
-  };
-
-  const openScopeDeleteModal = (scope: string) => {
-    if (scope === "Base Bid") return; // Protect Base Bid
-    setScopeToDelete(scope);
-    setIsScopeDeleteModalOpen(true);
-  };
-
-  const confirmScopeDelete = () => {
-    if (scopeToDelete) {
-      setPricingScopes((prev) => prev.filter((s) => s !== scopeToDelete));
-      // Reset assemblies in deleted scope
-      setAssemblies((prev) =>
-        prev.map((a) =>
-          (a as WallAssembly & { scope?: string }).scope === scopeToDelete
-            ? { ...a, scope: "Base Bid" }
-            : a,
-        ),
-      );
+  const handleScopeRemoved = useCallback(
+    (scope: string) => {
       toast.success(
         "Scope Removed",
-        `"${scopeToDelete}" has been removed. Assemblies moved to Base Bid.`,
+        `"${scope}" has been removed. Assemblies moved to Base Bid.`,
       );
-    }
-    setIsScopeDeleteModalOpen(false);
-    setScopeToDelete(null);
-  };
+    },
+    [toast],
+  );
 
-  const handleDeleteScope = (scope: string) => {
-    openScopeDeleteModal(scope);
-  };
+  const {
+    handleAddFromTemplate,
+    handleLoadTemplate,
+    confirmScopeDelete,
+    handleDeleteScope,
+    startResizing,
+    stopResizing,
+    resize,
+    toggleSidebar,
+    updateInstance,
+    deleteInstance,
+    addInstance,
+    moveInstance,
+    updateAssemblyInfo,
+    applyTemplate,
+    updateComponent,
+    handleMaterialSelect,
+    addComponent,
+    removeComponent,
+    handleAddAssembly,
+    deleteAssembly,
+  } = useAssemblyActions({
+    assemblies,
+    assembliesRef,
+    takeoffs,
+    materials: resolvedMaterials,
+    editingAssemblyId,
+    scopeToDelete,
+    isResizing,
+    containerRef,
+    sidebarWidth,
+    lastSidebarWidth,
+    setAssemblies,
+    setTakeoffs,
+    setEditingAssemblyId,
+    setIsTemplateMenuOpen,
+    setScopeToDelete,
+    setIsScopeDeleteModalOpen,
+    setRowSearchOpen,
+    setRowSearchQuery,
+    setIsResizing,
+    setSidebarWidth,
+    setLastSidebarWidth,
+    onScopeRemoved: handleScopeRemoved,
+  });
 
-  const [sidebarWidth, setSidebarWidth] = useState(40);
-  const [lastSidebarWidth, setLastSidebarWidth] = useState(40);
-  const [isResizing, setIsResizing] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isConditionDetailOpen, setIsConditionDetailOpen] = useState(false);
+  const { handleImportComplete, handleScheduleUpload } = useTakeoffSchedule({
+    assemblies,
+    takeoffs,
+    viewMode,
+    takeoffOutputId,
+    setAssemblies,
+    setTakeoffs,
+    setLocalRawTakeoffRows,
+    setImportedPdfFile,
+    setImportedTakeoffData,
+    skipNextTakeoffPersistRef,
+    lastPersistedTakeoffPayloadRef,
+    takeoffPersistTimeoutRef,
+    onImportComplete,
+  });
+
+  const materialCostingDataRef = useRef<MaterialCosting[]>(materialCostingData);
+  materialCostingDataRef.current = materialCostingData;
+
+  const { handleSaveAssembly } = useAssemblySave({
+    finalOutputId,
+    projectId: projectIdProp,
+    materialCostingDataRef,
+    assembliesRef,
+    resolvedMaterials,
+    overrideMap,
+    onAssemblySaveComplete,
+    onOverrideMapChange,
+  });
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         searchRef.current &&
         !searchRef.current.contains(event.target as Node)
@@ -458,14 +255,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       if (!target.closest(".formula-dropdown-container")) {
         setFormulaDropdownOpen(null);
       }
-      // Close template menu when clicking outside
       if (
         templateMenuRef.current &&
         !templateMenuRef.current.contains(event.target as Node)
       ) {
         setIsTemplateMenuOpen(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -473,8 +269,14 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   // Sync assemblies from parent when initialAssemblies or viewMode changes.
   // Separated from the takeoff effect below to avoid resetting user edits whenever
   // materialCostingData or rawTakeoffRows change independently.
+  // Guard: skip the full reset while an assembly editor is open — otherwise async
+  // override-map updates completing mid-edit would wipe the user's pending changes
+  // (e.g. overrideHeight 15→10) before they click Save.
   useEffect(() => {
     if (viewMode === "project" && initialAssemblies.length > 0) {
+      if (editingAssemblyId) {
+        return;
+      }
       setAssemblies(initialAssemblies);
     } else if (initialAssemblies.length > assemblies.length) {
       const newOnes = initialAssemblies.slice(assemblies.length);
@@ -488,9 +290,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       setTakeoffs(mergedTakeoffs);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- takeoffs intentionally excluded to avoid sync loop
-  }, [initialAssemblies, viewMode]);
+  }, [initialAssemblies, viewMode, editingAssemblyId]);
 
-  // Recompute takeoffs whenever costing data or raw rows change (does NOT reset assemblies).
+  // Recompute takeoffs whenever raw rows change (does NOT reset assemblies).
+  useEffect(() => {
+    setLocalRawTakeoffRows(rawTakeoffRows);
+  }, [rawTakeoffRows]);
+
   useEffect(() => {
     if (viewMode !== "project" || initialAssemblies.length === 0) return;
     const hasFinalOutputFormat = materialCostingData.some(
@@ -500,15 +306,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     );
     let newTakeoffs: Record<string, TakeoffInstance[]>;
     if (hasFinalOutputFormat) {
-      // Prefer raw rows (individual levels) for TakeoffScheduleView; fall back to aggregated
       newTakeoffs =
-        rawTakeoffRows.length > 0
+        localRawTakeoffRows.length > 0
           ? mapRawTakeoffToInstances(
-              rawTakeoffRows as TakeoffRawRecord[],
+              localRawTakeoffRows as TakeoffRawRecord[],
               materialCostingData,
             )
           : mapFinalOutputToTakeoffs(materialCostingData);
-      // Ensure every assembly has an entry (even if empty)
       initialAssemblies.forEach((a) => {
         if (!newTakeoffs[a.id]) newTakeoffs[a.id] = [];
       });
@@ -518,9 +322,13 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         newTakeoffs[a.id] = takeoffs[a.id] || [];
       });
     }
+    skipNextTakeoffPersistRef.current = true;
+    lastPersistedTakeoffPayloadRef.current = JSON.stringify(
+      serializeTakeoffsToRawRows(newTakeoffs, initialAssemblies),
+    );
     setTakeoffs(newTakeoffs);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- takeoffs intentionally excluded to avoid sync loop
-  }, [initialAssemblies, viewMode, materialCostingData, rawTakeoffRows]);
+  }, [initialAssemblies, viewMode, materialCostingData, localRawTakeoffRows]);
 
   useEffect(() => {
     const initial: Record<string, TakeoffInstance[]> = {};
@@ -534,32 +342,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     }
   }, [assemblies]);
 
-  const startResizing = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
-
-  const stopResizing = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  const resize = useCallback(
-    (mouseMoveEvent: MouseEvent) => {
-      if (isResizing && containerRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const newWidth =
-          ((mouseMoveEvent.clientX - containerRect.left) /
-            containerRect.width) *
-          100;
-        if (newWidth >= 15 && newWidth <= 85) {
-          setSidebarWidth(newWidth);
-          setLastSidebarWidth(newWidth);
-        }
-      }
-    },
-    [isResizing],
-  );
-
   useEffect(() => {
     if (isResizing) {
       window.addEventListener("mousemove", resize);
@@ -571,634 +353,11 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     };
   }, [isResizing, resize, stopResizing]);
 
-  const toggleSidebar = () => {
-    if (sidebarWidth < 5) {
-      setSidebarWidth(lastSidebarWidth > 15 ? lastSidebarWidth : 40);
-    } else {
-      setLastSidebarWidth(sidebarWidth);
-      setSidebarWidth(0);
-    }
-  };
-
-  const updateInstance = (
-    assemblyId: string,
-    instanceId: string,
-    field: string,
-    value: any,
-  ) => {
-    if (field === "assemblyType") {
-      // Update Assembly Definition
-      setAssemblies((prev) =>
-        prev.map((a) =>
-          a.id === assemblyId ? { ...a, assemblyType: value } : a,
-        ),
-      );
-      return;
-    }
-
-    // Update Instance
-    setTakeoffs((prev) => ({
-      ...prev,
-      [assemblyId]: prev[assemblyId].map((inst) =>
-        inst.id === instanceId ? { ...inst, [field]: value } : inst,
-      ),
-    }));
-  };
-
-  const deleteInstance = (assemblyId: string, instanceId: string) => {
-    setTakeoffs((prev) => ({
-      ...prev,
-      [assemblyId]: prev[assemblyId].filter((i) => i.id !== instanceId),
-    }));
-  };
-
-  const addInstance = (assemblyId: string | null) => {
-    let targetId = assemblyId;
-
-    // If no assembly selected, create a new "Manual" assembly on the fly
-    if (!targetId) {
-      targetId = `manual-${Date.now()}`;
-      const newAssembly: WallAssembly = {
-        id: targetId,
-        code: `M-${assemblies.length + 1}`,
-        description: "Manual Internal Wall",
-        framingType: "Light Metal",
-        assemblyType: "Interior Wall",
-        defaultLength: 10,
-        defaultHeight: 10,
-        components: [
-          // Default components for a standard wall so cost isn't zero
-          {
-            id: `c1-${targetId}`,
-            materialName: '3 5/8" Metal Stud 25ga',
-            usage: 'Vertical @ 16" OC',
-            wasteFactor: 0.08,
-            installRate: 0.15,
-          },
-          {
-            id: `c2-${targetId}`,
-            materialName: '5/8" Type X Gypsum Board',
-            usage: "Coverage (1 Layer)",
-            wasteFactor: 0.1,
-            installRate: 0.009,
-          },
-        ],
-      };
-      setAssemblies((prev) => [...prev, newAssembly]);
-      // Initialize takeoff array for this new assembly
-      setTakeoffs((prev) => ({ ...prev, [targetId as string]: [] }));
-    }
-
-    const newId = `inst-${Date.now()}`;
-    setTakeoffs((prev) => ({
-      ...prev,
-      [targetId!]: [
-        ...(prev[targetId!] || []),
-        {
-          id: newId,
-          level: "1",
-          description: assemblyId ? "New Item" : "New Manual Item",
-          quantity: 1,
-          length: 10,
-          height: 10,
-          ceilingArea: 0,
-          perimeter: 0,
-        },
-      ],
-    }));
-  };
-
-  const moveInstance = (
-    instanceId: string,
-    fromAssemblyId: string,
-    toAssemblyId: string,
-  ) => {
-    if (fromAssemblyId === toAssemblyId) return;
-    const instance = takeoffs[fromAssemblyId].find((i) => i.id === instanceId);
-    if (!instance) return;
-    setTakeoffs((prev) => ({
-      ...prev,
-      [fromAssemblyId]: prev[fromAssemblyId].filter((i) => i.id !== instanceId),
-      [toAssemblyId]: [...(prev[toAssemblyId] || []), instance],
-    }));
-  };
-
-  const updateAssemblyInfo = (
-    id: string,
-    field: keyof WallAssembly,
-    value: any,
-  ) => {
-    setAssemblies((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)),
-    );
-  };
-
-  const applyTemplate = (
-    assemblyId: string,
-    type: "Wall" | "Ceiling",
-    subtype: string,
-  ) => {
-    const newComponents: AssemblyComponent[] = [];
-
-    if (type === "Ceiling") {
-      if (subtype === "Suspended") {
-        newComponents.push(
-          {
-            id: `t-${Date.now()}-1`,
-            materialName: "12ga Hanger Wire",
-            usage: "Suspension - Hanger Wire (16sf)",
-            wasteFactor: 0.05,
-            installRate: 0.01,
-          },
-          {
-            id: `t-${Date.now()}-2`,
-            materialName: "Main Runner 12' HD",
-            usage: "Suspension - Main Runner (4' OC)",
-            wasteFactor: 0.05,
-            installRate: 0.004,
-          }, // ~5000sf/wk
-          {
-            id: `t-${Date.now()}-3`,
-            materialName: "Cross Tee 4'",
-            usage: "Suspension - Cross Tee (4' OC)",
-            wasteFactor: 0.05,
-            installRate: 0.004,
-          },
-          {
-            id: `t-${Date.now()}-4`,
-            materialName: "Wall Angle 12'",
-            usage: "Ceiling - Perimeter (Linear)",
-            wasteFactor: 0.05,
-            installRate: 0.01,
-          },
-          {
-            id: `t-${Date.now()}-5`,
-            materialName: "Acoustic Tile 2x4",
-            usage: "Ceiling - Tile (2x4)",
-            wasteFactor: 0.05,
-            installRate: 0.004,
-          }, // ~10000sf/wk
-        );
-      } else if (subtype === "Hard Lid") {
-        newComponents.push(
-          {
-            id: `t-${Date.now()}-1`,
-            materialName: "12ga Hanger Wire",
-            usage: "Suspension - Hanger Wire (16sf)",
-            wasteFactor: 0.05,
-            installRate: 0.01,
-          },
-          {
-            id: `t-${Date.now()}-2`,
-            materialName: '1-1/2" Cold Rolled Channel',
-            usage: "Ceiling - CRC (Primary 4' OC)",
-            wasteFactor: 0.05,
-            installRate: 0.01,
-          },
-          {
-            id: `t-${Date.now()}-3`,
-            materialName: '7/8" Furring Channel',
-            usage: 'Ceiling - Hat Channel (Secondary 24" OC)',
-            wasteFactor: 0.05,
-            installRate: 0.015,
-          },
-          {
-            id: `t-${Date.now()}-4`,
-            materialName: '5/8" Type X Gypsum Board',
-            usage: "Coverage (1 Layer)",
-            wasteFactor: 0.1,
-            installRate: 0.02,
-          },
-          {
-            id: `t-${Date.now()}-5`,
-            materialName: "Tie Wire 18ga 25 lb Bundle",
-            usage: "Fixed Qty",
-            wasteFactor: 0.05,
-          },
-        );
-      } else if (subtype === "Baffles") {
-        newComponents.push(
-          {
-            id: `t-${Date.now()}-1`,
-            materialName: "Linear Baffle (4' Unit)",
-            usage: "Ceiling - Baffle (Linear Calc)",
-            wasteFactor: 0.05,
-          },
-          {
-            id: `t-${Date.now()}-2`,
-            materialName: "Cable Suspension Kit",
-            usage: "Fixed Qty",
-            wasteFactor: 0.0,
-          },
-        );
-      } else if (subtype === "Steel Joist") {
-        newComponents.push(
-          {
-            id: `t-${Date.now()}-1`,
-            materialName: '600S162-54 (6" 18ga Stud)',
-            usage: "Structural - Steel Joist (Span)",
-            wasteFactor: 0.05,
-            installRate: 0.015,
-          },
-          {
-            id: `t-${Date.now()}-2`,
-            materialName: '600T200-54 (6" Deep Leg Track)',
-            usage: "Structural - Deep Leg Track",
-            wasteFactor: 0.05,
-            installRate: 0.01,
-          },
-          {
-            id: `t-${Date.now()}-3`,
-            materialName: '1-1/2" Flat Strap (Bracing)',
-            usage: "Structural - Lateral Bracing",
-            wasteFactor: 0.05,
-            installRate: 0.005,
-          },
-        );
-      }
-    } else {
-      // Wall Default
-      newComponents.push(
-        {
-          id: `t-${Date.now()}-1`,
-          materialName: '3 5/8" Metal Stud 25ga',
-          usage: 'Vertical @ 16" OC',
-          wasteFactor: 0.08,
-          installRate: 0.15,
-        }, // ~60LF/Day (Interior)
-        {
-          id: `t-${Date.now()}-2`,
-          materialName: '3 5/8" Track 25ga',
-          usage: "Tracks (Top & Bottom)",
-          wasteFactor: 0.05,
-          installRate: 0.01,
-        }, // Linear Feet
-        {
-          id: `t-${Date.now()}-3`,
-          materialName: '5/8" Type X Gypsum Board',
-          usage: "Coverage (1 Layer)",
-          wasteFactor: 0.1,
-          installRate: 0.009,
-        }, // ~960SF/Day
-      );
-    }
-
-    setAssemblies((prev) =>
-      prev.map((a) => {
-        if (a.id !== assemblyId) return a;
-        return { ...a, components: newComponents };
-      }),
-    );
-  };
-
-  const updateComponent = (
-    assemblyId: string,
-    componentId: string,
-    field: keyof AssemblyComponent,
-    value: AssemblyComponent[keyof AssemblyComponent],
-  ) => {
-    setAssemblies((prev) => {
-      const editedAssembly = prev.find((a) => a.id === assemblyId);
-      const editedComponent = editedAssembly?.components.find(
-        (c) => c.id === componentId,
-      );
-      const projectWideMaterialCode =
-        (field === "wasteFactor" || field === "overrideMatCost") &&
-        editedComponent?.materialCode
-          ? editedComponent.materialCode
-          : null;
-
-      const next = prev.map((a) => {
-        if (projectWideMaterialCode) {
-          return {
-            ...a,
-            components: a.components.map((c) =>
-              c.materialCode === projectWideMaterialCode
-                ? { ...c, [field]: value }
-                : c,
-            ),
-          };
-        }
-
-        if (a.id !== assemblyId) return a;
-        return {
-          ...a,
-          components: a.components.map((c) =>
-            c.id === componentId ? { ...c, [field]: value } : c,
-          ),
-        };
-      });
-      // Update the ref immediately so handleSaveAssembly always reads the latest
-      // values even when React 18 defers the re-render (e.g. blur + Save in one click).
-      assembliesRef.current = next;
-      return next;
-    });
-  };
-
-  /**
-   * Build all override maps for a given assembly:
-   * - project-wide overrides (unit cost + waste%) keyed by material code
-   * - per-assembly overrides (qty, height, layering, usage, oc) for this assembly only
-   */
-  const buildAssemblyOverrideMaps = (assemblyToSave: WallAssembly) => {
-    const materialUnitCostOverrides = new Map<string, number>();
-    const laborUnitCostOverrides = new Map<string, number>();
-    const matQty = new Map<string, number>();
-    const matWaste = new Map<string, number>();
-    const matHeight = new Map<string, number>();
-    const matUsage = new Map<string, string>();
-    const matLayers = new Map<string, number>();
-    const matOc = new Map<string, string>();
-    const labHeight = new Map<string, number>();
-    const labWaste = new Map<string, number>();
-
-    console.log("[AsmSave DEBUG] buildAssemblyOverrideMaps: start", {
-      assemblyId: assemblyToSave.id,
-      componentCount: assemblyToSave.components.length,
-    });
-
-    for (const comp of assemblyToSave.components) {
-      if (!comp.materialCode) continue;
-      const isLabor = comp.materialCode.startsWith("LAB-");
-
-      if (comp.overrideMatCost != null) {
-        if (isLabor) {
-          laborUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
-        } else {
-          materialUnitCostOverrides.set(comp.materialCode, comp.overrideMatCost);
-        }
-      }
-
-      if (!isLabor) {
-        if (comp.overrideQuantity != null) {
-          matQty.set(comp.materialCode, comp.overrideQuantity);
-        }
-        if (comp.wasteFactor != null) {
-          matWaste.set(comp.materialCode, comp.wasteFactor * 100);
-        }
-        if (comp.overrideHeight != null) {
-          matHeight.set(comp.materialCode, comp.overrideHeight);
-        }
-        if (comp.usage) matUsage.set(comp.materialCode, comp.usage);
-        if (comp.overrideLayers != null) {
-          matLayers.set(comp.materialCode, comp.overrideLayers);
-        }
-        if (comp.ocSpacing != null) {
-          matOc.set(comp.materialCode, comp.ocSpacing);
-        }
-      } else {
-        if (comp.overrideHeight != null) {
-          labHeight.set(comp.materialCode, comp.overrideHeight);
-        }
-        if (comp.wasteFactor != null) {
-          labWaste.set(comp.materialCode, comp.wasteFactor * 100);
-        }
-      }
-    }
-
-    console.log("[AsmSave DEBUG] buildAssemblyOverrideMaps: maps built", {
-      materialUnitCostOverrides: Array.from(materialUnitCostOverrides.entries()),
-      laborUnitCostOverrides: Array.from(laborUnitCostOverrides.entries()),
-      matQty: Array.from(matQty.entries()),
-      matWaste: Array.from(matWaste.entries()),
-      matHeight: Array.from(matHeight.entries()),
-      matUsage: Array.from(matUsage.entries()),
-      matLayers: Array.from(matLayers.entries()),
-      matOc: Array.from(matOc.entries()),
-      labHeight: Array.from(labHeight.entries()),
-      labWaste: Array.from(labWaste.entries()),
-    });
-
-    return {
-      materialUnitCostOverrides,
-      laborUnitCostOverrides,
-      matQty,
-      matWaste,
-      matHeight,
-      matUsage,
-      matLayers,
-      matOc,
-      labHeight,
-      labWaste,
-    };
-  };
-
-  /**
-   * Apply the given override maps onto the current materialCostingData snapshot.
-   * - unit_cost + waste_percent are applied project-wide (all assemblies)
-   * - per-assembly overrides are applied only to the edited assembly instance
-   */
-  const applyOverridesToCostingData = (
-    assemblyCode: string,
-    heightFt: number | null,
-    overrideMaps: ReturnType<typeof buildAssemblyOverrideMaps>,
-  ): MaterialCosting[] => {
-    const {
-      materialUnitCostOverrides,
-      laborUnitCostOverrides,
-      matQty,
-      matWaste,
-      matHeight,
-      matUsage,
-      matLayers,
-      matOc,
-      labHeight,
-      labWaste,
-    } = overrideMaps;
-
-    console.log("[AsmSave DEBUG] applyOverridesToCostingData: input snapshot", {
-      assemblyCode,
-      heightFt,
-      materialCostingAssemblies: materialCostingData.length,
-    });
-
-    const updated = materialCostingData.map((costing) => {
-      const isEditedAssembly =
-        costing.assembly_id === assemblyCode &&
-        (heightFt === null ||
-          (costing as unknown as { height_ft?: number }).height_ft === heightFt);
-
-      return {
-        ...costing,
-        materials_costing: costing.materials_costing.map((item) => ({
-          ...item,
-          matched_materials: item.matched_materials.map((mat) => {
-            const base = {
-              ...mat,
-              unit_cost:
-                materialUnitCostOverrides.get(mat.code) ?? mat.unit_cost,
-              // waste_percent is project-wide — same material has the same waste across all assemblies
-              ...(matWaste.has(mat.code) && {
-                waste_percent: matWaste.get(mat.code),
-              }),
-            };
-
-            if (!isEditedAssembly) {
-              return base;
-            }
-
-            // Apply per-assembly-instance overrides (only to the edited assembly)
-            if (matQty.has(mat.code)) {
-              base.quantity = matQty.get(mat.code);
-            }
-            if (matHeight.has(mat.code)) {
-              (base as Record<string, unknown>).height_ft_override =
-                matHeight.get(mat.code);
-            }
-            if (matUsage.has(mat.code)) {
-              (base as Record<string, unknown>).usage_override =
-                matUsage.get(mat.code);
-            }
-            if (matLayers.has(mat.code)) {
-              (base as Record<string, unknown>).layers_override =
-                matLayers.get(mat.code);
-            }
-            if (matOc.has(mat.code)) {
-              (base as Record<string, unknown>).oc_spacing_override =
-                matOc.get(mat.code);
-            }
-
-            console.log("[AsmSave DEBUG] material before→after", {
-              context: "applyOverridesToCostingData",
-              scope: "material",
-              assembly_id: costing.assembly_id,
-              height_ft: (costing as unknown as { height_ft?: number }).height_ft,
-              code: mat.code,
-              unit_cost_before: mat.unit_cost,
-              unit_cost_after: base.unit_cost,
-              waste_percent_before: mat.waste_percent,
-              waste_percent_after: (base as typeof mat).waste_percent,
-              quantity_before: mat.quantity,
-              quantity_after: base.quantity,
-              height_ft_override_before: (mat as unknown as { height_ft_override?: number }).height_ft_override,
-              height_ft_override_after: (base as unknown as { height_ft_override?: number }).height_ft_override,
-            });
-
-            return base;
-          }),
-          matched_labor: (item.matched_labor ?? []).map((lab) => {
-            const base = {
-              ...lab,
-              unit_cost:
-                laborUnitCostOverrides.get(lab.code) ?? lab.unit_cost,
-              // labor waste_percent is also project-wide
-              ...(labWaste.has(lab.code) && {
-                waste_percent: labWaste.get(lab.code),
-              }),
-            };
-
-            if (isEditedAssembly && labHeight.has(lab.code)) {
-              base.height_ft = labHeight.get(lab.code);
-            }
-
-            console.log("[AsmSave DEBUG] material before→after", {
-              context: "applyOverridesToCostingData",
-              scope: "labor",
-              assembly_id: costing.assembly_id,
-              height_ft: (costing as unknown as { height_ft?: number }).height_ft,
-              code: lab.code,
-              unit_cost_before: lab.unit_cost,
-              unit_cost_after: base.unit_cost,
-              waste_percent_before: lab.waste_percent,
-              waste_percent_after: (base as typeof lab).waste_percent,
-              height_ft_before: lab.height_ft,
-              height_ft_after: base.height_ft,
-            });
-
-            return base;
-          }),
-        })),
-      };
-    });
-
-    const debugAssembly = updated.find(
-      (c) => c.assembly_id === assemblyCode,
-    );
-    console.log("[AsmSave DEBUG] applyOverridesToCostingData: updated sample", {
-      assemblyCode,
-      heightFt,
-      sampleAssembly: debugAssembly,
-    });
-
-    return updated;
-  };
-
-  /**
-   * Persist assembly component overrides (unit_cost, quantity, waste_percent, Hgt/OC/Layering)
-   * to the final output in DB. Called only by the Save button in AssemblyEditorModal.
-   */
-  const handleSaveAssembly = useCallback(
-    async (savedAssembly: WallAssembly) => {
-      if (!finalOutputId) return;
-
-      // Prefer the latest assembly from the always-current ref to avoid stale closure
-      // (e.g. when a NumberInput blur and Save click happen in the same event cycle).
-      const latestAssembly = assembliesRef.current.find(
-        (a) => a.id === savedAssembly.id,
-      );
-      const assemblyToSave = latestAssembly ?? savedAssembly;
-
-      // Parse assembly_id and height_ft from composite id ("P1@9.7")
-      const lastAt = assemblyToSave.id.lastIndexOf("@");
-      const assemblyCode =
-        lastAt >= 0
-          ? assemblyToSave.id.slice(0, lastAt)
-          : assemblyToSave.id;
-      const heightFt =
-        lastAt >= 0
-          ? parseFloat(assemblyToSave.id.slice(lastAt + 1))
-          : null;
-
-      console.log("[AsmSave DEBUG] handleSaveAssembly: start", {
-        rawAssemblyId: assemblyToSave.id,
-        assemblyCode,
-        heightFt,
-      });
-
-      const overrideMaps = buildAssemblyOverrideMaps(assemblyToSave);
-      const updatedCostingData = applyOverridesToCostingData(
-        assemblyCode,
-        heightFt,
-        overrideMaps,
-      );
-
-      console.log("[AsmSave DEBUG] handleSaveAssembly: PATCH payload summary", {
-        finalOutputId,
-        assembliesCount: updatedCostingData.length,
-      });
-
-      const res = await fetch(`/api/final-output/${finalOutputId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ assemblies: updatedCostingData }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        console.error("[AsmSave DEBUG] handleSaveAssembly: PATCH error", {
-          status: res.status,
-          body: json,
-        });
-        throw new Error(json.error ?? "Failed to save");
-      }
-
-      console.log("[AsmSave DEBUG] handleSaveAssembly: PATCH success", {
-        status: res.status,
-        dbFilename: json.debug?.filename,
-        localFileStatus: json.debug?.localFileStatus,
-      });
-
-      onAssemblySaveComplete?.(updatedCostingData);
-    },
-    [finalOutputId, materialCostingData, onAssemblySaveComplete],
-  );
-
   const handleFormulaChange = (
     assemblyId: string,
     componentId: string,
     val: string,
   ) => {
-    // Check if user input matches a known formula label exactly
     const matchedMethod = Object.keys(FORMULA_DEFINITIONS).find(
       (key) =>
         (
@@ -1226,770 +385,68 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
     );
   };
 
-  const handleMaterialSelect = (
-    assemblyId: string,
-    componentId: string,
-    material: MaterialDefinition,
-  ) => {
-    let usage: CalculationMethod = "Fixed Qty";
-    const name = material.description.toLowerCase();
-    const cat = material.category;
+  const {
+    priceMap,
+    filteredAssemblies,
+    currentEditingAssembly,
+    statsByHeight,
+    totalAggLength,
+  } = useEstimateCalculations({
+    assemblies,
+    takeoffs,
+    resolvedMaterials,
+    assemblySearch,
+    editingAssemblyId,
+    editingHeight,
+  });
 
-    if (cat === "Framing") {
-      if (
-        name.includes("track") ||
-        name.includes("runner") ||
-        name.includes("angle")
-      ) {
-        usage = "Tracks (Top & Bottom)";
-      } else {
-        usage = 'Vertical @ 16" OC';
-      }
-    } else if (cat === "Drywall") {
-      usage = "Coverage (1 Layer)";
-    } else if (cat === "Insulation") {
-      usage = "Insulation (Cavity)";
-    } else if (cat === "Finishing") {
-      if (name.includes("screw") || name.includes("fastener")) {
-        usage = "Fastener (per SqFt)";
-      } else {
-        usage = "Joint Treatment (per SqFt)";
-      }
-    } else if (cat === "Ceiling") {
-      if (name.includes("wire")) usage = "Suspension - Hanger Wire (16sf)";
-      else if (name.includes("main"))
-        usage = "Suspension - Main Runner (4' OC)";
-      else if (name.includes("tee") || name.includes("cross"))
-        usage = "Suspension - Cross Tee (4' OC)";
-      else if (name.includes("tile") || name.includes("panel"))
-        usage = "Ceiling - Tile (2x4)";
-      else if (name.includes("angle") || name.includes("trim"))
-        usage = "Ceiling - Perimeter (Linear)";
-      else usage = "Coverage (1 Layer)";
-    }
-
-    // Check for linked Labor item
-    let laborItem: MaterialDefinition | undefined;
-    if (material.laborCostCode) {
-      // Updated Logic: Match where Labor Item's laborCostCode equals Material's laborCostCode
-      // This assumes laborCostCode is a "Grouping ID" (e.g. 'GEN', '103')
-      laborItem = materials.find(
-        (m) =>
-          m.category === "Labor" && m.laborCostCode === material.laborCostCode,
-      );
-
-      // Fallback: If no match found, try to match by Code directly (legacy behavior)
-      if (!laborItem) {
-        laborItem = materials.find(
-          (m) => m.category === "Labor" && m.code === material.laborCostCode,
-        );
-      }
-    }
-
-    setAssemblies((prev) =>
-      prev.map((a) => {
-        if (a.id !== assemblyId) return a;
-
-        let updatedComponents = a.components.map((c) => {
-          if (c.id !== componentId) return c;
-
-          // If Labor Item selected, put cost in Labor Column
-          if (cat === "Labor") {
-            return {
-              ...c,
-              materialCode: material.code,
-              materialName: material.description,
-              usage: usage,
-              materialCost: 0,
-              overrideLaborCost: material.matCost, // Assign to Labor
-              overrideMatCost: undefined,
-              productivityFromDb: material.productivity,
-            };
-          }
-
-          // Standard Material
-          return {
-            ...c,
-            materialCode: material.code,
-            materialName: material.description,
-            usage: usage,
-            materialCost: material.matCost,
-            overrideLaborCost: undefined, // Clear any previous labor override
-            overrideMatCost: undefined,
-            productivityFromDb: material.productivity,
-          };
-        });
-
-        // Auto-Add Labor if found and not already present (checking by name loosely to avoid duplicates if possible, or just append)
-        // Simplified: Just append for now, user can delete if unwanted.
-        if (laborItem) {
-          const parentComp = a.components.find((c) => c.id === componentId);
-          const currentHeightCondition = parentComp?.heightCondition
-            ? { ...parentComp.heightCondition }
-            : undefined;
-
-          updatedComponents.push({
-            id: `auto-labor-${Date.now()}`,
-            materialName: laborItem.description,
-            usage: usage, // Inherit usage from parent material
-            wasteFactor: 0.0, // Labor usually has no waste in terms of material, but maybe time inefficiency? Default 0.
-            installRate: laborItem.productivity
-              ? 1 / laborItem.productivity
-              : undefined, // prod is Units/Hr, installRate is Hrs/Unit
-            laborHourlyRate: laborItem.hourlyRate || 65,
-            heightCondition: currentHeightCondition,
-          });
-        }
-
-        return {
-          ...a,
-          components: updatedComponents,
-        };
-      }),
-    );
-    setRowSearchOpen(null);
-    setRowSearchQuery("");
-  };
-
-  const addComponent = (assemblyId: string) => {
-    setAssemblies((prev) =>
-      prev.map((a) => {
-        if (a.id !== assemblyId) return a;
-        return {
-          ...a,
-          components: [
-            ...a.components,
-            {
-              id: `new-${Date.now()}`,
-              materialName: "Select Material",
-              usage: "Fixed Qty",
-              wasteFactor: 0.05,
-            },
-          ],
-        };
-      }),
-    );
-  };
-
-  const removeComponent = (assemblyId: string, componentId: string) => {
-    setAssemblies((prev) =>
-      prev.map((a) => {
-        if (a.id !== assemblyId) return a;
-        return {
-          ...a,
-          components: a.components.filter((c) => c.id !== componentId),
-        };
-      }),
-    );
-  };
-
-  const handleAddAssembly = () => {
-    const newId = `manual-${Date.now()}`;
-    const newAssembly: WallAssembly = {
-      id: newId,
-      code: `W${assemblies.length + 1}`,
-      description: "New Wall Assembly",
-      framingType: "Light Metal",
-      assemblyType: "Interior Wall",
-      defaultLength: 100,
-      defaultHeight: 10,
-      components: [
-        {
-          id: `c1-${newId}`,
-          materialName: '3 5/8" Metal Stud 25ga',
-          usage: 'Vertical @ 16" OC',
-          wasteFactor: 0.08,
-          installRate: 0.15,
-        },
-        {
-          id: "c2-" + newId,
-          materialName: '16mm (5/8") TYPE X Gypsum Board',
-          usage: "Coverage (1 Layer)",
-          wasteFactor: 0.1,
-          installRate: 0.009,
-        },
-      ],
-    };
-    setAssemblies((prev) => [...prev, newAssembly]);
-    setTakeoffs((prev) => ({ ...prev, [newId]: [] }));
-    setEditingAssemblyId(newId);
-  };
-
-  const deleteAssembly = (id: string) => {
-    // Instant deletion as requested
-    setAssemblies((prev) => prev.filter((a) => a.id !== id));
-    const newTakeoffs = { ...takeoffs };
-    delete newTakeoffs[id];
-    setTakeoffs(newTakeoffs);
-    if (editingAssemblyId === id) setEditingAssemblyId(null);
-  };
-
-  const handleScheduleUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = read(data);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-      const rows: any[] = (Array.isArray(jsonData) ? jsonData : []) as any[];
-
-      if (rows.length < 2) throw new Error("Empty file");
-
-      // Dynamic Column Mapping
-      const headers = rows[0] as string[];
-      const colMap = {
-        code: headers.findIndex((h) => h?.match(/code|mark/i)),
-        desc: headers.findIndex((h) => h?.match(/description|name/i)),
-        type: headers.findIndex((h) => h?.match(/assembly type|type/i)),
-        level: headers.findIndex((h) => h?.match(/level|floor/i)),
-        length: headers.findIndex((h) => h?.match(/length/i)),
-        height: headers.findIndex((h) => h?.match(/height|wall height/i)),
-        area: headers.findIndex((h) => h?.match(/area|net area/i)),
-        perimeter: headers.findIndex((h) =>
-          h?.match(/perimeter|area perimeter|zone perimeter/i),
-        ),
-      };
-
-      // Fallbacks for standard QB export if headers didn't match
-      if (colMap.code === -1) colMap.code = 3;
-      if (colMap.desc === -1) colMap.desc = 1;
-
-      const currentAssemblies = [...assemblies];
-      const newTakeoffs: Record<string, TakeoffInstance[]> = { ...takeoffs };
-
-      (rows.slice(1) as any[]).forEach((row: any, idx: number) => {
-        const code = String(row[colMap.code] || "").trim();
-        if (!code) return;
-
-        // Determine Assembly Type from Excel
-        let detectedType: any = "Wall";
-        if (colMap.type !== -1 && row[colMap.type]) {
-          const val = String(row[colMap.type]).trim();
-          // Map common variations to internal types
-          if (val.match(/ceiling/i)) detectedType = "Ceiling";
-          else if (val.match(/soffit/i)) detectedType = "Soffit";
-          else if (val.match(/bulkhead/i)) detectedType = "Bulkhead";
-          else if (val.match(/exterior/i)) detectedType = "Exterior Wall";
-          else if (val.match(/interior/i)) detectedType = "Interior Wall";
-          else if (val.match(/frame/i)) detectedType = "Hollow Metal Frame";
-          else if (val.match(/access/i)) detectedType = "Access Panel";
-          else detectedType = "Wall"; // Default fallback
-        } else {
-          // Fallback logic by description if Type column missing
-          const desc = String(row[colMap.desc] || "").toLowerCase();
-          if (desc.includes("ceiling")) detectedType = "Ceiling";
-          else if (desc.includes("soffit")) detectedType = "Soffit";
-        }
-
-        let assembly = currentAssemblies.find(
-          (a) => a.code.toLowerCase() === code.toLowerCase(),
-        );
-        if (!assembly) {
-          const newId = `auto-${code}-${Date.now()}-${idx}`;
-          assembly = {
-            id: newId,
-            code,
-            description: String(row[colMap.desc] || `Imported ${code}`),
-            framingType: "Light Metal",
-            assemblyType: detectedType, // Use detected type
-            components: [],
-          };
-          currentAssemblies.push(assembly);
-        } else if (
-          assembly.assemblyType === "Wall" &&
-          detectedType !== "Wall"
-        ) {
-          // Update existing assembly type if it was generic and we found a better one
-          assembly.assemblyType = detectedType;
-        }
-
-        if (!newTakeoffs[assembly.id]) newTakeoffs[assembly.id] = [];
-
-        // Parse Metrics
-        let len = 0,
-          ht = 0,
-          area = 0,
-          perim = 0;
-
-        if (colMap.length !== -1) len = parseFloat(row[colMap.length]) || 0;
-        if (colMap.height !== -1) ht = parseFloat(row[colMap.height]) || 0;
-        if (colMap.area !== -1) area = parseFloat(row[colMap.area]) || 0;
-        if (colMap.perimeter !== -1)
-          perim = parseFloat(row[colMap.perimeter]) || 0;
-
-        // User Request: If Ceiling -> Col E (4) is Area, Col G (6) is Perm, Length strictly 0
-        if (detectedType === "Ceiling") {
-          // E is index 4, G is index 6
-          const colE = parseFloat(row[4]) || 0;
-          const colG = parseFloat(row[6]) || 0;
-          if (colE > 0) area = colE; // Override Area if present
-          if (colG > 0) perim = colG; // Override Perim if present
-          len = 0; // Force Length to 0 as requested
-        } else if (colMap.length === -1 && colMap.height === -1) {
-          len = parseFloat(row[4]) || 0;
-          ht = parseFloat(row[14]) || 0;
-        }
-
-        newTakeoffs[assembly.id].push({
-          id: `imp-${Date.now()}-${idx}`,
-          level: colMap.level !== -1 ? String(row[colMap.level]) : "1",
-          description: String(row[colMap.desc] || row[1] || "Imported"),
-          quantity: 1,
-          length: len,
-          height: ht,
-          ceilingArea: area,
-          perimeter: perim,
-          lengthUnit: len > 0 ? 'LF' : '',
-          areaUnit: area > 0 ? 'SF' : '',
-        });
-      });
-
-      setAssemblies(currentAssemblies);
-      setTakeoffs(newTakeoffs);
-      e.target.value = "";
-      toast.success(
-        "Schedule Imported",
-        "Schedule data has been loaded successfully.",
-      );
-    } catch (err) {
-      toast.error(
-        "Import Failed",
-        "Error parsing schedule. Please check the file format.",
-      );
-    }
-  };
-
-  const uniqueLevels = useMemo(() => {
-    const levels = new Set<string>();
-    const allInstanceLists = Object.values(takeoffs) as TakeoffInstance[][];
-    allInstanceLists.forEach((instances: TakeoffInstance[]) => {
-      instances.forEach((t) => levels.add(t.level || "1"));
-    });
-    return Array.from(levels).sort();
-  }, [takeoffs]);
-
-  const allMaterials = useMemo(() => {
-    let combined: CalculatedMaterial[] = [];
-    Object.entries(takeoffs).forEach(
-      ([assemblyId, instances]: [string, any]) => {
-        const typedInstances = instances as TakeoffInstance[];
-        const assembly = assemblies.find((a) => a.id === assemblyId);
-        if (!assembly) return;
-
-        if (filterTag !== "All") {
-          const descLower = assembly.description.toLowerCase();
-          if (filterTag === "Interior Wall" && !descLower.includes("interior"))
-            return;
-          if (filterTag === "Exterior Wall" && !descLower.includes("exterior"))
-            return;
-          if (
-            filterTag === "Ceiling" &&
-            !descLower.includes("ceiling") &&
-            !descLower.includes("bulkhead")
-          )
-            return;
-        }
-
-        const filteredInstances = typedInstances.filter((inst) => {
-          if (filterLevel === "All") return true;
-          return inst.level === filterLevel;
-        });
-
-        if (filteredInstances.length > 0) {
-          combined = [
-            ...combined,
-            ...calculateMaterials(assembly, filteredInstances, resolvedMaterials),
-          ];
-        }
-      },
-    );
-
-    const consolidated: CalculatedMaterial[] = [];
-    [...combined, ...manualItems].forEach((mat) => {
-      const existing = consolidated.find(
-        (c) => c.item === mat.item && c.unit === mat.unit,
-      );
-      if (existing) existing.quantity += mat.quantity;
-      else consolidated.push({ ...mat });
-    });
-    return consolidated.sort((a, b) => a.category.localeCompare(b.category));
-  }, [takeoffs, assemblies, manualItems, filterLevel, filterTag, materials]);
-
-  const priceMap = useMemo(() => {
-    const map: Record<
-      string,
-      { cost: number; per?: string; waste?: number; supplier?: string }
-    > = {};
-    materials.forEach((m) => {
-      map[m.description] = { cost: m.matCost, per: m.per };
-    });
-    return map;
-  }, [materials]);
-
-  const convertMat = (mat: CalculatedMaterial) => {
-    if (displayUnit === "imperial") {
-      let pricing = priceMap[mat.item];
-      if (!pricing && mat.item.includes("@"))
-        pricing = priceMap[mat.item.split("@")[0].trim()];
-
-      let totalCost = 0;
-      if (pricing) {
-        let pricingQty = mat.quantity;
-        const dbUnit =
-          materials
-            .find(
-              (m) =>
-                m.description === mat.item ||
-                (mat.item.includes("@") &&
-                  m.description === mat.item.split("@")[0].trim()),
-            )
-            ?.per?.toLowerCase() || "";
-
-        if (
-          (dbUnit.includes("lf") || dbUnit.includes("ft")) &&
-          (mat.unit.includes("pcs") || mat.unit.includes("ea"))
-        ) {
-          const len = detectLengthFt(mat.item) || detectLengthFt(mat.unit) || 0;
-          if (len > 0) pricingQty = mat.quantity * len;
-        } else if (
-          (dbUnit.includes("sf") || dbUnit.includes("sq")) &&
-          mat.unit.includes("sheet")
-        ) {
-          pricingQty = mat.quantity * 48;
-        }
-        totalCost =
-          pricingQty *
-          (pricing.cost / (pricing.per ? parsePer(pricing.per) : 1));
-      }
-
-      return { ...mat, totalCost };
-    } else {
-      let finalQty = mat.quantity;
-      let finalUnit = mat.unit;
-
-      const lowerU = mat.unit.toLowerCase();
-
-      if (lowerU.includes("sf") || lowerU.includes("sq")) {
-        finalQty = mat.quantity * 0.092903;
-        finalUnit = "m²";
-      } else if (
-        lowerU.includes("ft") ||
-        lowerU.includes("lf") ||
-        lowerU.includes("lnft")
-      ) {
-        finalQty = mat.quantity * 0.3048;
-        finalUnit = "m";
-      }
-
-      let pricing = priceMap[mat.item];
-      if (!pricing && mat.item.includes("@"))
-        pricing = priceMap[mat.item.split("@")[0].trim()];
-
-      let totalCost = 0;
-      if (pricing) {
-        let pricingQty = mat.quantity;
-        const dbUnit =
-          materials
-            .find(
-              (m) =>
-                m.description === mat.item ||
-                (mat.item.includes("@") &&
-                  m.description === mat.item.split("@")[0].trim()),
-            )
-            ?.per?.toLowerCase() || "";
-
-        if (
-          (dbUnit.includes("lf") || dbUnit.includes("ft")) &&
-          (mat.unit.includes("pcs") || mat.unit.includes("ea"))
-        ) {
-          const len = detectLengthFt(mat.item) || detectLengthFt(mat.unit) || 0;
-          if (len > 0) pricingQty = mat.quantity * len;
-        } else if (
-          (dbUnit.includes("sf") || dbUnit.includes("sq")) &&
-          mat.unit.includes("sheet")
-        ) {
-          pricingQty = mat.quantity * 48;
-        }
-        totalCost =
-          pricingQty *
-          (pricing.cost / (pricing.per ? parsePer(pricing.per) : 1));
-      }
-
-      return { ...mat, quantity: finalQty, unit: finalUnit, totalCost };
-    }
-  };
-
-  const grandTotal = allMaterials.reduce((acc, curr) => {
-    const converted = convertMat(curr);
-    return acc + (converted.totalCost || 0);
-  }, 0);
-
-  const flatSchedule = useMemo(() => {
-    const list: { assemblyId: string; instance: TakeoffInstance }[] = [];
-    Object.entries(takeoffs).forEach(([aid, insts]) => {
-      (insts as TakeoffInstance[]).forEach((i) =>
-        list.push({ assemblyId: aid, instance: i }),
-      );
-    });
-    return list;
-  }, [takeoffs]);
-
-  const filteredAssemblies = assemblies.filter(
-    (a) =>
-      a.code.toLowerCase().includes(assemblySearch.toLowerCase()) ||
-      a.description.toLowerCase().includes(assemblySearch.toLowerCase()),
-  );
-
-  const handleExportMaterials = () => {
-    const exportData = allMaterials.map((mat) => {
-      const converted = convertMat(mat);
-      return {
-        Category: converted.category,
-        Item: converted.item,
-        Quantity: converted.quantity,
-        Unit: converted.unit,
-        Notes: converted.notes,
-        "Total Cost": converted.totalCost,
-      };
-    });
-
-    const ws = utils.json_to_sheet(exportData);
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, "Material Report");
-    writeFile(
-      wb,
-      `Project_Materials_${new Date().toISOString().split("T")[0]}.xlsx`,
-    );
-  };
-
-  const currentEditingAssembly = assemblies.find(
-    (a) => a.id === editingAssemblyId,
-  );
-
-  let statsByHeight: Record<
-    number,
-    { len: number; area: number; count: number }
-  > = {};
-  let totalAggLength = 0;
-
-  if (currentEditingAssembly) {
-    const assemblyInstances = takeoffs[currentEditingAssembly.id] || [];
-    statsByHeight = assemblyInstances.reduce(
-      (acc, inst) => {
-        const h = inst.height || 0;
-        const l = (inst.length || 0) * (inst.quantity || 1);
-
-        if (!acc[h]) acc[h] = { len: 0, area: 0, count: 0, perim: 0 };
-
-        if (currentEditingAssembly.assemblyType === "Ceiling") {
-          // For Ceiling, accumulated area is from ceilingArea
-          acc[h].area += inst.ceilingArea || 0;
-          acc[h].perim = (acc[h].perim || 0) + (inst.perimeter || 0);
-        } else {
-          acc[h].len += l;
-          acc[h].area += l * h;
-        }
-
-        acc[h].count += inst.quantity || 1;
-        return acc;
-      },
-      {} as Record<
-        number,
-        { len: number; area: number; count: number; perim?: number }
-      >,
-    );
-
-    if (assemblyInstances.length > 0) {
-      const baseTotal = Object.entries(statsByHeight).reduce(
-        (a: number, [h, b]: [string, { len?: number }]) =>
-          a + (b.len || 0),
-        0,
-      ) as number;
-      totalAggLength =
-        editingHeight != null && statsByHeight[editingHeight]
-          ? statsByHeight[editingHeight].len
-          : baseTotal;
-    } else {
-      totalAggLength = currentEditingAssembly.defaultLength || 0;
-    }
-  }
-
-  // Calculate details for modal
-  const modalDetails = useMemo(() => {
-    if (!currentEditingAssembly)
-      return { materials: [], totalCost: 0, totalSqFt: 0 };
-
-    const instances = takeoffs[currentEditingAssembly.id] || [];
-    const calculated = calculateMaterials(
-      currentEditingAssembly,
-      instances,
-      resolvedMaterials,
-    );
-
-    // Enrich calculated with cost
-    const priceMapLocal = priceMap;
-    const enriched = calculated.map((c) => {
-      // Try to find Unit Cost if override not present
-      let unitPrice = c.overridePrice || 0;
-      if (!unitPrice && priceMapLocal[c.item]) {
-        unitPrice = priceMapLocal[c.item].cost;
-        if (c.unit.toLowerCase().includes("pcs") && priceMapLocal[c.item].per) {
-          // Check cost per 1000 etc?
-          // Usually priceMap stores unit cost directly or per 1000?
-          // Logic in code: const cost = m.matCost.
-          // Here we assume simple unit cost for now.
-        }
-      }
-      // For labor overridePrice use calculateMaterials / formula evaluator
-      if (c.category === "Labor" && !unitPrice) unitPrice = 65; // Fallback
-
-      return { ...c, overridePrice: unitPrice };
-    });
-
-    // Calculate Totals
-    const total = enriched.reduce(
-      (sum, item) => sum + item.quantity * (item.overridePrice || 0),
-      0,
-    );
-
-    // Calculate Area (SqFt)
-    let area = 0;
-    instances.forEach((i) => (area += i.ceilingArea || i.length * i.height));
-    if (instances.length === 0)
-      area =
-        (currentEditingAssembly.defaultLength || 0) *
-        (currentEditingAssembly.defaultHeight || 0);
-
-    return { materials: enriched, totalCost: total, totalSqFt: area };
-  }, [currentEditingAssembly, takeoffs, materials, priceMap]);
-
-  // Force strict render of Reports as conditional overlay to avoid Hook Violations
   return (
     <div
       className="relative z-0 flex h-full bg-slate-100 overflow-hidden"
       ref={containerRef}
       onMouseMove={isResizing ? () => {} : undefined}
     >
-      {viewMode === "report" && (
-        <div className="absolute inset-0 z-50 bg-white overflow-auto flex flex-col">
-          <Reports
-            assemblies={assemblies}
-            takeoffs={takeoffs}
-            manualItems={manualItems}
-            materials={resolvedMaterials}
-            materialCostingData={materialCostingData}
-            onUnitCostChange={onUnitCostChange}
-            displayUnit={displayUnit}
-            activeReportTab={activeReportTab}
-            setActiveReportTab={setActiveReportTab}
-            onCloseReport={onCloseReport}
-          />
-        </div>
-      )}
-      {/* LEFT PANEL: ASSEMBLY LIBRARY */}
-      <div
-        style={{ width: `${sidebarWidth}%` }}
-        className={`h-full flex flex-col border-r border-slate-200 bg-white relative shrink-0 ${sidebarWidth === 0 ? "overflow-hidden" : ""}`}
-      >
-        {sidebarWidth > 0 && (
-          <>
-            {/* ... [Left Panel Content remains same] ... */}
-            <div className="p-5 border-b border-slate-200 bg-white sticky top-0 z-20 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.05)]">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 truncate tracking-tight">
-                  <Layers className="w-5 h-5 text-blue-600 shrink-0" />
-                  {sidebarWidth > 20 && "Wall Assemblies"}
-                </h2>
-                <div className="flex gap-1.5">
-                  <div className="relative" ref={templateMenuRef}>
-                    <IconButton
-                      icon={LayoutTemplate}
-                      variant="default"
-                      onClick={() => setIsTemplateMenuOpen(!isTemplateMenuOpen)}
-                      tooltip="Add from Template"
-                    />
-                    {isTemplateMenuOpen && (
-                      <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        <div className="p-3 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                          Select Template
-                        </div>
-                        <div className="max-h-[360px] overflow-y-auto">
-                          {templates.map((tpl, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleAddFromTemplate(tpl)}
-                              className="group w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-slate-100 last:border-0 relative"
-                              title={tpl.description}
-                            >
-                              <div className="text-sm font-semibold text-slate-800 leading-tight">
-                                {tpl.name}
-                              </div>
-                              <div className="text-xs text-slate-500 mt-1 line-clamp-2 group-hover:line-clamp-none transition-all">
-                                {tpl.description}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <IconButton
-                    icon={Database}
-                    variant="default"
-                    onClick={() => setIsDatabaseOpen(true)}
-                    tooltip="Database"
-                  />
-                  <IconButton
-                    icon={Upload}
-                    variant="default"
-                    onClick={() =>
-                      openImportModal(projectIdProp ?? undefined, handleImportComplete)
-                    }
-                    tooltip="Import Files"
-                  />
-                  <IconButton
-                    icon={Plus}
-                    variant="primary"
-                    onClick={handleAddAssembly}
-                    tooltip="Create Assembly"
-                  />
-                </div>
-              </div>
-              <SearchInput
-                value={assemblySearch}
-                onValueChange={setAssemblySearch}
-                placeholder={sidebarWidth > 25 ? "Search assemblies..." : ""}
-              />
-            </div>
+      <ReportsTab
+        isVisible={viewMode === "report"}
+        assemblies={assemblies}
+        takeoffs={takeoffs}
+        manualItems={manualItems}
+        materials={resolvedMaterials}
+        materialCostingData={materialCostingData}
+        onUnitCostChange={onUnitCostChange}
+        displayUnit={displayUnit}
+        reportScopeId={projectIdProp}
+        finalOutputId={finalOutputId}
+        activeReportTab={activeReportTab}
+        setActiveReportTab={setActiveReportTab}
+        onCloseReport={onCloseReport}
+      />
+      <AssemblySummaryTab
+        sidebarWidth={sidebarWidth}
+        templateMenuRef={templateMenuRef}
+        isTemplateMenuOpen={isTemplateMenuOpen}
+        setIsTemplateMenuOpen={setIsTemplateMenuOpen}
+        templates={templates}
+        handleAddFromTemplate={handleAddFromTemplate}
+        setIsDatabaseOpen={setIsDatabaseOpen}
+        openImportModal={openImportModal}
+        projectId={projectIdProp}
+        handleImportComplete={handleImportComplete}
+        handleAddAssembly={handleAddAssembly}
+        assemblySearch={assemblySearch}
+        setAssemblySearch={setAssemblySearch}
+        filteredAssemblies={filteredAssemblies}
+        takeoffs={takeoffs}
+        resolvedMaterials={resolvedMaterials}
+        priceMap={priceMap}
+        setActiveAssemblyId={setActiveAssemblyId}
+        setEditingAssemblyId={setEditingAssemblyId}
+        setEditingHeight={setEditingHeight}
+        activeAssemblyId={activeAssemblyId}
+        deleteAssembly={deleteAssembly}
+      />
 
-            <div className="flex-1 overflow-y-auto bg-slate-50 flex flex-col">
-              {/* NEW SIDEBAR GRID */}
-              <AssemblySummaryGrid
-                assemblies={filteredAssemblies}
-                takeoffs={takeoffs}
-                materials={resolvedMaterials}
-                priceMap={priceMap}
-                onSelectAssembly={(id, height) => {
-                  setActiveAssemblyId(id);
-                  setEditingAssemblyId(id);
-                  setEditingHeight(height ?? null);
-                }}
-                onEditAssembly={(id, height) => {
-                  setEditingAssemblyId(id);
-                  setEditingHeight(height ?? null);
-                }}
-                selectedAssemblyId={activeAssemblyId}
-                onDeleteAssembly={deleteAssembly}
-              />
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ... [Resizer] ... */}
+      {/* Resizer */}
       <div
         className="w-1.5 bg-slate-100 hover:bg-blue-400 cursor-col-resize transition-colors z-20 flex items-center justify-center group relative -ml-[3px] border-l border-slate-200 hover:w-2"
         onMouseDown={startResizing}
@@ -2014,45 +471,19 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         </button>
       </div>
 
-      {/* RIGHT PANEL */}
-      <div className="flex-1 h-full flex flex-col bg-slate-50 min-w-0">
-        {/* ... [Right Panel Header & Content] ... */}
-        <div className="p-4 border-b border-slate-200 bg-white flex-none">
-          {/* ... */}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <FileSpreadsheet className="w-5 h-5 text-green-600" />
-              Takeoff Schedule
-            </h2>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                icon={Upload}
-                onClick={() =>
-                  openImportModal(projectIdProp ?? undefined, handleImportComplete)
-                }
-                size="sm"
-              >
-                Import Files
-              </Button>
-            </div>
-          </div>
-        </div>
+      <TakeoffTab
+        filteredAssemblies={filteredAssemblies}
+        takeoffs={takeoffs}
+        addInstance={addInstance}
+        activeAssemblyId={activeAssemblyId}
+        updateInstance={updateInstance}
+        deleteInstance={deleteInstance}
+        openImportModal={openImportModal}
+        projectId={projectIdProp}
+        handleImportComplete={handleImportComplete}
+      />
 
-        <div className="flex-1 overflow-hidden relative flex flex-col">
-          {/* Pass props to new View */}
-          <TakeoffScheduleView
-            assemblies={filteredAssemblies}
-            takeoffs={takeoffs}
-            onAddInstance={addInstance}
-            selectedAssemblyId={activeAssemblyId}
-            onUpdateInstance={updateInstance}
-            onDeleteInstance={deleteInstance}
-          />
-        </div>
-      </div>
-
-      {/* --- ASSEMBLY EDIT MODAL --- */}
+      {/* Assembly Edit Modal */}
       <AssemblyEditorModal
         isOpen={!!currentEditingAssembly}
         onClose={() => {
@@ -2113,7 +544,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
 
       {isResizing && <div className="fixed inset-0 z-50 cursor-col-resize" />}
 
-      {/* Scope Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isScopeDeleteModalOpen}
         onClose={() => {

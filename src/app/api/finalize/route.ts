@@ -4,7 +4,7 @@
  *
  * When takeoff data is available: code-only merge (no AI).
  * When takeoff is missing/empty: AI finalize (OpenRouter) for backwards compatibility.
- * Saves to database and local.
+ * Saves to database (local folder backup can be re-enabled via writeJsonToLocal).
  */
 
 import { readFile } from "fs/promises";
@@ -18,7 +18,6 @@ import {
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
 import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 import {
   type MaterialMatchInput,
   type ProjectContext,
@@ -27,6 +26,7 @@ import {
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 import { finalizeAssembliesWithTakeoff } from "@/services/openrouter/finalizeAssemblies";
 import { NextRequest, NextResponse } from "next/server";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 // Hobby plan max: 300s. Pro allows up to 900s.
 export const maxDuration = 300;
@@ -37,7 +37,7 @@ const isTakeoffRow = (row: unknown): row is TakeoffRawRecord =>
   "wall_type" in row &&
   (row as TakeoffRawRecord).wall_type != null;
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   console.log("\n" + "-".repeat(70));
   console.log("[finalize] POST request received — Sequential Pipeline (Strategy 1)");
   console.log("-".repeat(70));
@@ -232,9 +232,16 @@ export async function POST(req: NextRequest) {
       assemblyExtractionId,
       resolvedTakeoffOutputId,
     );
-    const localPath = await writeJsonToLocal("final_output", result, filename);
+    // Local data/output folder writes disabled (writeJsonToLocal).
+    // if (process.env.NODE_ENV === "development") {
+    //   void writeJsonToLocal("final_output", result, filename).then((path) => {
+    //     if (path) {
+    //       console.log(`[finalize] Local file written: ${path}`);
+    //     }
+    //   });
+    // }
     console.log(
-      `[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: ${localPath || "(failed)"}`,
+      `[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: (disabled)`,
     );
 
     const totalMs = Date.now() - totalStart;
@@ -258,4 +265,4 @@ export async function POST(req: NextRequest) {
     if (stack) console.error("[finalize] Stack:", stack);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

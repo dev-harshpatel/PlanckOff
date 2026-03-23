@@ -4,6 +4,7 @@ import {
   type TrimmedMaterialDbEntry,
 } from "@/lib/utils/materialDbTrim";
 import type { AssemblyMeta, MatchResult } from "@/types/pipeline";
+import type { MaterialDefinition } from "@/types";
 
 const MATCH_PROMPT = `You are a construction cost estimator. Match each extracted assembly material to database entries. Output ONLY valid JSON.
 
@@ -90,7 +91,7 @@ export type { MatchResult };
 
 export async function matchMaterialsToDatabase(
   extraction: { assemblies: unknown[] },
-  materialDb: Record<string, unknown>[],
+  materialDb: MaterialDefinition[],
   apiKey: string,
   routeStartMs: number = Date.now(),
 ): Promise<MatchResult> {

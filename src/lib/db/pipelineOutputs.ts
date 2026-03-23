@@ -163,6 +163,28 @@ export const updateFinalOutput = async (
 };
 
 /**
+ * Update raw takeoff output data (e.g. when user edits the takeoff schedule).
+ */
+export const updateTakeoffOutput = async (
+  id: string,
+  data: unknown,
+): Promise<{ data: TakeoffOutput | null; error: { message: string } | null }> => {
+  const { data: result, error } = await supabaseAdmin
+    .from("takeoff_outputs")
+    .update({ data })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[pipelineOutputs] updateTakeoffOutput error:", error.code, error.message);
+    return { data: null, error: { message: error.message } };
+  }
+
+  return { data: result as TakeoffOutput, error: null };
+};
+
+/**
  * Get latest final output for a project
  */
 export const getLatestFinalOutput = async (projectId?: string) => {

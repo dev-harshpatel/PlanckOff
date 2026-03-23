@@ -7,9 +7,12 @@
 import { NextResponse } from "next/server";
 import {
   createInvitation,
+  cleanupExpiredInvitations,
+  deleteInvitationById,
   getRoleByName,
   getTeamMemberByEmail,
   getPendingInvitationsByEmail,
+  updateInvitation,
 } from "@/lib/db/team";
 import { withRoleAuth } from "@/lib/auth";
 import {
@@ -32,10 +35,12 @@ export const POST = withRoleAuth(
 
       // Parse request body
       const body: InviteRequest = await request.json();
-      const { email, name, role } = body;
+      const normalizedEmail = body.email?.trim().toLowerCase();
+      const normalizedName = body.name?.trim();
+      const role = body.role;
 
       // Validate required fields
-      if (!email || !name || !role) {
+      if (!normalizedEmail || !normalizedName || !role) {
         return NextResponse.json(
           { success: false, error: "Email, name, and role are required" },
           { status: 400 },
@@ -44,12 +49,14 @@ export const POST = withRoleAuth(
 
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      if (!emailRegex.test(normalizedEmail)) {
         return NextResponse.json(
           { success: false, error: "Invalid email format" },
           { status: 400 },
         );
       }
+
+      await cleanupExpiredInvitations();
 
       // Check if user can invite this role
       if (!canInviteRole(user.role, role)) {
@@ -63,7 +70,7 @@ export const POST = withRoleAuth(
       }
 
       // Check if email already exists as a team member
-      const { data: existingMember } = await getTeamMemberByEmail(email);
+      const { data: existingMember } = await getTeamMemberByEmail(normalizedEmail);
       if (existingMember) {
         return NextResponse.json(
           { success: false, error: "A user with this email already exists" },
@@ -73,16 +80,7 @@ export const POST = withRoleAuth(
 
       // Check for existing pending invitations
       const { data: existingInvitations } =
-        await getPendingInvitationsByEmail(email);
-      if (existingInvitations && existingInvitations.length > 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "An invitation has already been sent to this email",
-          },
-          { status: 409 },
-        );
-      }
+        await getPendingInvitationsByEmail(normalizedEmail);
 
       // Get the role ID
       const { data: roleData, error: roleError } = await getRoleByName(role);
@@ -93,27 +91,54 @@ export const POST = withRoleAuth(
         );
       }
 
-      // Create invitation record
-      const { data: invitation, error: inviteError } = await createInvitation({
-        email,
-        name,
-        role_id: roleData.id,
-        invited_by: teamMember.id,
-      });
+      let invitation = existingInvitations?.[0] ?? null;
 
-      if (inviteError || !invitation) {
-        console.error("Failed to create invitation:", inviteError);
-        return NextResponse.json(
-          { success: false, error: "Failed to create invitation" },
-          { status: 500 },
+      if (invitation) {
+        const refreshedExpiry = new Date();
+        refreshedExpiry.setDate(refreshedExpiry.getDate() + 7);
+        const { data: updatedInvitation, error: refreshError } = await updateInvitation(
+          invitation.id,
+          {
+            name: normalizedName,
+            role_id: roleData.id,
+            expires_at: refreshedExpiry.toISOString(),
+            used_at: null,
+          },
         );
+
+        if (refreshError || !updatedInvitation) {
+          console.error("Failed to refresh invitation:", refreshError);
+          return NextResponse.json(
+            { success: false, error: "Failed to refresh invitation" },
+            { status: 500 },
+          );
+        }
+
+        invitation = updatedInvitation;
+      } else {
+        const { data: createdInvitation, error: inviteError } = await createInvitation({
+          email: normalizedEmail,
+          name: normalizedName,
+          role_id: roleData.id,
+          invited_by: teamMember.id,
+        });
+
+        if (inviteError || !createdInvitation) {
+          console.error("Failed to create invitation:", inviteError);
+          return NextResponse.json(
+            { success: false, error: "Failed to create invitation" },
+            { status: 500 },
+          );
+        }
+
+        invitation = createdInvitation;
       }
 
       // Send invitation email
       const { success: emailSent, error: emailError } =
         await sendInvitationEmail({
-          to: email,
-          name,
+          to: normalizedEmail,
+          name: normalizedName,
           role,
           inviteToken: invitation.token,
           invitedByName: teamMember.name,
@@ -121,7 +146,20 @@ export const POST = withRoleAuth(
 
       if (!emailSent) {
         console.error("Failed to send invitation email:", emailError);
-        // Don't fail the request - invitation is created, email can be resent
+        if (!existingInvitations?.length) {
+          const { error: rollbackError } = await deleteInvitationById(invitation.id);
+          if (rollbackError) {
+            console.error("Failed to rollback invitation after email failure:", rollbackError);
+          }
+        }
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: emailError || "Failed to send invitation email",
+          },
+          { status: 502 },
+        );
       }
 
       // Generate the invitation URL for response (useful for development)
@@ -129,9 +167,12 @@ export const POST = withRoleAuth(
 
       return NextResponse.json({
         success: true,
-        message: "Invitation sent successfully",
+        message: existingInvitations?.length
+          ? "Invitation resent successfully"
+          : "Invitation sent successfully",
         invitationUrl:
           process.env.NODE_ENV === "development" ? invitationUrl : undefined,
+        resent: !!existingInvitations?.length,
       });
     } catch (error) {
       console.error("Invite API error:", error);

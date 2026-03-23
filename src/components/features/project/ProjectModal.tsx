@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Briefcase, Building2, Calendar, Check, Globe, Hash, MapPin, User } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { ProjectSummary } from '@/types';
@@ -75,11 +75,20 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
     const [provinceOptions, setProvinceOptions] = useState<ProvinceOption[]>([]);
     const [loadingProvinces, setLoadingProvinces] = useState(false);
+    const provinceCacheRef = useRef<Record<string, ProvinceOption[]>>({});
 
     const toast = useToast();
 
     // ── Fetch provinces whenever the known-country dropdown changes ──────────
     const fetchProvinces = useCallback(async (countryCode: KnownCountryCode) => {
+        const cacheKey = countryCode;
+        const cached = provinceCacheRef.current[cacheKey];
+        if (cached && cached.length > 0) {
+            setProvinceOptions(cached);
+            setLoadingProvinces(false);
+            return;
+        }
+
         setLoadingProvinces(true);
         setProvinceOptions([]);
         try {
@@ -93,6 +102,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         label: p.name,
                     })),
                 ];
+                provinceCacheRef.current[cacheKey] = options;
                 setProvinceOptions(options);
             }
         } catch {

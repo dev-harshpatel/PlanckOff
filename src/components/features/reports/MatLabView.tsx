@@ -9,6 +9,8 @@ import {
   MaterialsFilterDropdown,
   MaterialsFilterState,
 } from '@/components/features/reports/MaterialsFilterDropdown';
+import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
+import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type {
   MaterialCosting,
   MaterialsCostingItem,
@@ -19,6 +21,7 @@ import type {
 interface MatLabViewProps {
   materialCostingData: MaterialCosting[];
   priceMap: Record<string, { cost: number; per: number }>;
+  filterStorageKey?: string;
 }
 
 interface AggregatedLaborRow {
@@ -44,6 +47,28 @@ interface AggregatedMaterialGroup {
   totalCost: number;
   areas: string[];
   labor: AggregatedLaborRow[];
+}
+
+interface MatContribution {
+  code: string;
+  item: string;
+  section: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  areas: string[];
+}
+
+interface LabContribution {
+  code: string;
+  item: string;
+  section: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCost: number;
+  areas: string[];
 }
 
 const LOG_DEBUG = process.env.NEXT_PUBLIC_LOG_MATLAB_DEBUG === 'true';
@@ -114,13 +139,18 @@ const getLabUnitCost = (
 export const MatLabView = ({
   materialCostingData,
   priceMap,
+  filterStorageKey = 'project-report:matlab',
 }: MatLabViewProps) => {
-  const [filterState, setFilterState] = useState<MaterialsFilterState>({
+  const createDefaultFilterState = useCallback((): MaterialsFilterState => ({
     selectedItems: new Set(),
     selectedLevels: new Set(),
     selectedSections: new Set(),
     selectedCostCodes: new Set(),
-  });
+  }), []);
+  const [filterState, setFilterState] = useSessionStorageSetState<MaterialsFilterState>(
+    filterStorageKey,
+    createDefaultFilterState,
+  );
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
@@ -133,183 +163,159 @@ export const MatLabView = ({
     });
   }, []);
 
-  const { groups, totalCost, availableItems, availableLevels, availableSections, availableCostCodes } =
-    useMemo(() => {
-      // Step 1: filter assemblies by selected levels
-      const assembliesToProcess =
-        filterState.selectedLevels.size > 0
-          ? materialCostingData.filter((a) => {
-              const levelStr = (a as { level?: string }).level ?? 'Unknown';
-              const levels = parseLevels(levelStr);
-              return levels.some((l) => filterState.selectedLevels.has(l));
-            })
-          : materialCostingData;
+  const baseData = useMemo(() => {
+    const materialContributions: MatContribution[] = [];
+    const laborContributions: LabContribution[] = [];
+    const allLevelsSet = new Set<string>();
+    const allItemsSet = new Set<string>();
+    const allSectionsSet = new Set<string>();
 
-      // Step 2: aggregate unique materials and labor-by-section
-      const matMap = new Map<
-        string,
-        {
-          code: string;
-          item: string;
-          section: string;
-          quantity: number;
-          unit: string;
-          unitCost: number;
-          totalCostSum: number;
-          areas: Set<string>;
-        }
-      >();
+    materialCostingData.forEach((assembly) => {
+      const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
+      const parsedLevels = parseLevels(levelStr);
+      const areas = parsedLevels.length > 0 ? parsedLevels : ['Unknown'];
+      parsedLevels.forEach((level) => allLevelsSet.add(level));
 
-      // labBySectionMap: section → (labKey → aggregate)
-      const labBySectionMap = new Map<
-        string,
-        Map<
-          string,
-          {
-            code: string;
-            item: string;
-            section: string;
-            quantity: number;
-            unit: string;
-            unitCost: number;
-            totalCostSum: number;
-            areas: Set<string>;
-          }
-        >
-      >();
+      (assembly.materials_costing ?? []).forEach((costingItem) => {
+        const { extracted_material, matched_materials, matched_labor } = costingItem;
 
-      // For available filter options — built from ALL (unfiltered) assemblies
-      const allLevelsSet = new Set<string>();
-      const allItemsSet = new Set<string>();
-      const allSectionsSet = new Set<string>();
-
-      materialCostingData.forEach((assembly) => {
-        const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
-        parseLevels(levelStr).forEach((l) => allLevelsSet.add(l));
-        (assembly.materials_costing ?? []).forEach((costingItem) => {
-          costingItem.matched_materials.forEach((mat: MatchedMaterial) => {
-            allItemsSet.add(mat.description);
-            if (mat.section) allSectionsSet.add(mat.section);
+        matched_materials.forEach((mat: MatchedMaterial) => {
+          const quantity =
+            mat.quantity != null && typeof mat.quantity === 'number'
+              ? mat.quantity
+              : getQuantityFromExtracted(extracted_material, mat.unit);
+          const unitCost = getMatUnitCost(mat, priceMap);
+          materialContributions.push({
+            code: mat.code,
+            item: mat.description,
+            section: mat.section ?? '—',
+            quantity,
+            unit: mat.unit,
+            unitCost,
+            totalCost: quantity * unitCost,
+            areas,
           });
-          (costingItem.matched_labor ?? []).forEach((lab: MatchedLabor) => {
-            allItemsSet.add(lab.description);
+          allItemsSet.add(mat.description);
+          if (mat.section) allSectionsSet.add(mat.section);
+        });
+
+        (matched_labor ?? []).forEach((lab: MatchedLabor) => {
+          const quantity =
+            lab.quantity != null && typeof lab.quantity === 'number'
+              ? lab.quantity
+              : getQuantityFromExtracted(extracted_material, lab.unit);
+          const unitCost = getLabUnitCost(lab, priceMap);
+          laborContributions.push({
+            code: lab.code,
+            item: lab.description,
+            section: lab.section ?? '—',
+            quantity,
+            unit: lab.unit === 'EA' ? 'Hrs' : lab.unit,
+            unitCost,
+            totalCost: quantity * unitCost,
+            areas,
           });
+          allItemsSet.add(lab.description);
         });
       });
+    });
 
-      assembliesToProcess.forEach((assembly) => {
-        const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
-        const assemblyLevels = parseLevels(levelStr);
-        const areas = assemblyLevels.length > 0 ? assemblyLevels : ['Unknown'];
+    return {
+      materialContributions,
+      laborContributions,
+      availableItems: Array.from(allItemsSet).filter(Boolean).sort(),
+      availableLevels: sortLevels(Array.from(allLevelsSet).filter((level) => level && level !== 'Unknown')),
+      availableSections: Array.from(allSectionsSet).filter(Boolean).sort(),
+      availableCostCodes: Array.from(allSectionsSet).filter(Boolean).sort(),
+    };
+  }, [materialCostingData, priceMap]);
 
-        (assembly.materials_costing ?? []).forEach((costingItem) => {
-          const { extracted_material, matched_materials, matched_labor } = costingItem;
+  const { groups, totalCost, availableItems, availableLevels, availableSections, availableCostCodes } =
+    useMemo(() => {
+      const filteredMaterials = baseData.materialContributions.filter((material) => {
+        if (
+          filterState.selectedLevels.size > 0 &&
+          !material.areas.some((area) => filterState.selectedLevels.has(area))
+        ) {
+          return false;
+        }
+        if (
+          filterState.selectedItems.size > 0 &&
+          !filterState.selectedItems.has(material.item)
+        ) {
+          return false;
+        }
+        if (
+          filterState.selectedSections.size > 0 &&
+          !filterState.selectedSections.has(material.section)
+        ) {
+          return false;
+        }
+        if (
+          filterState.selectedCostCodes.size > 0 &&
+          !filterState.selectedCostCodes.has(material.section)
+        ) {
+          return false;
+        }
+        return true;
+      });
 
-          // Aggregate materials
-          matched_materials.forEach((mat: MatchedMaterial) => {
-            const qty =
-              mat.quantity != null && typeof mat.quantity === 'number'
-                ? mat.quantity
-                : getQuantityFromExtracted(extracted_material, mat.unit);
-            const unitCost = getMatUnitCost(mat, priceMap);
-            const matKey = `${mat.code}|${mat.description}|${mat.unit}`;
+      const filteredLabor = baseData.laborContributions.filter((labor) => {
+        if (
+          filterState.selectedLevels.size > 0 &&
+          !labor.areas.some((area) => filterState.selectedLevels.has(area))
+        ) {
+          return false;
+        }
+        return true;
+      });
 
-            if (matMap.has(matKey)) {
-              const existing = matMap.get(matKey)!;
-              existing.quantity += qty;
-              existing.totalCostSum += qty * unitCost;
-              areas.forEach((a) => existing.areas.add(a));
-            } else {
-              matMap.set(matKey, {
-                code: mat.code,
-                item: mat.description,
-                section: mat.section ?? '—',
-                quantity: qty,
-                unit: mat.unit,
-                unitCost,
-                totalCostSum: qty * unitCost,
-                areas: new Set(areas),
-              });
-            }
-          });
+      const matMap = new Map<string, MatContribution & { areasSet: Set<string> }>();
+      filteredMaterials.forEach((material) => {
+        const key = `${material.code}|${material.item}|${material.unit}`;
+        if (matMap.has(key)) {
+          const existing = matMap.get(key)!;
+          existing.quantity += material.quantity;
+          existing.totalCost += material.totalCost;
+          material.areas.forEach((area) => existing.areasSet.add(area));
+        } else {
+          matMap.set(key, { ...material, areasSet: new Set(material.areas) });
+        }
+      });
 
-          // Aggregate labor — keyed under its section
-          (matched_labor ?? []).forEach((lab: MatchedLabor) => {
-            const labSection = lab.section ?? '—';
-            const qty =
-              lab.quantity != null && typeof lab.quantity === 'number'
-                ? lab.quantity
-                : getQuantityFromExtracted(extracted_material, lab.unit);
-            const unitCost = getLabUnitCost(lab, priceMap);
-            const labKey = `${lab.code}|${lab.description}|${lab.unit}`;
-
-            if (!labBySectionMap.has(labSection)) {
-              labBySectionMap.set(labSection, new Map());
-            }
-            const sectionMap = labBySectionMap.get(labSection)!;
-
-            if (sectionMap.has(labKey)) {
-              const existing = sectionMap.get(labKey)!;
-              existing.quantity += qty;
-              existing.totalCostSum += qty * unitCost;
-              areas.forEach((a) => existing.areas.add(a));
-            } else {
-              sectionMap.set(labKey, {
-                code: lab.code,
-                item: lab.description,
-                section: labSection,
-                quantity: qty,
-                unit: lab.unit === 'EA' ? 'Hrs' : lab.unit,
-                unitCost,
-                totalCostSum: qty * unitCost,
-                areas: new Set(areas),
-              });
-            }
-          });
-        });
+      const labBySectionMap = new Map<string, Map<string, LabContribution & { areasSet: Set<string> }>>();
+      filteredLabor.forEach((labor) => {
+        if (!labBySectionMap.has(labor.section)) {
+          labBySectionMap.set(labor.section, new Map());
+        }
+        const sectionMap = labBySectionMap.get(labor.section)!;
+        const key = `${labor.code}|${labor.item}|${labor.unit}`;
+        if (sectionMap.has(key)) {
+          const existing = sectionMap.get(key)!;
+          existing.quantity += labor.quantity;
+          existing.totalCost += labor.totalCost;
+          labor.areas.forEach((area) => existing.areasSet.add(area));
+        } else {
+          sectionMap.set(key, { ...labor, areasSet: new Set(labor.areas) });
+        }
       });
 
       // ─── Debug verification ──────────────────────────────────────────────────
       if (LOG_DEBUG) {
-        // Raw JSON totals (from assembliesToProcess — respects level filter)
-        let rawMatCount = 0;
-        let rawLabCount = 0;
-        let rawMatTotal = 0;
-        let rawLabTotal = 0;
-        const rawMatRows: { code: string; description: string; unit: string; qty: number; unitCost: number; total: number }[] = [];
-        const rawLabRows: { code: string; description: string; unit: string; qty: number; unitCost: number; total: number }[] = [];
-
-        assembliesToProcess.forEach((assembly) => {
-          (assembly.materials_costing ?? []).forEach((costingItem) => {
-            const { extracted_material, matched_materials, matched_labor } = costingItem;
-            matched_materials.forEach((mat: MatchedMaterial) => {
-              const qty = mat.quantity != null ? mat.quantity : getQuantityFromExtracted(extracted_material, mat.unit);
-              const uc = getMatUnitCost(mat, priceMap);
-              rawMatCount++;
-              rawMatTotal += qty * uc;
-              rawMatRows.push({ code: mat.code, description: mat.description, unit: mat.unit, qty, unitCost: uc, total: qty * uc });
-            });
-            (matched_labor ?? []).forEach((lab: MatchedLabor) => {
-              const qty = lab.quantity != null ? lab.quantity : getQuantityFromExtracted(extracted_material, lab.unit);
-              const uc = getLabUnitCost(lab, priceMap);
-              rawLabCount++;
-              rawLabTotal += qty * uc;
-              rawLabRows.push({ code: lab.code, description: lab.description, unit: lab.unit, qty, unitCost: uc, total: qty * uc });
-            });
-          });
-        });
-
-        // Aggregated totals (after deduplication)
         const aggMatRows = Array.from(matMap.values()).map((m) => ({
           code: m.code, item: m.item, section: m.section, unit: m.unit,
-          qty: m.quantity, unitCost: m.unitCost, total: m.totalCostSum,
+          qty: m.quantity, unitCost: m.unitCost, total: m.totalCost,
         }));
         const aggLabRows = Array.from(labBySectionMap.entries()).flatMap(([section, smap]) =>
           Array.from(smap.values()).map((l) => ({
             code: l.code, item: l.item, section, unit: l.unit,
-            qty: l.quantity, unitCost: l.unitCost, total: l.totalCostSum,
+            qty: l.quantity, unitCost: l.unitCost, total: l.totalCost,
           }))
         );
+        const rawMatCount = filteredMaterials.length;
+        const rawLabCount = filteredLabor.length;
+        const rawMatTotal = filteredMaterials.reduce((sum, row) => sum + row.totalCost, 0);
+        const rawLabTotal = filteredLabor.reduce((sum, row) => sum + row.totalCost, 0);
         const aggMatTotal = aggMatRows.reduce((s, r) => s + r.total, 0);
         const aggLabTotal = aggLabRows.reduce((s, r) => s + r.total, 0);
 
@@ -318,12 +324,8 @@ export const MatLabView = ({
         console.log(`Raw entries  → Labor:     ${rawLabCount} rows, Total: $${rawLabTotal.toFixed(2)}`);
         console.log(`Aggregated   → Materials: ${aggMatRows.length} unique, Total: $${aggMatTotal.toFixed(2)}`);
         console.log(`Aggregated   → Labor:     ${aggLabRows.length} unique, Total: $${aggLabTotal.toFixed(2)}`);
-        console.log('─── Raw Material rows (from JSON) ───');
-        console.table(rawMatRows.sort((a, b) => a.code.localeCompare(b.code)));
         console.log('─── Aggregated Material rows (displayed) ───');
         console.table(aggMatRows.sort((a, b) => a.code.localeCompare(b.code)));
-        console.log('─── Raw Labor rows (from JSON) ───');
-        console.table(rawLabRows.sort((a, b) => a.code.localeCompare(b.code)));
         console.log('─── Aggregated Labor rows (displayed) ───');
         console.table(aggLabRows.sort((a, b) => a.code.localeCompare(b.code)));
         console.groupEnd();
@@ -343,8 +345,8 @@ export const MatLabView = ({
                 quantity: lab.quantity,
                 unit: lab.unit,
                 unitCost: lab.unitCost,
-                totalCost: lab.totalCostSum,
-                areas: sortLevels(Array.from(lab.areas).filter((a) => a !== 'Unknown')),
+                totalCost: lab.totalCost,
+                areas: sortLevels(Array.from(lab.areasSet).filter((a) => a !== 'Unknown')),
               }))
             : [];
 
@@ -356,8 +358,8 @@ export const MatLabView = ({
             quantity: mat.quantity,
             unit: mat.unit,
             unitCost: mat.unitCost,
-            totalCost: mat.totalCostSum,
-            areas: sortLevels(Array.from(mat.areas).filter((a) => a !== 'Unknown')),
+            totalCost: mat.totalCost,
+            areas: sortLevels(Array.from(mat.areasSet).filter((a) => a !== 'Unknown')),
             labor,
           };
         }
@@ -385,18 +387,35 @@ export const MatLabView = ({
       return {
         groups: allGroups,
         totalCost: filteredTotal,
-        availableItems: Array.from(allItemsSet).filter(Boolean).sort(),
-        availableLevels: sortLevels(
-          Array.from(allLevelsSet).filter((l) => l && l !== 'Unknown')
-        ),
-        availableSections: Array.from(allSectionsSet).filter(Boolean).sort(),
-        availableCostCodes: Array.from(allSectionsSet).filter(Boolean).sort(),
+        availableItems: baseData.availableItems,
+        availableLevels: baseData.availableLevels,
+        availableSections: baseData.availableSections,
+        availableCostCodes: baseData.availableCostCodes,
       };
-    }, [materialCostingData, priceMap, filterState]);
+    }, [baseData, filterState]);
 
   const handleFilterChange = useCallback((state: MaterialsFilterState) => {
     setFilterState(state);
   }, []);
+
+  React.useEffect(() => {
+    setFilterState((prev) => {
+      const nextState: MaterialsFilterState = {
+        selectedItems: pruneSelectedFilterValues(prev.selectedItems, availableItems),
+        selectedLevels: pruneSelectedFilterValues(prev.selectedLevels, availableLevels),
+        selectedSections: pruneSelectedFilterValues(prev.selectedSections, availableSections),
+        selectedCostCodes: pruneSelectedFilterValues(prev.selectedCostCodes, availableCostCodes),
+      };
+
+      const unchanged =
+        nextState.selectedItems === prev.selectedItems &&
+        nextState.selectedLevels === prev.selectedLevels &&
+        nextState.selectedSections === prev.selectedSections &&
+        nextState.selectedCostCodes === prev.selectedCostCodes;
+
+      return unchanged ? prev : nextState;
+    });
+  }, [availableCostCodes, availableItems, availableLevels, availableSections, setFilterState]);
 
   const allGroupKeys = useMemo(() => groups.map((g) => g.matKey), [groups]);
   const allCollapsed = allGroupKeys.length > 0 && allGroupKeys.every((k) => collapsedGroups.has(k));
@@ -450,10 +469,24 @@ export const MatLabView = ({
     });
     return rows;
   }, [groups]);
+  const summaryRows = useMemo<ExportRow[]>(() => {
+    const materialTotal = groups.reduce((sum, group) => sum + group.totalCost, 0);
+    const laborTotal = groups.reduce(
+      (sum, group) => sum + group.labor.reduce((laborSum, labor) => laborSum + labor.totalCost, 0),
+      0,
+    );
+
+    return [
+      { type: 'Summary', item: 'Material Total', totalCost: materialTotal },
+      { type: 'Summary', item: 'Labor Total', totalCost: laborTotal },
+      { type: 'Summary', item: 'Grand Total', totalCost },
+    ];
+  }, [groups, totalCost]);
 
   const filtersActive =
     filterState.selectedItems.size > 0 ||
     filterState.selectedLevels.size > 0 ||
+    filterState.selectedSections.size > 0 ||
     filterState.selectedCostCodes.size > 0;
 
   const showLevelCol = filterState.selectedLevels.size > 0;
@@ -500,6 +533,7 @@ export const MatLabView = ({
         sheetName="Mat+Lab"
         columns={MATLAB_COLUMNS}
         rows={exportRows}
+        summaryRows={summaryRows}
         filtersActive={filtersActive}
       />
 

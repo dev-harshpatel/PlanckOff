@@ -10,6 +10,8 @@ import type {
   MatchedMaterial,
 } from "@/types/assembly";
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
+import { getHeightSegments } from "@/lib/utils/laborHeightSplit";
+import type { HeightSegment } from "@/lib/utils/laborHeightSplit";
 
 /** Material match assembly (from match step) — has assembly_id and materials_costing; may have extra fields */
 export interface MaterialMatchAssembly {
@@ -87,34 +89,7 @@ const getHeightCategory = (heightFt: number): string => {
 };
 
 // ─── Height Segmentation ───────────────────────────────────────────────────────
-
-interface HeightSegment {
-  height_ft: number;
-  category: string;
-}
-
-/**
- * Split wall height H (ft) into labor segments per business rules:
- *   H ≤ 12      → 1 segment: H @ "(Walls < 12 ft)"
- *   12 < H ≤ 24 → 2 segments: 12 + (H-12)
- *   H > 24      → 3 segments: 12 + 12 + (H-24)
- */
-const getHeightSegments = (H: number): HeightSegment[] => {
-  if (H <= 12) {
-    return [{ height_ft: H, category: "(Walls < 12 ft)" }];
-  } else if (H <= 24) {
-    return [
-      { height_ft: 12, category: "(Walls < 12 ft)" },
-      { height_ft: H - 12, category: "(High 12 ft to 24 ft)" },
-    ];
-  } else {
-    return [
-      { height_ft: 12, category: "(Walls < 12 ft)" },
-      { height_ft: 12, category: "(High 12 ft to 24 ft)" },
-      { height_ft: H - 24, category: "(High Above 24 ft)" },
-    ];
-  }
-};
+// getHeightSegments and HeightSegment imported from @/lib/utils/laborHeightSplit
 
 /** Keywords in DB labor descriptions that identify each height segment */
 const SEGMENT_KEYWORDS: Record<string, string> = {

@@ -8,6 +8,7 @@ import * as XLSX from "xlsx";
 export interface TakeoffRawRecord {
   assembly_type: string | number | null;
   ceiling_area?: number;
+  description?: string | null;
   height: number | string | null;
   level: string | number | null;
   no?: number | string | null;
@@ -18,6 +19,21 @@ export interface TakeoffRawRecord {
   wall_type: string | number | null;
   area_parementer?: number | string | null;
   qty_3?: number | string | null;
+}
+
+export interface TakeoffParserIssue {
+  excelRow: number;
+  field: "height" | "wall_length_ceiling_area" | "area_parementer" | "qty_3";
+  rawValue: string;
+  reason: string;
+}
+
+export interface TakeoffRawParseValidationSummary {
+  dataRowCount: number;
+  parsedRowCount: number;
+  skippedEmptyRowCount: number;
+  malformedNumericRowCount: number;
+  malformedRows: TakeoffParserIssue[];
 }
 
 const cleanValue = (val: unknown): string | number | null => {
@@ -66,10 +82,70 @@ const COLUMN_PATTERNS: Record<string, string[]> = {
   uom3: ["uom3", "uom 3"],
 };
 
+const findHeaderRow = (
+  data: unknown[][],
+): { headerRowIndex: number; headers: string[] } => {
+  for (let i = 0; i < Math.min(5, data.length); i++) {
+    const row = data[i];
+    if (!row || !Array.isArray(row)) continue;
+
+    const headers = row.map((cell) => (cell ?? "").toString().trim());
+    const normalized = headers.map((header) => header.toLowerCase().trim());
+
+    const hasWallType = normalized.some((header) =>
+      COLUMN_PATTERNS.wallType.some((pattern) => header === pattern || header.includes(pattern)),
+    );
+    const hasAssemblyType = normalized.some((header) =>
+      COLUMN_PATTERNS.assemblyType.some((pattern) => header === pattern || header.includes(pattern)),
+    );
+    const hasHeight = normalized.some((header) =>
+      COLUMN_PATTERNS.height.some((pattern) => header === pattern || header.includes(pattern)),
+    );
+
+    if (hasWallType && hasAssemblyType && hasHeight) {
+      return { headerRowIndex: i, headers };
+    }
+  }
+
+  return {
+    headerRowIndex: 0,
+    headers: (data[0] as unknown[]).map((cell) => (cell ?? "").toString().trim()),
+  };
+};
+
+const parseOptionalNumericCell = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return { hasValue: false, isValid: true, value: undefined as number | undefined };
+  }
+
+  const raw = String(value).trim();
+  if (!raw) {
+    return { hasValue: false, isValid: true, value: undefined as number | undefined };
+  }
+
+  if (typeof value === "number") {
+    return {
+      hasValue: true,
+      isValid: Number.isFinite(value),
+      value: Number.isFinite(value) ? value : undefined,
+    };
+  }
+
+  const parsed = Number.parseFloat(raw.replace(/,/g, ""));
+  return {
+    hasValue: true,
+    isValid: Number.isFinite(parsed),
+    value: Number.isFinite(parsed) ? parsed : undefined,
+  };
+};
+
 /**
  * Parse Excel buffer to raw takeoff records (matches Python script output)
  */
-export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] => {
+export const parseRawTakeoffSheetDetailed = (buffer: ArrayBuffer): {
+  records: TakeoffRawRecord[];
+  validation: TakeoffRawParseValidationSummary;
+} => {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) throw new Error("Excel file has no sheets");
@@ -79,7 +155,8 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
 
   if (data.length < 2) throw new Error("Excel file has no data rows");
 
-  const rawHeaders = (data[0] as unknown[]).map((c) => (c ?? "").toString().trim());
+  const { headerRowIndex, headers: detectedHeaders } = findHeaderRow(data);
+  const rawHeaders = detectedHeaders;
   const unnamedCols = rawHeaders
     .map((h, i) => (h.startsWith("Unnamed:") ? i : -1))
     .filter((i) => i >= 0);
@@ -102,13 +179,15 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
 
   if (!hasRequired) {
     throw new Error(
-      "Missing required columns: Assembly type, Wall Type, Height, wall Length/ Ceiling area",
+      `Missing required columns: Assembly type, Wall Type, Height, wall Length/ Ceiling area. Found headers: [${headers.join(", ")}]`,
     );
   }
 
   const outputRecords: TakeoffRawRecord[] = [];
+  const malformedRows: TakeoffParserIssue[] = [];
+  let skippedEmptyRowCount = 0;
 
-  for (let r = 1; r < data.length; r++) {
+  for (let r = headerRowIndex + 1; r < data.length; r++) {
     const row = data[r] as unknown[];
     if (!row) continue;
 
@@ -133,15 +212,58 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
       wallLengthRaw === undefined ||
       wallLengthRaw === null
     ) {
+      skippedEmptyRowCount += 1;
       continue;
     }
 
     const assemblyType = cleanValue(assemblyTypeRaw) as string | null;
     const valueKey = getValueKeyForAssemblyType(assemblyType);
-    const wallLengthVal =
-      typeof wallLengthRaw === "number"
-        ? wallLengthRaw
-        : parseFloat(String(wallLengthRaw).replace(/,/g, "")) || 0;
+    const heightNumeric = parseOptionalNumericCell(heightRaw);
+    const wallLengthNumeric = parseOptionalNumericCell(wallLengthRaw);
+    const areaNumeric = parseOptionalNumericCell(get("areaParementer"));
+    const qty3Numeric = parseOptionalNumericCell(get("qty3"));
+
+    if (!heightNumeric.isValid) {
+      malformedRows.push({
+        excelRow: r + 1,
+        field: "height",
+        rawValue: String(heightRaw),
+        reason: "Height is not numeric",
+      });
+      continue;
+    }
+
+    if (!wallLengthNumeric.isValid) {
+      malformedRows.push({
+        excelRow: r + 1,
+        field: "wall_length_ceiling_area",
+        rawValue: String(wallLengthRaw),
+        reason: "Wall length / ceiling area is not numeric",
+      });
+      continue;
+    }
+
+    if (areaNumeric.hasValue && !areaNumeric.isValid) {
+      malformedRows.push({
+        excelRow: r + 1,
+        field: "area_parementer",
+        rawValue: String(get("areaParementer")),
+        reason: "Area perimeter is not numeric",
+      });
+      continue;
+    }
+
+    if (qty3Numeric.hasValue && !qty3Numeric.isValid) {
+      malformedRows.push({
+        excelRow: r + 1,
+        field: "qty_3",
+        rawValue: String(get("qty3")),
+        reason: "Qty 3 is not numeric",
+      });
+      continue;
+    }
+
+    const wallLengthVal = wallLengthNumeric.value ?? 0;
     const numVal =
       Number.isInteger(wallLengthVal) || wallLengthVal === Math.floor(wallLengthVal)
         ? Math.floor(wallLengthVal)
@@ -151,7 +273,7 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
       level: cleanValue(get("level")),
       assembly_type: assemblyType,
       wall_type: cleanValue(wallTypeRaw),
-      height: cleanValue(heightRaw),
+      height: cleanValue(heightNumeric.value ?? heightRaw),
       [valueKey]: numVal,
     } as TakeoffRawRecord;
 
@@ -165,7 +287,7 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
 
     const areaVal = get("areaParementer");
     if (areaVal !== undefined && areaVal !== null && String(areaVal).trim() !== "")
-      record.area_parementer = cleanValue(areaVal);
+      record.area_parementer = areaNumeric.value ?? cleanValue(areaVal);
 
     const unit1Val = get("unit1");
     if (unit1Val !== undefined && unit1Val !== null && String(unit1Val).trim() !== "")
@@ -173,7 +295,7 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
 
     const qty3Val = get("qty3");
     if (qty3Val !== undefined && qty3Val !== null && String(qty3Val).trim() !== "")
-      record.qty_3 = cleanValue(qty3Val);
+      record.qty_3 = qty3Numeric.value ?? cleanValue(qty3Val);
 
     const uom3Val = get("uom3");
     if (uom3Val !== undefined && uom3Val !== null && String(uom3Val).trim() !== "")
@@ -182,5 +304,17 @@ export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
     outputRecords.push(record);
   }
 
-  return outputRecords;
+  return {
+    records: outputRecords,
+    validation: {
+      dataRowCount: Math.max(0, data.length - (headerRowIndex + 1)),
+      parsedRowCount: outputRecords.length,
+      skippedEmptyRowCount,
+      malformedNumericRowCount: malformedRows.length,
+      malformedRows: malformedRows.slice(0, 25),
+    },
+  };
 };
+
+export const parseRawTakeoffSheet = (buffer: ArrayBuffer): TakeoffRawRecord[] =>
+  parseRawTakeoffSheetDetailed(buffer).records;

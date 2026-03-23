@@ -15,7 +15,7 @@ import {
 } from "@/lib/db/team";
 import { withRoleAuth } from "@/lib/auth";
 import { RoleName } from "@/types/team";
-import { ROLE_LEVELS } from "@/constants/roles";
+import { ROLE_LEVELS, isRoleName } from "@/constants/roles";
 
 /**
  * DELETE /api/team/members/[id]
@@ -150,20 +150,42 @@ export const PUT = withRoleAuth(
       } = {};
 
       if (name && typeof name === "string") {
-        updates.name = name;
+        const normalizedName = name.trim();
+        if (!normalizedName) {
+          return NextResponse.json(
+            { success: false, error: "Name cannot be empty" },
+            { status: 400 },
+          );
+        }
+        updates.name = normalizedName;
       }
 
       // Only allow email/role/status changes by higher authority users
       if (!isSelf) {
         if (email && typeof email === "string") {
-          updates.email = email.toLowerCase();
+          const normalizedEmail = email.trim().toLowerCase();
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(normalizedEmail)) {
+            return NextResponse.json(
+              { success: false, error: "Invalid email format" },
+              { status: 400 },
+            );
+          }
+          updates.email = normalizedEmail;
         }
 
-        if (role && typeof role === "string") {
-          const { data: roleData } = await getRoleByName(role as RoleName);
+        if (role !== undefined) {
+          if (typeof role !== "string" || !isRoleName(role)) {
+            return NextResponse.json(
+              { success: false, error: "Invalid role" },
+              { status: 400 },
+            );
+          }
+
+          const { data: roleData } = await getRoleByName(role);
           if (roleData) {
             // Check if current user can assign this role
-            const newRoleLevel = ROLE_LEVELS[role as RoleName];
+            const newRoleLevel = ROLE_LEVELS[role];
             if (newRoleLevel <= currentUserLevel) {
               return NextResponse.json(
                 {
@@ -175,10 +197,21 @@ export const PUT = withRoleAuth(
               );
             }
             updates.role_id = roleData.id;
+          } else {
+            return NextResponse.json(
+              { success: false, error: "Invalid role" },
+              { status: 400 },
+            );
           }
         }
 
-        if (status && ["Active", "Inactive"].includes(status)) {
+        if (status !== undefined) {
+          if (typeof status !== "string" || !["Active", "Inactive"].includes(status)) {
+            return NextResponse.json(
+              { success: false, error: "Invalid status" },
+              { status: 400 },
+            );
+          }
           updates.status = status;
         }
       }

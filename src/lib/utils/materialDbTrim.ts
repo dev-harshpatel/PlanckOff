@@ -12,6 +12,11 @@ export interface TrimmedMaterialDbEntry {
   matCost: string;
   per: string;
   manufacturer: string;
+  productivity?: string;
+  unitCost?: string;
+  sizeOfUnit?: string;
+  hourlyRate?: string;
+  size?: string;
 }
 
 /** Trim material DB to fields needed for matching — reduces payload size per batch. */
@@ -29,6 +34,14 @@ export const trimMaterialDbForMatching = (db: unknown): TrimmedMaterialDbEntry[]
       matCost: String((r.category as string ?? "").toLowerCase() === "labor" ? (r.matCost ?? "") : (r.productivity ?? r.matCost ?? "")),
       per: String(r.per ?? ""),
       manufacturer: String(r.manufacturer ?? ""),
+      productivity:
+        r.productivity == null ? undefined : String(r.productivity),
+      unitCost: r.unitCost == null ? undefined : String(r.unitCost),
+      sizeOfUnit:
+        r.sizeOfUnit == null ? undefined : String(r.sizeOfUnit),
+      hourlyRate:
+        r.hourlyRate == null ? undefined : String(r.hourlyRate),
+      size: r.size == null ? undefined : String(r.size),
     };
   });
 };

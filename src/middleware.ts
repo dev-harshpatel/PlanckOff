@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { AUTH_CONFIG } from '@/constants/auth';
 
 // Public paths that don't require authentication
 const PUBLIC_PATHS = [
@@ -15,16 +16,12 @@ const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth/logout',
   '/api/team/set-password',
-  '/api/assembly-files',
-  '/api/assembly-data',
-  '/api/extract',
-  '/api/match',
-  '/api/test-redis',
 ];
 
 // Paths that start with these prefixes are public
 const PUBLIC_PREFIXES = [
   '/api/team/invite/', // Token validation endpoints
+  '/api/cron/',
   '/_next',
   '/images',
   '/favicon',
@@ -54,7 +51,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Check for auth session cookie
-  const sessionToken = request.cookies.get('auth_session')?.value;
+  const sessionToken = request.cookies.get(AUTH_CONFIG.SESSION_COOKIE_NAME)?.value;
 
   // No session - redirect to login for pages, return 401 for API
   if (!sessionToken) {

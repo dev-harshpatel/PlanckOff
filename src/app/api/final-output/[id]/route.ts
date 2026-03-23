@@ -1,7 +1,7 @@
 /**
  * PATCH /api/final-output/[id]
  * Update final output data (e.g. when user edits unit costs or quantities).
- * Requires auth. Also updates the local JSON file for dev environments.
+ * Requires auth. (Optional local JSON backup is commented out — see writeJsonToLocal.)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -10,8 +10,6 @@ import {
   getFinalOutputById,
   updateFinalOutput,
 } from "@/lib/db/pipelineOutputs";
-import { writeFile } from "fs/promises";
-import path from "path";
 
 export const PATCH = withAuth(
   async (request: NextRequest, _context, params) => {
@@ -49,8 +47,6 @@ export const PATCH = withAuth(
       );
     }
 
-    console.log("[FinalOutput PATCH] Updating id:", id, "filename:", existing.filename, "assemblies:", (body.assemblies as unknown[]).length);
-
     const { data: updated, error: updateError } = await updateFinalOutput(id, {
       assemblies: body.assemblies,
     });
@@ -63,37 +59,18 @@ export const PATCH = withAuth(
       );
     }
 
-    console.log("[FinalOutput PATCH] DB updated successfully for id:", id, "updated row id:", updated?.id);
-
-    // Also update the local JSON file (non-fatal — dev only)
-    let localFileStatus = "skipped: no filename on record";
-    if (existing.filename) {
-      try {
-        const localPath = path.join(
-          process.cwd(),
-          "data",
-          "output",
-          "final_output",
-          existing.filename,
-        );
-        await writeFile(
-          localPath,
-          JSON.stringify({ assemblies: body.assemblies }, null, 2),
-          "utf-8",
-        );
-        localFileStatus = `updated: ${localPath}`;
-        console.log("[FinalOutput PATCH] Local file updated:", localPath);
-      } catch (fsErr) {
-        localFileStatus = `failed: ${fsErr instanceof Error ? fsErr.message : String(fsErr)}`;
-        console.warn("[FinalOutput PATCH] Local file update failed (non-fatal):", fsErr);
-      }
-    } else {
-      console.warn("[FinalOutput PATCH] No filename on record — skipping local file update");
-    }
+    // Local data/output folder writes disabled (writeJsonToLocal).
+    // if (process.env.NODE_ENV === "development" && existing.filename) {
+    //   void writeJsonToLocal(
+    //     "final_output",
+    //     { assemblies: body.assemblies },
+    //     existing.filename,
+    //   );
+    // }
 
     return NextResponse.json({
       success: true,
-      debug: { dbId: id, filename: existing.filename ?? null, localFileStatus },
+      debug: { dbId: id, filename: existing.filename ?? null },
       result: { assemblies: body.assemblies },
     });
   },
