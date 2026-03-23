@@ -71,6 +71,8 @@ export interface MatchedMaterial {
   layers_override?: number;
   /** User-overridden OC spacing display string (e.g. "24\"") */
   oc_spacing_override?: string;
+  /** User-overridden length (ft) for this line item */
+  length_ft_override?: number;
 }
 
 export interface MatchedLabor {

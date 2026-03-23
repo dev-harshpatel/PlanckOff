@@ -217,8 +217,9 @@ export const applyOverridesToCostingData = (
                 // Assembly-level height_ft is about to change; pin this group's
                 // materials to their CURRENT effective height so they are not
                 // silently pulled to the new assembly height on the next reload.
-                const existing = (mat as Record<string, unknown>).height_ft_override as number | undefined;
-                (base as Record<string, unknown>).height_ft_override = existing ?? heightFt;
+                const existing = mat.height_ft_override;
+                (base as Record<string, unknown>).height_ft_override =
+                  existing ?? heightFt ?? undefined;
               }
             } else {
               // Non-grouped fallback: apply by material code (old behavior).

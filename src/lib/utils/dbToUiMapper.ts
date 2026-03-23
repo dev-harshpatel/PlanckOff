@@ -289,7 +289,7 @@ export const mapFinalOutputToWallAssemblies = (
           material.waste_percent != null
             ? material.waste_percent / 100
             : getWasteFactor(category);
-        const savedLength = (material as Record<string, unknown>).length_ft_override as number | undefined;
+        const savedLength = material.length_ft_override;
 
         components.push({
           id: `${compositeId}-mat-${componentIdx++}`,
@@ -354,7 +354,7 @@ export const mapFinalOutputToWallAssemblies = (
     // With this filter, we only see {12} → effectiveDefaultHeight = 12 ✓
     const allDifferentOverrides = (ext.materials_costing ?? [])
       .flatMap((item) => item.matched_materials ?? [])
-      .map((m) => (m as Record<string, unknown>).height_ft_override as number | null | undefined)
+      .map((m) => m.height_ft_override)
       .filter((h): h is number => typeof h === 'number' && Math.abs(h - heightFt) > 0.001);
     const uniqueOverrideHeights = new Set(allDifferentOverrides);
     const effectiveDefaultHeight =
