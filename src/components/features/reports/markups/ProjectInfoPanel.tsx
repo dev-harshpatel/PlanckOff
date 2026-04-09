@@ -4,7 +4,8 @@ import React, { useCallback, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 
 import { Input } from '@/components/ui';
-import { calcWeeksFromDates, calcMonthsFromDates, type ProjectInfo } from './types';
+import { calcWeeksFromDates, calcMonthsFromDates } from './formulas';
+import type { ProjectInfo } from './types';
 
 interface ProjectInfoPanelProps {
   info: ProjectInfo;
@@ -20,19 +21,12 @@ interface FieldDef {
   type?: string;
 }
 
-/** Compact labeled read-only display cell (for calculated values like Duration). */
-function ReadOnlyCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="w-full">
-      <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-        {label}
-      </span>
-      <div className="w-full h-[42px] flex items-center px-4 bg-emerald-100 border border-emerald-300 rounded-lg">
-        <span className="text-sm font-bold text-emerald-800">{value || '—'}</span>
-      </div>
-    </div>
-  );
-}
+const NUMERIC_FIELDS: Array<keyof ProjectInfo> = [
+  'squareFootage',
+  'durationWeeks',
+  'durationMonths',
+  'workingHoursPerWeek',
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -41,12 +35,13 @@ export function ProjectInfoPanel({ info, onChange }: ProjectInfoPanelProps) {
 
   const handleField = useCallback(
     (field: keyof ProjectInfo, rawValue: string) => {
-      const updated: ProjectInfo = { ...info, [field]: rawValue };
+      const value = NUMERIC_FIELDS.includes(field) ? Number(rawValue || 0) : rawValue;
+      const updated: ProjectInfo = { ...info, [field]: value } as ProjectInfo;
 
-      // Auto-recalculate both duration values whenever either date changes
+      // Auto-seed both duration values whenever either date changes.
       if (field === 'startDate' || field === 'endDate') {
         const start = field === 'startDate' ? rawValue : info.startDate;
-        const end   = field === 'endDate'   ? rawValue : info.endDate;
+        const end = field === 'endDate' ? rawValue : info.endDate;
         updated.durationWeeks  = calcWeeksFromDates(start, end);
         updated.durationMonths = calcMonthsFromDates(start, end);
       }
@@ -66,9 +61,6 @@ export function ProjectInfoPanel({ info, onChange }: ProjectInfoPanelProps) {
       placeholder={def.placeholder}
     />
   );
-
-  const weeksLabel  = info.durationWeeks  > 0 ? `${info.durationWeeks} wks`                           : '—';
-  const monthsLabel = info.durationMonths > 0 ? `${info.durationMonths.toFixed(2)} mo` : '—';
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg mb-6 overflow-hidden">
@@ -124,7 +116,7 @@ export function ProjectInfoPanel({ info, onChange }: ProjectInfoPanelProps) {
           <div className="grid grid-cols-4 gap-3">
             {field({ key: 'squareFootage',      label: 'Square Footage',       placeholder: '25000', type: 'number' })}
             {field({ key: 'ballParkValue',      label: 'Ball Park Value',      placeholder: '$2,500,000' })}
-            {field({ key: 'workingHoursPerWeek', label: 'Working Hrs / Week',  placeholder: '40', type: 'number' })}
+            {field({ key: 'workingHoursPerWeek', label: 'Working Hrs / Week', placeholder: '40', type: 'number' })}
             {/* intentional empty column for visual balance */}
             <div />
           </div>
@@ -141,8 +133,8 @@ export function ProjectInfoPanel({ info, onChange }: ProjectInfoPanelProps) {
             <div className="grid grid-cols-4 gap-3">
               {field({ key: 'startDate', label: 'Start Date', type: 'date' })}
               {field({ key: 'endDate',   label: 'End Date',   type: 'date' })}
-              <ReadOnlyCell label="Duration (Weeks)" value={weeksLabel} />
-              <ReadOnlyCell label="Duration (Months)" value={monthsLabel} />
+              {field({ key: 'durationWeeks', label: 'Duration (Weeks)', type: 'number', placeholder: '0' })}
+              {field({ key: 'durationMonths', label: 'Duration (Months)', type: 'number', placeholder: '0' })}
             </div>
           </div>
         </div>

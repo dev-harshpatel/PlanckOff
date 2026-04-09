@@ -19,7 +19,7 @@ export function getEffectiveProjectUnitCost(material: MaterialDefinition): numbe
   if (String(material.category).toLowerCase() === "labor") {
     return safe(material.hourlyRate) ?? safe(material.matCost) ?? 65;
   }
-  return safe(material.productivity) ?? safe(material.matCost) ?? 0;
+  return safe(material.matCost) ?? 0;
 }
 
 export function buildProjectPriceMap(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
 import { saveMaterialMatch } from "@/lib/db/assemblyData";
+import { AI_PROMPT_KEYS, getResolvedAIPrompt } from "@/lib/db/aiPrompts";
 import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
 import { withAuth } from "@/lib/auth/api-helpers";
 
@@ -71,10 +72,12 @@ export const POST = withAuth(async (req: NextRequest) => {
     console.log(`[match] Starting material matching for ${extraction.assemblies.length} assemblies, extractionId: ${extractionId ?? "none"}`);
     logElapsed("About to call matchMaterialsToDatabase (OpenRouter batches)");
     const matchStart = Date.now();
+    const promptText = await getResolvedAIPrompt(AI_PROMPT_KEYS.MATERIAL_MATCH);
     const result = await matchMaterialsToDatabase(
       { assemblies: extraction.assemblies },
       database,
       apiKey,
+      promptText,
       totalStart,
     );
     const matchMs = Date.now() - matchStart;

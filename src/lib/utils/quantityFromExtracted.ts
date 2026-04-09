@@ -42,7 +42,7 @@ export const computeQuantityFromExtracted = (
 
   const u = unit.toUpperCase();
   if (u === "SF" || u === "SQFT" || u === "SQF") {
-    if (ceilingArea && ceilingArea > 0) return ceilingArea;
+    if (ceilingArea && ceilingArea > 0) return ceilingArea * (1 + wastage) * layers;
     const fallback = totalLength * heightFt * (1 + wastage) * layers;
     const formula = matDef?.formulaQty;
     if (formula) {
@@ -71,7 +71,7 @@ export const computeQuantityFromExtracted = (
   }
   if (u === "LF") return totalLength;
   if (u === "EA" || u === "HR") return 1;
-  if (ceilingArea && ceilingArea > 0) return ceilingArea;
+  if (ceilingArea && ceilingArea > 0) return ceilingArea * (1 + wastage) * layers;
   return totalLength * heightFt * (1 + wastage) * layers;
 };
 

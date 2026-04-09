@@ -1,7 +1,7 @@
 /**
- * Types and pure utilities for the Markups → General Requirements section.
- * All state shapes and formula implementations live here so components
- * import a single source-of-truth.
+ * Types and defaults for the Markups → General Requirements section.
+ * Formula logic lives in `formulas.ts` so markup calculations have a
+ * dedicated source-of-truth.
  */
 
 // ─── Project Info ─────────────────────────────────────────────────────────────
@@ -19,9 +19,7 @@ export interface ProjectInfo {
   competition: string;
   startDate: string;
   endDate: string;
-  /** Auto-calculated from startDate / endDate — do not set manually. */
   durationWeeks: number;
-  /** Auto-calculated from startDate / endDate including partial days — do not set manually. */
   durationMonths: number;
   workingHoursPerWeek: number;
 }
@@ -56,14 +54,16 @@ export interface StaffingRow {
   workers: number;
   /** User input: percentage of their time on project (0 – 100). */
   percentTime: number;
+  /** Optional per-row duration override. Uses project duration when 0. */
+  durationWeeks: number;
 }
 
 export const DEFAULT_STAFFING_ROWS: StaffingRow[] = [
-  { id: 'ss1', label: 'Site Supervision',        hourlyRate: 0, workers: 0, percentTime: 100 },
-  { id: 'ss2', label: 'Non-working Foreman',      hourlyRate: 0, workers: 0, percentTime: 100 },
-  { id: 'ss3', label: 'Office Project Manager',   hourlyRate: 0, workers: 0, percentTime: 100 },
-  { id: 'ss4', label: 'Project Co-Ordinator',     hourlyRate: 0, workers: 0, percentTime: 100 },
-  { id: 'ss5', label: 'Health & Safety',          hourlyRate: 0, workers: 0, percentTime: 100 },
+  { id: 'ss1', label: 'Site Supervision',        hourlyRate: 0, workers: 0, percentTime: 100, durationWeeks: 0 },
+  { id: 'ss2', label: 'Non-working Foreman',      hourlyRate: 0, workers: 0, percentTime: 100, durationWeeks: 0 },
+  { id: 'ss3', label: 'Office Project Manager',   hourlyRate: 0, workers: 0, percentTime: 100, durationWeeks: 0 },
+  { id: 'ss4', label: 'Project Co-Ordinator',     hourlyRate: 0, workers: 0, percentTime: 100, durationWeeks: 0 },
+  { id: 'ss5', label: 'Health & Safety',          hourlyRate: 0, workers: 0, percentTime: 100, durationWeeks: 0 },
 ];
 
 // ─── General Conditions ───────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ export const DEFAULT_STAFFING_ROWS: StaffingRow[] = [
  */
 export type GcFormulaType =
   | 'lump_sum'                        // amount
-  | 'duration_cleaners_rate'          // durationWeeks × cleaners × hourlyRate × 40
+  | 'duration_cleaners_rate'          // durationWeeks × cleaners × hourlyRate × workingHoursPerWeek
   | 'duration_weekly_expense'         // durationWeeks × weeklyExpense
   | 'units_months_monthly_rate'       // units × months × monthlyRate
   | 'units_unit_rate'                 // units × unitRate
@@ -98,6 +98,10 @@ export interface GeneralConditionsRow {
   area: number;
   occurrences: number;
   hoursPerOccurrence: number;
+  /** Optional per-row duration override. Uses project duration when 0. */
+  durationWeeks: number;
+  /** Optional per-row duration override. Uses project duration when 0. */
+  durationMonths: number;
 }
 
 /** All numeric fields that can be updated via onRowChange. */
@@ -107,6 +111,7 @@ const gcBase: Omit<GeneralConditionsRow, 'id' | 'label' | 'formulaType'> = {
   amount: 0, cleaners: 0, hourlyRate: 0, weeklyExpense: 0,
   units: 0, months: 0, monthlyRate: 0, unitRate: 0,
   area: 0, occurrences: 0, hoursPerOccurrence: 0,
+  durationWeeks: 0, durationMonths: 0,
 };
 
 export const DEFAULT_GENERAL_CONDITIONS_ROWS: GeneralConditionsRow[] = [
@@ -126,42 +131,12 @@ export const DEFAULT_GENERAL_CONDITIONS_ROWS: GeneralConditionsRow[] = [
   { id: 'gcc14', label: 'Misc Hoisting - Crane',                   formulaType: 'occurrences_hours_hourly_rate', ...gcBase, hourlyRate: 250, hoursPerOccurrence: 4 },
 ];
 
-/**
- * Calculates the total for a single General Conditions row.
- * @param durationWeeks - auto-calculated from project dates (used by cleaning/weekly formulas)
- * @param durationMonths - auto-calculated from project dates including partial days (used by monthly formulas)
- */
-export function calcGcRowTotal(
-  row: GeneralConditionsRow,
-  durationWeeks: number,
-  durationMonths: number,
-): number {
-  switch (row.formulaType) {
-    case 'lump_sum':
-      return row.amount;
-    case 'duration_cleaners_rate':
-      return durationWeeks * row.cleaners * row.hourlyRate * 40;
-    case 'duration_weekly_expense':
-      return durationWeeks * row.weeklyExpense;
-    case 'units_months_monthly_rate':
-      return row.units * durationMonths * row.monthlyRate;
-    case 'units_unit_rate':
-      return row.units * row.unitRate;
-    case 'area_months_monthly_rate':
-      return row.area * durationMonths * row.monthlyRate;
-    case 'months_units_monthly_rate':
-      return durationMonths * row.units * row.monthlyRate;
-    case 'occurrences_hours_hourly_rate':
-      return row.occurrences * row.hoursPerOccurrence * row.hourlyRate;
-  }
-}
-
 // ─── Travel & Hotel ───────────────────────────────────────────────────────────
 
 export interface TravelHotelConfig {
   /** Fixed hourly rate used to back-calculate total labour hours from labour cost. */
   hourlyRate: number;
-  /** Additional hours premium (informational input). */
+  /** Additional premium cost entered as a dollar amount. */
   hoursPremium: number;
   /** Travel per-diem rate per day. */
   travelPerDiem: number;
@@ -184,55 +159,95 @@ export interface TravelHotelResult {
   total: number;
 }
 
-/**
- * Calculates all Travel & Hotel derived values.
- * @param config - user-supplied rates
- * @param totalLaborCost - total labour cost from the trade breakdown
- */
-export function calcTravelHotel(
-  config: TravelHotelConfig,
-  totalLaborCost: number,
-): TravelHotelResult {
-  const totalLaborHours =
-    config.hourlyRate > 0 ? totalLaborCost / config.hourlyRate : 0;
-  const days = totalLaborHours / 8;
-  const travelCost = config.travelPerDiem * days;
-  const hotelCost = config.hotelPerDay * days;
-  const total = travelCost + hotelCost;
-  return { totalLaborHours, days, travelCost, hotelCost, total };
+// ─── Administrative ───────────────────────────────────────────────────────────
+
+export type AdministrativeFormulaType =
+  | 'lump_sum'
+  | 'parking_monthly'
+  | 'weekly_budget';
+
+export interface AdministrativeRow {
+  id: string;
+  label: string;
+  formulaType: AdministrativeFormulaType;
+  isCustom?: boolean;
+  amount: number;
+  parkingSpots: number;
+  months: number;
+  monthlyParkingCost: number;
+  weeklyBudget: number;
+  /** Optional per-row duration override. Uses project duration when 0. */
+  durationWeeks: number;
 }
 
-// ─── Pure formula functions ───────────────────────────────────────────────────
+export type AdministrativeField = Exclude<keyof AdministrativeRow, 'id' | 'formulaType'>;
 
-/**
- * Staffing cost formula:
- *   workers × (percentTime / 100) × durationWeeks × hourlyRate × 40 hrs/wk
- */
-export function calcStaffingRowTotal(row: StaffingRow, durationWeeks: number): number {
-  return row.workers * (row.percentTime / 100) * durationWeeks * row.hourlyRate * 40;
+const adminBase: Omit<AdministrativeRow, 'id' | 'label' | 'formulaType' | 'isCustom'> = {
+  amount: 0,
+  parkingSpots: 0,
+  months: 0,
+  monthlyParkingCost: 0,
+  weeklyBudget: 0,
+  durationWeeks: 0,
+};
+
+export const DEFAULT_ADMINISTRATIVE_ROWS: AdministrativeRow[] = [
+  { id: 'adm1', label: 'LEED Project Documentation', formulaType: 'lump_sum', ...adminBase },
+  { id: 'adm2', label: 'Liquidated Damages', formulaType: 'lump_sum', ...adminBase },
+  { id: 'adm3', label: 'Parking', formulaType: 'parking_monthly', ...adminBase },
+  { id: 'adm4', label: 'Fuel & Oil', formulaType: 'weekly_budget', ...adminBase },
+  { id: 'adm5', label: 'Meals and Entertainment', formulaType: 'weekly_budget', ...adminBase },
+];
+
+// ─── Inflation ───────────────────────────────────────────────────────────────
+
+export interface PreconstructionInflationYear {
+  id: string;
+  yearIndex: number;
+  laborInflationPercent: number;
+  materialInflationPercent: number;
 }
 
-/** Returns the ceiling of full weeks between two ISO date strings. Returns 0 if invalid. */
-export function calcWeeksFromDates(startDate: string, endDate: string): number {
-  if (!startDate || !endDate) return 0;
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffMs = end.getTime() - start.getTime();
-  if (diffMs <= 0) return 0;
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7));
+export interface ConstructionInflationYear {
+  id: string;
+  yearIndex: number;
+  laborCompletionPercent: number;
+  materialCompletionPercent: number;
+  laborInflationPercent: number;
+  materialInflationPercent: number;
 }
 
-/**
- * Returns fractional months between two ISO date strings, accounting for every day.
- * Uses 30.4375 days/month (365.25 / 12) for accuracy. Rounded to 2 decimal places.
- * Returns 0 if dates are invalid or end is before start.
- */
-export function calcMonthsFromDates(startDate: string, endDate: string): number {
-  if (!startDate || !endDate) return 0;
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diffMs = end.getTime() - start.getTime();
-  if (diffMs <= 0) return 0;
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  return Math.round((diffDays / 30.4375) * 100) / 100;
+export interface InflationConfig {
+  currentYear: number;
+  startYear: number;
+  preconstructionYears: PreconstructionInflationYear[];
+  constructionYears: ConstructionInflationYear[];
+}
+
+export const DEFAULT_INFLATION_CONFIG: InflationConfig = {
+  currentYear: new Date().getFullYear(),
+  startYear: new Date().getFullYear(),
+  preconstructionYears: [
+    { id: 'pre-1', yearIndex: 1, laborInflationPercent: 0, materialInflationPercent: 0 },
+  ],
+  constructionYears: [
+    { id: 'con-1', yearIndex: 1, laborCompletionPercent: 0, materialCompletionPercent: 0, laborInflationPercent: 0, materialInflationPercent: 0 },
+  ],
+};
+
+export interface InflationYearResult {
+  id: string;
+  yearIndex: number;
+  labor: number;
+  material: number;
+}
+
+export interface InflationResult {
+  preconstructionYears: InflationYearResult[];
+  constructionYears: InflationYearResult[];
+  preconstructionLabor: number;
+  preconstructionMaterial: number;
+  duringConstructionLabor: number;
+  duringConstructionMaterial: number;
+  total: number;
 }

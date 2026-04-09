@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bot,
   Database,
   LayoutDashboard,
   LayoutTemplate,
-  Settings,
   Shield,
   Users,
   LucideIcon,
@@ -51,17 +51,18 @@ const NAV_ITEMS: NavItem[] = [
     icon: Database,
   },
   {
+    href: "/prompts",
+    label: "AI Prompts",
+    icon: Bot,
+  },
+  {
     href: "/assemblies",
     label: "Default Assemblies",
     icon: LayoutTemplate,
   },
 ];
 
-interface NavbarProps {
-  onOpenSettings?: () => void;
-}
-
-export function Navbar({ onOpenSettings }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname();
   const { userRole } = useRBAC();
 
@@ -108,16 +109,6 @@ export function Navbar({ onOpenSettings }: NavbarProps) {
                 </Link>
               );
             })}
-
-            <div className="h-6 w-px bg-slate-200 mx-2" />
-
-            <button
-              onClick={onOpenSettings}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
           </nav>
         </div>
 

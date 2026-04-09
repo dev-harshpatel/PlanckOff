@@ -4,8 +4,8 @@ import React, { useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { NumberInput } from '@/components/ui';
+import { calcGcRowTotal } from './formulas';
 import {
-  calcGcRowTotal,
   type GcFormulaType,
   type GcNumericField,
   type GeneralConditionsRow,
@@ -17,6 +17,7 @@ interface GeneralConditionsSectionProps {
   rows: GeneralConditionsRow[];
   durationWeeks: number;
   durationMonths: number;
+  workingHoursPerWeek: number;
   onRowChange: (id: string, field: GcNumericField, value: number) => void;
   currencySymbol?: string;
 }
@@ -31,6 +32,7 @@ const INPUT_CLS =
 const QTY_W  = 'w-12';   // small integer: cleaners, units, months, occurrences
 const RATE_W = 'w-16';   // dollar rate: /hr, /mo, /unit
 const BIG_W  = 'w-20';   // larger value: lump sum, SF, weekly expense
+const DUR_W = 'w-16';    // editable duration pill
 
 // ─── Inline formula input renderer ───────────────────────────────────────────
 
@@ -38,6 +40,7 @@ interface GcRowInputsProps {
   row: GeneralConditionsRow;
   durationWeeks: number;
   durationMonths: number;
+  workingHoursPerWeek: number;
   onChange: (field: GcNumericField, value: number) => void;
 }
 
@@ -45,7 +48,7 @@ interface GcRowInputsProps {
  * Renders the compact inline input group for a row.
  * All cases must fit comfortably within the fixed 370px input column.
  */
-function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInputsProps) {
+function GcRowInputs({ row, durationWeeks, durationMonths, workingHoursPerWeek, onChange }: GcRowInputsProps) {
   const n = (
     field: GcNumericField,
     width: string,
@@ -70,25 +73,34 @@ function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInpu
     <span className="text-[10px] text-slate-500 shrink-0">{s}</span>
   );
 
-  const durBadge = durationWeeks > 0 ? (
-    <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0 tabular-nums">
-      {durationWeeks} wks
-    </span>
-  ) : (
-    <span className="text-[10px] text-slate-300 border border-slate-200 rounded px-1.5 py-0.5 shrink-0">
-      ? wks
-    </span>
-  );
+  const effectiveDurationWeeks = row.durationWeeks > 0 ? row.durationWeeks : durationWeeks;
+  const effectiveDurationMonths = row.durationMonths > 0 ? row.durationMonths : durationMonths;
 
-  // Blue badge — auto-calculated months including partial days
-  const mosBadge = durationMonths > 0 ? (
-    <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded shrink-0 tabular-nums">
-      {durationMonths.toFixed(2)} mo
-    </span>
-  ) : (
-    <span className="text-[10px] text-slate-300 border border-slate-200 rounded px-1.5 py-0.5 shrink-0">
-      ? mo
-    </span>
+  const durationInput = (
+    field: 'durationWeeks' | 'durationMonths',
+    value: number,
+    tone: 'week' | 'month',
+    placeholder: string,
+  ) => (
+    <div className="flex items-center gap-1 shrink-0">
+      <NumberInput
+        cellMode
+        type="float"
+        value={value}
+        onChange={(v) => onChange(field, v ?? 0)}
+        className={[
+          DUR_W,
+          'text-center text-xs font-semibold rounded px-1.5 py-1 outline-none tabular-nums border',
+          tone === 'week'
+            ? 'text-emerald-700 bg-emerald-50 border-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500'
+            : 'text-blue-700 bg-blue-50 border-blue-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
+        ].join(' ')}
+        placeholder={placeholder}
+      />
+      <span className={tone === 'week' ? 'text-xs font-semibold text-emerald-700' : 'text-xs font-semibold text-blue-700'}>
+        {tone === 'week' ? 'wks' : 'mo'}
+      </span>
+    </div>
   );
 
   // All cases: single flex row, no wrapping, right-aligned in parent
@@ -112,8 +124,8 @@ function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInpu
           {n('hourlyRate', RATE_W, '60')}
           {lbl('/hr')}
           {op('×')}
-          {durBadge}
-          {op('× 40')}
+          {durationInput('durationWeeks', effectiveDurationWeeks, 'week', durationWeeks > 0 ? durationWeeks.toString() : '0')}
+          {op(`× ${workingHoursPerWeek}`)}
         </div>
       );
 
@@ -124,7 +136,7 @@ function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInpu
           {n('weeklyExpense', RATE_W, '0')}
           {lbl('/wk')}
           {op('×')}
-          {durBadge}
+          {durationInput('durationWeeks', effectiveDurationWeeks, 'week', durationWeeks > 0 ? durationWeeks.toString() : '0')}
         </div>
       );
 
@@ -134,7 +146,7 @@ function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInpu
           {n('units', QTY_W, '0', false)}
           {lbl('units')}
           {op('×')}
-          {mosBadge}
+          {durationInput('durationMonths', effectiveDurationMonths, 'month', durationMonths > 0 ? durationMonths.toFixed(2) : '0')}
           {op('×')}
           {lbl('$')}
           {n('monthlyRate', RATE_W, '0')}
@@ -160,7 +172,7 @@ function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInpu
           {n('area', RATE_W, '0')}
           {lbl('SF')}
           {op('×')}
-          {mosBadge}
+          {durationInput('durationMonths', effectiveDurationMonths, 'month', durationMonths > 0 ? durationMonths.toFixed(2) : '0')}
           {op('×')}
           {lbl('$')}
           {n('monthlyRate', RATE_W, '0')}
@@ -171,7 +183,7 @@ function GcRowInputs({ row, durationWeeks, durationMonths, onChange }: GcRowInpu
     case 'months_units_monthly_rate':
       return (
         <div className="flex items-center gap-1">
-          {mosBadge}
+          {durationInput('durationMonths', effectiveDurationMonths, 'month', durationMonths > 0 ? durationMonths.toFixed(2) : '0')}
           {op('×')}
           {n('units', QTY_W, '0', false)}
           {lbl('filters')}
@@ -205,6 +217,7 @@ export function GeneralConditionsSection({
   rows,
   durationWeeks,
   durationMonths,
+  workingHoursPerWeek,
   onRowChange,
   currencySymbol = '$',
 }: GeneralConditionsSectionProps) {
@@ -215,7 +228,7 @@ export function GeneralConditionsSection({
   );
 
   const grandTotal = rows.reduce(
-    (sum, row) => sum + calcGcRowTotal(row, durationWeeks, durationMonths),
+    (sum, row) => sum + calcGcRowTotal(row, durationWeeks, durationMonths, workingHoursPerWeek),
     0,
   );
 
@@ -241,7 +254,7 @@ export function GeneralConditionsSection({
         {hasDurationRows && durationWeeks === 0 && (
           <div className="flex items-center gap-1 text-amber-600">
             <AlertTriangle size={11} />
-            <span className="text-[10px] font-medium">Some rows need project dates</span>
+            <span className="text-[10px] font-medium">Some rows need project duration or row overrides</span>
           </div>
         )}
       </div>
@@ -262,7 +275,7 @@ export function GeneralConditionsSection({
       {/* Data rows */}
       <div className="divide-y divide-slate-100">
         {rows.map((row) => {
-          const rowTotal = calcGcRowTotal(row, durationWeeks, durationMonths);
+          const rowTotal = calcGcRowTotal(row, durationWeeks, durationMonths, workingHoursPerWeek);
 
           return (
             <div key={row.id} className={ROW_GRID} style={GRID_COLS}>
@@ -277,6 +290,7 @@ export function GeneralConditionsSection({
                   row={row}
                   durationWeeks={durationWeeks}
                   durationMonths={durationMonths}
+                  workingHoursPerWeek={workingHoursPerWeek}
                   onChange={(field, value) => onRowChange(row.id, field, value)}
                 />
               </div>

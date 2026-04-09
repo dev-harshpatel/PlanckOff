@@ -65,14 +65,16 @@ export const Reports: React.FC<ReportsProps> = ({
     onCloseReport
 }) => {
     // Configuration
-    const [config, setConfig] = useState<ProposalConfig>({
+    const [config, setConfig] = useState<ProposalConfig & { escalation: number; laborBurden: number }>({
         clientName: 'Client Name',
         clientAddress: 'Project Address',
         preparedBy: 'Your Company Name',
         validityDays: 30,
         taxRate: 8.25,
         markup: 15.0,
-        overhead: 10.0
+        overhead: 10.0,
+        escalation: 0,
+        laborBurden: 15,
     });
 
     const [showConfig, setShowConfig] = useState(false);
@@ -226,17 +228,6 @@ export const Reports: React.FC<ReportsProps> = ({
         };
     }, [priceMap, reportCalculations]);
 
-    // Financial Totals
-    const financials = useMemo(() => {
-        const sub = proposalData.subtotal || 0;
-        const tax = sub * ((config.taxRate || 0) / 100);
-        const overhead = sub * ((config.overhead || 0) / 100);
-        const profitBase = sub + overhead + tax;
-        const profit = profitBase * ((config.markup || 0) / 100);
-        const total = profitBase + profit;
-        return { sub, tax, overhead, profit, total };
-    }, [proposalData, config]);
-
     // ─── Pipeline-driven proposal data (Summary Report format) ─────────────────
     const pipelineProposalData = useMemo(() => {
         if (!materialCostingData.length) return null;
@@ -293,6 +284,26 @@ export const Reports: React.FC<ReportsProps> = ({
             grandTotal: materialTotal + laborTotal,
         };
     }, [materialCostingData, materials, priceMap]);
+
+    // Financial Totals — uses pipeline data (materialTotal + laborTotal) when available.
+    // Applies the same markup chain as the Markups tab:
+    //   escalation (on direct costs) → tax (material only) → burden (labour only) → overhead → profit
+    const financials = useMemo(() => {
+        const materialTotal = pipelineProposalData
+            ? pipelineProposalData.materialTotal
+            : proposalData.subtotal || 0;
+        const laborTotal = pipelineProposalData ? pipelineProposalData.laborTotal : 0;
+        const netDirectCost = materialTotal + laborTotal;
+        const escalationCost = netDirectCost * ((config.escalation || 0) / 100);
+        const taxCost = materialTotal * ((config.taxRate || 0) / 100);
+        const burdenCost = laborTotal * ((config.laborBurden || 0) / 100);
+        const subWithMarkups = netDirectCost + escalationCost + taxCost + burdenCost;
+        const overheadCost = subWithMarkups * ((config.overhead || 0) / 100);
+        const profitBasis = subWithMarkups + overheadCost;
+        const profit = profitBasis * ((config.markup || 0) / 100);
+        const total = profitBasis + profit;
+        return { sub: netDirectCost, materialTotal, laborTotal, escalationCost, taxCost, burdenCost, overhead: overheadCost, profit, total };
+    }, [proposalData, pipelineProposalData, config]);
 
     // Bidding Data
     const biddingData = useMemo(() => {

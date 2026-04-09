@@ -4,18 +4,21 @@ import React, { useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { NumberInput } from '@/components/ui';
-import { calcStaffingRowTotal, type StaffingRow } from './types';
+import { calcStaffingRowTotal } from './formulas';
+import type { StaffingRow } from './types';
 
 interface StaffingSectionProps {
   rows: StaffingRow[];
   durationWeeks: number;
-  onRowChange: (id: string, field: 'workers' | 'percentTime' | 'hourlyRate', value: number) => void;
+  workingHoursPerWeek: number;
+  onRowChange: (id: string, field: 'workers' | 'percentTime' | 'hourlyRate' | 'durationWeeks', value: number) => void;
   currencySymbol?: string;
 }
 
 export function StaffingSection({
   rows,
   durationWeeks,
+  workingHoursPerWeek,
   onRowChange,
   currencySymbol = '$',
 }: StaffingSectionProps) {
@@ -26,11 +29,14 @@ export function StaffingSection({
   );
 
   const grandTotal = rows.reduce(
-    (sum, row) => sum + calcStaffingRowTotal(row, durationWeeks),
+    (sum, row) => sum + calcStaffingRowTotal(row, durationWeeks, workingHoursPerWeek),
     0,
   );
 
   const noDuration = durationWeeks === 0;
+  const durationInputClass =
+    'w-14 text-center text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 ' +
+    'rounded px-2 py-1 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none tabular-nums';
 
   return (
     <div className="mb-6">
@@ -44,7 +50,7 @@ export function StaffingSection({
           <div className="flex items-center gap-1 text-amber-600">
             <AlertTriangle size={11} />
             <span className="text-[10px] font-medium">
-              Set project dates to calculate totals
+              Enter project duration or row overrides to calculate totals
             </span>
           </div>
         )}
@@ -78,7 +84,8 @@ export function StaffingSection({
 
           <tbody className="divide-y divide-slate-50">
             {rows.map((row) => {
-              const rowTotal = calcStaffingRowTotal(row, durationWeeks);
+              const rowTotal = calcStaffingRowTotal(row, durationWeeks, workingHoursPerWeek);
+              const effectiveDurationWeeks = row.durationWeeks > 0 ? row.durationWeeks : durationWeeks;
 
               return (
                 <tr key={row.id} className="hover:bg-slate-50 transition-colors">
@@ -132,13 +139,17 @@ export function StaffingSection({
 
                   {/* Duration — read-only, from projectInfo */}
                   <td className="py-2 text-center">
-                    {noDuration ? (
-                      <span className="text-xs text-slate-300">—</span>
-                    ) : (
-                      <span className="inline-block text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded tabular-nums">
-                        {durationWeeks} wks
-                      </span>
-                    )}
+                    <div className="inline-flex items-center gap-1">
+                      <NumberInput
+                        cellMode
+                        type="float"
+                        value={effectiveDurationWeeks}
+                        onChange={(v) => onRowChange(row.id, 'durationWeeks', v ?? 0)}
+                        className={durationInputClass}
+                        placeholder={durationWeeks > 0 ? durationWeeks.toString() : '0'}
+                      />
+                      <span className="text-xs font-semibold text-emerald-700">wks</span>
+                    </div>
                   </td>
 
                   {/* Row total */}
@@ -169,7 +180,7 @@ export function StaffingSection({
       {/* Formula hint */}
       {!noDuration && (
         <p className="text-[10px] text-slate-400 mt-1 pl-1">
-          Formula: Workers × (% Time / 100) × {durationWeeks} wks × Rate × 40 hrs/wk
+          Formula: Workers × (% Time / 100) × row duration × Rate × {workingHoursPerWeek} hrs/wk
         </p>
       )}
     </div>

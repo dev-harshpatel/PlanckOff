@@ -124,7 +124,7 @@ export const GeneralTab = ({
                         value={localComp.overrideMatCost}
                         onChange={(val) => onLocalChange('overrideMatCost', val as number)}
                         type="number"
-                        placeholder={material?.productivity?.toString() || '0.00'}
+                        placeholder={material?.matCost?.toString() ?? '0.00'}
                     />
                     <ComponentField
                         label="Quantity Override"

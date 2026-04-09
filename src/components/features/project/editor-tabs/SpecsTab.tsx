@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { AssemblyComponent } from '@/types';
+import { AssemblyComponent, MaterialDefinition } from '@/types';
 import { ComponentField } from './ComponentField';
 
 interface SpecsTabProps {
     localComp: AssemblyComponent;
+    material?: MaterialDefinition;
     onLocalChange: (
         field: keyof AssemblyComponent,
         value: AssemblyComponent[keyof AssemblyComponent],
@@ -13,7 +14,7 @@ interface SpecsTabProps {
     isLabor?: boolean;
 }
 
-export const SpecsTab = ({ localComp, onLocalChange, isLabor = false }: SpecsTabProps) => (
+export const SpecsTab = ({ localComp, material, onLocalChange, isLabor = false }: SpecsTabProps) => (
     <div className="space-y-5">
         {/* Calculation Parameters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -73,6 +74,15 @@ export const SpecsTab = ({ localComp, onLocalChange, isLabor = false }: SpecsTab
                     onChange={(val) => onLocalChange('crew', val as number)}
                     type="number"
                     placeholder="1"
+                />
+                <ComponentField
+                    label="Production Rate (units/hr)"
+                    value={localComp.productionRate}
+                    onChange={(val) => onLocalChange('productionRate', val as number)}
+                    type="number"
+                    placeholder={
+                        (localComp.productivityFromDb ?? material?.productivity)?.toString() ?? '—'
+                    }
                 />
             </div>
         </div>

@@ -102,7 +102,7 @@ export const ComponentDetailModal: React.FC<ComponentDetailModalProps> = ({
             'materialName', 'materialCode', 'sectionCode', 'usage', 'ocSpacing',
             'overrideLayers', 'wasteFactor', 'overrideMatCost',
             'overrideLaborCost', 'overrideQuantity', 'selectedUnit', 'crew',
-            'rValue', 'customFormula',
+            'productionRate', 'rValue', 'customFormula',
             'formulaQtyOverride', 'formulaSecQtyOverride',
             'formulaCeilQtyOverride', 'formulaCeilSecQtyOverride',
         ];
@@ -215,7 +215,7 @@ export const ComponentDetailModal: React.FC<ComponentDetailModalProps> = ({
                     />
                 )}
                 {activeTab === 'specs' && (
-                    <SpecsTab localComp={localComp} onLocalChange={handleLocalChange} isLabor={isLabor} />
+                    <SpecsTab localComp={localComp} material={resolvedMaterial} onLocalChange={handleLocalChange} isLabor={isLabor} />
                 )}
                 {activeTab === 'formulas' && (
                     <FormulasTab
