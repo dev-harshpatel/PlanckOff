@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { GeneralRequirement, GcCategory } from '@/types';
 import {
   MarkupFilterDropdown,
   MarkupFilterState,
@@ -14,14 +13,25 @@ import { ProjectInfoPanel } from '@/components/features/reports/markups/ProjectI
 import { StaffingSection } from '@/components/features/reports/markups/StaffingSection';
 import { GeneralConditionsSection } from '@/components/features/reports/markups/GeneralConditionsSection';
 import { TravelHotelSection } from '@/components/features/reports/markups/TravelHotelSection';
+import { AdministrativeSection } from '@/components/features/reports/markups/AdministrativeSection';
+import { InflationSection } from '@/components/features/reports/markups/InflationSection';
 import {
+  calcStaffingRowTotal,
+  calcGcRowTotal,
+  calcTravelHotel,
+  calcAdministrativeRowTotal,
+  calcInflation,
+} from '@/components/features/reports/markups/formulas';
+import {
+  DEFAULT_ADMINISTRATIVE_ROWS,
+  DEFAULT_INFLATION_CONFIG,
   DEFAULT_PROJECT_INFO,
   DEFAULT_STAFFING_ROWS,
   DEFAULT_GENERAL_CONDITIONS_ROWS,
   DEFAULT_TRAVEL_HOTEL_CONFIG,
-  calcStaffingRowTotal,
-  calcGcRowTotal,
-  calcTravelHotel,
+  type AdministrativeField,
+  type AdministrativeRow,
+  type InflationConfig,
   type ProjectInfo,
   type StaffingRow,
   type GeneralConditionsRow,
@@ -208,33 +218,12 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
   currencySymbol = '$',
   filterStorageKey = 'project-report:markups',
 }) => {
-  // Prefer pipeline output (materialCostingData) when available. For categories with empty materials_costing
-  // (e.g. Ceiling, Bulkhead — "Assembly not found in material match"), fall back to markupItems from calculateMaterials.
   const effectiveMarkupItems = useMemo(() => {
-    const fromCosting =
-      materialCostingData.length > 0
-        ? flattenMaterialCostingToItems(materialCostingData)
-        : [];
-    if (fromCosting.length === 0) return markupItems;
-
-    const byCategoryTotal: Record<string, number> = {};
-    ASSEMBLY_CATEGORIES.forEach((c) => {
-      byCategoryTotal[c] = 0;
-    });
-    fromCosting.forEach((m) => {
-      const norm = normalizeCategoryForDisplay(m.assemblyType);
-      if (byCategoryTotal[norm] !== undefined) {
-        byCategoryTotal[norm] += getItemCost(m, priceMap);
-      }
-    });
-    const zeroCategories = new Set(
-      ASSEMBLY_CATEGORIES.filter((c) => byCategoryTotal[c] === 0)
-    );
-    const fallbackItems = markupItems.filter((m) =>
-      zeroCategories.has(normalizeCategoryForDisplay(m.assemblyType))
-    );
-    return [...fromCosting, ...fallbackItems];
-  }, [markupItems, materialCostingData, priceMap]);
+    if (materialCostingData.length > 0) {
+      return flattenMaterialCostingToItems(materialCostingData);
+    }
+    return markupItems;
+  }, [markupItems, materialCostingData]);
 
   const markupBaseData = useMemo(() => {
     const availableLevels = new Set<string>();
@@ -278,7 +267,7 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
   }, []);
 
   const handleStaffingRowChange = useCallback(
-    (id: string, field: 'workers' | 'percentTime' | 'hourlyRate', value: number) => {
+    (id: string, field: 'workers' | 'percentTime' | 'hourlyRate' | 'durationWeeks', value: number) => {
       setStaffingRows((prev) =>
         prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
       );
@@ -305,6 +294,14 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     setTravelHotelConfig(cfg);
   }, []);
 
+  const [inflationConfig, setInflationConfig] = useState<InflationConfig>(
+    DEFAULT_INFLATION_CONFIG,
+  );
+
+  const handleInflationChange = useCallback((cfg: InflationConfig) => {
+    setInflationConfig(cfg);
+  }, []);
+
   const createDefaultFilterState = useCallback(
     (): MarkupFilterState => ({
       selectedBreakdownTypes: new Set(),
@@ -318,28 +315,38 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
       createDefaultFilterState,
     );
 
-  // Only Admin free-form items remain here; Site items are now in gcRows (GeneralConditionsSection).
-  const [generalConditions, setGeneralConditions] = useState<GeneralRequirement[]>([
-    { id: 'ad1', category: 'Admin', description: 'Project Documentation', quantity: 1, unit: 'ls', rate: 1000, total: 0 },
-    { id: 'ad2', category: 'Admin', description: 'Fuel & Oil', quantity: 0, unit: 'wk', rate: 125, total: 0 },
-  ]);
+  const [administrativeRows, setAdministrativeRows] = useState<AdministrativeRow[]>(DEFAULT_ADMINISTRATIVE_ROWS);
 
-  const updateGcItem = useCallback(
-    (id: string, field: keyof GeneralRequirement, value: string | number) => {
-      setGeneralConditions((prev) =>
-        prev.map((item) => {
-          if (item.id !== id) return item;
-          const updated = { ...item, [field]: value };
-          if (field === 'quantity' || field === 'rate')
-            updated.total =
-              (typeof updated.quantity === 'number' ? updated.quantity : 0) *
-              (typeof updated.rate === 'number' ? updated.rate : 0);
-          return updated;
-        })
+  const handleAdministrativeRowChange = useCallback(
+    (id: string, field: AdministrativeField, value: string | number | boolean) => {
+      setAdministrativeRows((prev) =>
+        prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
       );
     },
-    []
+    [],
   );
+
+  const handleAddAdministrativeRow = useCallback(() => {
+    setAdministrativeRows((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        label: 'New Item',
+        formulaType: 'lump_sum',
+        isCustom: true,
+        amount: 0,
+        parkingSpots: 0,
+        months: 0,
+        monthlyParkingCost: 0,
+        weeklyBudget: 0,
+        durationWeeks: 0,
+      },
+    ]);
+  }, []);
+
+  const handleRemoveAdministrativeRow = useCallback((id: string) => {
+    setAdministrativeRows((prev) => prev.filter((row) => row.id !== id));
+  }, []);
 
   const availableLevels = markupBaseData.availableLevels;
 
@@ -350,6 +357,23 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     });
   }, [markupBaseData, filterState.selectedLevels]);
 
+  // allTradeBreakdown: unfiltered — used for ALL cost totals (GC, markup chain, final total).
+  // Filters must never change the project total.
+  const allTradeBreakdown = useMemo(() => {
+    const trades: Record<string, { material: number; labor: number }> = {
+      'Dry Wall': { material: 0, labor: 0 },
+      Framing: { material: 0, labor: 0 },
+      Insulation: { material: 0, labor: 0 },
+      Other: { material: 0, labor: 0 },
+    };
+    markupBaseData.items.forEach((item) => {
+      if (item.isLabor) trades[item.trade].labor += item.cost;
+      else trades[item.trade].material += item.cost;
+    });
+    return trades;
+  }, [markupBaseData.items]);
+
+  // tradeBreakdown: filtered view — used ONLY for the breakdown display table.
   const tradeBreakdown = useMemo(() => {
     const trades: Record<string, { material: number; labor: number }> = {
       'Dry Wall': { material: 0, labor: 0 },
@@ -407,25 +431,39 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
   const staffingTotal = useMemo(
     () =>
       staffingRows.reduce(
-        (sum, row) => sum + calcStaffingRowTotal(row, projectInfo.durationWeeks),
+        (sum, row) => sum + calcStaffingRowTotal(row, projectInfo.durationWeeks, projectInfo.workingHoursPerWeek),
         0,
       ),
-    [staffingRows, projectInfo.durationWeeks],
+    [staffingRows, projectInfo.durationWeeks, projectInfo.workingHoursPerWeek],
+  );
+
+  const administrativeTotal = useMemo(
+    () =>
+      administrativeRows.reduce(
+        (sum, row) => sum + calcAdministrativeRowTotal(row, projectInfo.durationWeeks),
+        0,
+      ),
+    [administrativeRows, projectInfo.durationWeeks],
   );
 
   const gcConditionsTotal = useMemo(
     () =>
       gcRows.reduce(
-        (sum, row) => sum + calcGcRowTotal(row, projectInfo.durationWeeks, projectInfo.durationMonths),
+        (sum, row) => sum + calcGcRowTotal(row, projectInfo.durationWeeks, projectInfo.durationMonths, projectInfo.workingHoursPerWeek),
         0,
       ),
-    [gcRows, projectInfo.durationWeeks, projectInfo.durationMonths],
+    [gcRows, projectInfo.durationWeeks, projectInfo.durationMonths, projectInfo.workingHoursPerWeek],
   );
 
   // Derived separately to avoid circular dependency inside the `totals` useMemo
+  const totalMaterialFromTrades = useMemo(
+    () => Object.values(allTradeBreakdown).reduce((sum, v) => sum + v.material, 0),
+    [allTradeBreakdown],
+  );
+
   const totalLaborFromTrades = useMemo(
-    () => Object.values(tradeBreakdown).reduce((sum, v) => sum + v.labor, 0),
-    [tradeBreakdown],
+    () => Object.values(allTradeBreakdown).reduce((sum, v) => sum + v.labor, 0),
+    [allTradeBreakdown],
   );
 
   const travelHotelTotal = useMemo(
@@ -433,21 +471,27 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     [travelHotelConfig, totalLaborFromTrades],
   );
 
+  const inflationTotal = useMemo(
+    () => calcInflation(inflationConfig, totalLaborFromTrades, totalMaterialFromTrades).total,
+    [inflationConfig, totalLaborFromTrades, totalMaterialFromTrades],
+  );
+
   const totals = useMemo(() => {
     let totalMaterial = 0;
     let totalLabor = 0;
-    Object.values(tradeBreakdown).forEach((v) => {
+    Object.values(allTradeBreakdown).forEach((v) => {
       totalMaterial += v.material;
       totalLabor += v.labor;
     });
     const gcTotal =
-      generalConditions.reduce((s, i) => s + i.quantity * i.rate, 0) +
+      administrativeTotal +
       staffingTotal +
       gcConditionsTotal +
-      travelHotelTotal;
+      travelHotelTotal +
+      inflationTotal;
     const netDirectCost = totalMaterial + totalLabor;
     const grossCost = netDirectCost + gcTotal;
-    const escalationCost = grossCost * (config.escalation / 100);
+    const escalationCost = netDirectCost * (config.escalation / 100);
     const taxCost = totalMaterial * (config.tax / 100);
     const burdenCost = totalLabor * (config.laborBurden / 100);
     const subTotalWithTaxes =
@@ -470,20 +514,15 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
       profitCost,
       finalTotal,
     };
-  }, [tradeBreakdown, generalConditions, staffingTotal, gcConditionsTotal, travelHotelTotal, config]);
+  }, [allTradeBreakdown, administrativeTotal, staffingTotal, gcConditionsTotal, travelHotelTotal, inflationTotal, config]);
 
   const pieData = useMemo(
-    () =>
-      [
-        { name: 'Material', value: totals.totalMaterial, color: '#22c55e' },
-        { name: 'Labor', value: totals.totalLabor, color: '#3b82f6' },
-        { name: 'Gen. Req.', value: totals.gcTotal, color: '#ef4444' },
-        {
-          name: 'Markups',
-          value: totals.finalTotal - totals.grossCost,
-          color: '#a855f7',
-        },
-      ].filter((d) => d.value > 0),
+    () => [
+      { name: 'Material', value: totals.totalMaterial, color: '#22c55e' },
+      { name: 'Labor', value: totals.totalLabor, color: '#3b82f6' },
+      { name: 'Gen. Req.', value: totals.gcTotal, color: '#ef4444' },
+      { name: 'Markups', value: totals.finalTotal - totals.grossCost, color: '#a855f7' },
+    ],
     [totals]
   );
 
@@ -566,87 +605,6 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
     </table>
   );
 
-  const renderGcSection = (title: string, category: GcCategory) => (
-    <div className="mb-6">
-      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 border-b pb-1">
-        {title}
-      </h4>
-      <div className="space-y-1">
-        {generalConditions
-          .filter((i) => i.category === category)
-          .map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-2 text-sm hover:bg-slate-50 p-1 rounded group"
-            >
-              <input
-                type="text"
-                value={item.description}
-                onChange={(e) =>
-                  updateGcItem(item.id, 'description', e.target.value)
-                }
-                className="flex-1 bg-transparent border-none outline-none text-slate-700 font-medium text-xs focus:ring-0 p-0"
-              />
-              <div className="flex items-center gap-1 w-20">
-                <input
-                  type="number"
-                  value={item.quantity}
-                  onChange={(e) =>
-                    updateGcItem(item.id, 'quantity', parseFloat(e.target.value) || 0)
-                  }
-                  className="w-12 text-right border border-slate-200 rounded px-1 text-xs focus:border-emerald-500 outline-none"
-                />
-                <span className="text-slate-400 text-[10px] w-6">{item.unit}</span>
-              </div>
-              <div className="w-20 text-right">
-                <input
-                  type="number"
-                  value={item.rate}
-                  onChange={(e) =>
-                    updateGcItem(item.id, 'rate', parseFloat(e.target.value) || 0)
-                  }
-                  className="w-full text-right border-none bg-transparent outline-none text-xs text-slate-500"
-                />
-              </div>
-              <div className="w-20 text-right font-medium text-slate-800">
-                {formatCurrency(item.quantity * item.rate)}
-              </div>
-              <button
-                onClick={() =>
-                  setGeneralConditions((prev) =>
-                    prev.filter((g) => g.id !== item.id)
-                  )
-                }
-                className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 p-1"
-                aria-label="Remove item"
-              >
-                &times;
-              </button>
-            </div>
-          ))}
-        <button
-          onClick={() =>
-            setGeneralConditions((prev) => [
-              ...prev,
-              {
-                id: crypto.randomUUID(),
-                category,
-                description: 'New Item',
-                quantity: 0,
-                unit: 'ls',
-                rate: 0,
-                total: 0,
-              },
-            ])
-          }
-          className="text-[10px] text-emerald-600 font-medium hover:underline mt-1 pl-1"
-        >
-          + Add {title} Item
-        </button>
-      </div>
-    </div>
-  );
-
   const showTrade =
     filterState.selectedBreakdownTypes.size === 0 ||
     filterState.selectedBreakdownTypes.has('Trade Breakdown');
@@ -672,58 +630,50 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
           <div className="p-6 flex-1 overflow-y-auto">
             <ProjectInfoPanel info={projectInfo} onChange={handleProjectInfoChange} />
 
-            <div className="flex gap-8 mb-8">
-              <div className="w-1/4 bg-white p-4 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center justify-start shrink-0">
-                <h3 className="text-sm font-medium text-slate-500 mb-4 w-full text-left">
-                  Cost Distribution
-                </h3>
-                <div
-                  className="relative w-40 h-40 rounded-full"
-                  style={{
-                    background: `conic-gradient(${(() => {
-                      let currentAngle = 0;
-                      const total = pieData.reduce((s, i) => s + i.value, 0);
-                      return pieData
-                        .map((d) => {
-                          const start = currentAngle;
-                          const angle =
-                            total > 0 ? (d.value / total) * 360 : 0;
-                          currentAngle += angle;
-                          return `${d.color} ${start}deg ${currentAngle}deg`;
-                        })
-                        .join(', ');
-                    })()})`,
-                  }}
-                >
-                  <div className="absolute inset-0 m-auto w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-inner">
-                    <span className="text-xs font-bold text-slate-500">
-                      Total
-                    </span>
-                  </div>
+            {/* Cost Distribution — horizontal top card */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-100 p-4 mb-6 flex items-center gap-8">
+              <div
+                className="relative w-32 h-32 rounded-full shrink-0"
+                style={{
+                  background: (() => {
+                    const total = pieData.reduce((s, i) => s + i.value, 0);
+                    if (total === 0) return '#e2e8f0';
+                    let currentAngle = 0;
+                    const segments = pieData
+                      .filter((d) => d.value > 0)
+                      .map((d) => {
+                        const start = currentAngle;
+                        const angle = (d.value / total) * 360;
+                        currentAngle += angle;
+                        return `${d.color} ${start}deg ${currentAngle}deg`;
+                      })
+                      .join(', ');
+                    return `conic-gradient(${segments})`;
+                  })(),
+                }}
+              >
+                <div className="absolute inset-0 m-auto w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-inner">
+                  <span className="text-xs font-bold text-slate-500">Total</span>
                 </div>
-                <div className="flex flex-col gap-2 mt-6 w-full px-2">
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Cost Distribution</p>
+                <div className="flex flex-wrap gap-x-10 gap-y-3">
                   {pieData.map((d) => (
-                    <div
-                      key={d.name}
-                      className="flex justify-between items-center text-xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: d.color }}
-                        />
-                        <span className="text-slate-600">{d.name}</span>
-                      </div>
-                      <span className="font-medium text-slate-800">
-                        {currencySymbol}
-                        {formatCurrency(d.value)}
+                    <div key={d.name} className="flex items-center gap-2 text-sm">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                      <span className="text-slate-600">{d.name}</span>
+                      <span className="font-semibold text-slate-800">
+                        {currencySymbol}{formatCurrency(d.value)}
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
+            </div>
 
-              <div className="flex-1 bg-white p-6 rounded-lg shadow-sm border border-slate-100 flex flex-col gap-6 min-w-0">
+            <div className="mb-8">
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100 flex flex-col gap-6">
                 {showTrade && (
                   <div>
                     <h2 className="text-lg font-bold text-slate-800 mb-4">
@@ -802,6 +752,7 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
                   <StaffingSection
                     rows={staffingRows}
                     durationWeeks={projectInfo.durationWeeks}
+                    workingHoursPerWeek={projectInfo.workingHoursPerWeek}
                     onRowChange={handleStaffingRowChange}
                     currencySymbol={currencySymbol}
                   />
@@ -811,6 +762,7 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
                     rows={gcRows}
                     durationWeeks={projectInfo.durationWeeks}
                     durationMonths={projectInfo.durationMonths}
+                    workingHoursPerWeek={projectInfo.workingHoursPerWeek}
                     onRowChange={handleGcRowChange}
                     currencySymbol={currencySymbol}
                   />
@@ -823,10 +775,22 @@ export const MarkupsView: React.FC<MarkupsProps> = ({
                     currencySymbol={currencySymbol}
                   />
 
-                  {/* Administrative — free-form rows */}
-                  <div className="mt-2">
-                    {renderGcSection('Administrative', 'Admin')}
-                  </div>
+                  <InflationSection
+                    config={inflationConfig}
+                    totalLaborCost={totalLaborFromTrades}
+                    totalMaterialCost={totalMaterialFromTrades}
+                    onChange={handleInflationChange}
+                    currencySymbol={currencySymbol}
+                  />
+
+                  <AdministrativeSection
+                    rows={administrativeRows}
+                    durationWeeks={projectInfo.durationWeeks}
+                    onRowChange={handleAdministrativeRowChange}
+                    onAddCustomRow={handleAddAdministrativeRow}
+                    onRemoveRow={handleRemoveAdministrativeRow}
+                    currencySymbol={currencySymbol}
+                  />
                 </div>
 
                 <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 mt-2">

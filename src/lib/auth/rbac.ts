@@ -72,6 +72,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     description: 'Materials database',
   },
   {
+    path: '/prompts',
+    minRole: 'Estimator',
+    description: 'AI prompt management',
+  },
+  {
     path: '/assemblies',
     minRole: 'Estimator',
     description: 'Default assemblies',

@@ -66,8 +66,27 @@ Examples that trigger this:
 - "Modify ProjectInfoPanel or StaffingSection"
 - "Change how durationWeeks flows into GC calculations"
 
+### If the task involves ANY number that is a cost, quantity, total, or markup — anywhere in the app:
+→ **READ `.claude/rules/calculations.md` before writing a single line of code.**
+
+This rule applies even if the task looks like a "simple UI change". If a component renders a dollar value or quantity, the calculation rule applies.
+
+Examples that trigger this:
+- "Fix the labour total in the Markups tab"
+- "The total on the Labour tab doesn't match the Markups tab"
+- "Add a new cost breakdown / summary panel"
+- "Change how material cost is calculated"
+- "Add escalation / tax / overhead / profit / burden"
+- "Show the project total anywhere"
+- "A number looks wrong in the UI"
+- "Add a useMemo that sums costs"
+- Touching `Reports.tsx`, `Markups.tsx`, `LaborView.tsx`, `MatLabView.tsx`, `MaterialsView.tsx`
+- Touching `calculationUtils.ts`, `aggregateMaterialsFromCosting.ts`, `projectCosting.ts`, `markupChain.ts`, or any `calc*` function
+- Any `reduce()` that accumulates cost or quantity values
+
 ### Most tasks touch multiple layers — read all relevant rule files.
 Example: "Add a form that saves to the database" → read `frontend.md` + `backend.md` + `database.md`.
+Example: "Fix the total shown in the Markups tab" → read `calculations.md` + `frontend.md` + `markups-general-requirements.md`.
 
 ---
 
@@ -79,6 +98,9 @@ Example: "Add a form that saves to the database" → read `frontend.md` + `backe
 4. **Never write a new API route without `withAuth` or `withRoleAuth`** — there are no public endpoints.
 5. **Never use `any` in TypeScript** — use proper types from `src/types/`.
 6. **Always use `@/` path alias** — never use relative paths like `../../components`.
+7. **Never compute the same cost/total in more than one place** — every calculated value has ONE canonical function in `src/lib/utils/`. All components read that function's output. Duplicate formulas are bugs. See `calculations.md`.
+8. **Never use `Math.round()` or `toFixed()` on intermediate calculation results** — format only at the final display layer.
+9. **Never let a filter change a total that is shared across tabs** — filters are view-only unless explicitly designed otherwise.
 
 ---
 

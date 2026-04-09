@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
+import { AI_PROMPT_KEYS, getResolvedAIPrompt } from "@/lib/db/aiPrompts";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
 import { withAuth } from "@/lib/auth/api-helpers";
 
@@ -46,7 +47,8 @@ export const POST = withAuth(async (req: NextRequest) => {
 
     console.log(`[extract] Starting PDF extraction, projectId: ${projectId ?? "none"}`);
     const extractStart = Date.now();
-    const result = await extractAssembliesFromPDF(pdfBase64, apiKey);
+    const promptText = await getResolvedAIPrompt(AI_PROMPT_KEYS.PDF_EXTRACTION);
+    const result = await extractAssembliesFromPDF(pdfBase64, apiKey, promptText);
     const extractMs = Date.now() - extractStart;
     console.log(`[extract] Extracted ${result.assemblies.length} assemblies from PDF — ${(extractMs / 1000).toFixed(2)}s`);
 

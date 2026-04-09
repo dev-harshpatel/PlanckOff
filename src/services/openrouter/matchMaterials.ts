@@ -6,24 +6,6 @@ import {
 import type { AssemblyMeta, MatchResult } from "@/types/pipeline";
 import type { MaterialDefinition } from "@/types";
 
-const MATCH_PROMPT = `You are a construction cost estimator. Match each extracted assembly material to database entries. Output ONLY valid JSON.
-
-INPUTS: (1) Extracted assemblies (assemblies, materials, raw_text, thickness_mm, layers, fire_rating). (2) Material & labor DB (code, section, type, description, category, matCost, per, manufacturer).
-
-RULES:
-1) Material match: Use category, thickness (mm→inch OK), keywords (Type X, Regular, Shaftliner, Furring, CH Stud). No match → null.
-2) Metal stud: Also attach matching TRACK and Deflection/Slotted track from DB (same width).
-3) Screws: Add from DB — drywall screws for gypsum, fire-rated for Type X, framing/tek for metal studs & furring. No labor unless in DB.
-4) Fire rating non-null: Attach fire sealant/caulking material + fire-stop labor from DB. STC/sound: acoustic sealant + labor if in DB.
-5) Labor: Gypsum→Hang Drywall + Type X premium if Type X; Sheathing/Shaftliner→Shaftliner install; Metal studs→Install Metal Studs; CH→Shaftwall Framing; Furring→Furring Channel; Batt→Install Batt; Sealants→Fire-Stop/Caulking. Labor additive.
-6) Do NOT invent codes, SKUs, or sealants. Only use DB entries.
-7) SKIP null/empty materials: If an extracted material has null or empty raw_text, OMIT it entirely from the output. Do not match, do not guess, do not assign any materials or labor to it. Only process materials that have a real, non-null raw_text value.
-8) REQUIRED — section: Each matched_materials and matched_labor entry MUST include the "section" field. Copy the exact "section" value (e.g. "09 22 16", "09 29 00", "01 00 00") from the DB entry you matched. Never omit section.
-
-OUTPUT (valid JSON only, no markdown):
-{"assemblies":[{"assembly_id":"string","materials_costing":[{"extracted_material":{...},"matched_materials":[{"code","section","description","manufacturer","unit","unit_cost"}],"matched_labor":[{"code","section","description","unit","unit_cost"}]}]}]}
-Required fields: "unit" = per from DB, "unit_cost" = number from matCost (this is the production rate per unit for materials, or cost per labor unit for labor), "section" = exact section code from DB (REQUIRED for every matched_materials and matched_labor entry). Process all assemblies but only materials with non-null raw_text. Preserve extracted raw_text.`;
-
 /** Collect keywords from a batch of assemblies for optional DB filtering (e.g. raw_text, categories). */
 function getBatchKeywords(assemblies: unknown[]): Set<string> {
   const keywords = new Set<string>();
@@ -93,6 +75,7 @@ export async function matchMaterialsToDatabase(
   extraction: { assemblies: unknown[] },
   materialDb: MaterialDefinition[],
   apiKey: string,
+  promptText: string,
   routeStartMs: number = Date.now(),
 ): Promise<MatchResult> {
   const elapsed = () => ((Date.now() - routeStartMs) / 1000).toFixed(2);
@@ -177,7 +160,7 @@ export async function matchMaterialsToDatabase(
       model: MODEL,
       max_tokens: 32768,
       messages: [
-        { role: "system", content: MATCH_PROMPT },
+        { role: "system", content: promptText },
         { role: "user", content: userMessage },
       ],
     };

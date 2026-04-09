@@ -1,29 +1,12 @@
 import { repairJSONForAssemblyExtraction, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
 import type { ExtractionResult } from "@/types/pipeline";
 
-const EXTRACT_PROMPT = `Extract wall, roof, floor, and CEILING assembly data from ALL pages of the document. Return ONLY valid JSON. No commentary, no markdown.
-
-MULTI-PAGE PDFs (critical): Process EVERY page. Ceiling assemblies (C1, C2, C3, C4, C5, etc.) are often on later pages — do not skip them. Extract assemblies from page 1, page 2, and all subsequent pages. Combine all assemblies into one output.
-
-ASSEMBLY ID: Short alphanumeric tag from page (e.g. W14, WE3, P1, C1, C2, C3, RF2B, WT1a). Ceiling assemblies often use C-prefix (C1, C2, C3, C4, C5). No long names. Untagged: UN-TAGGED-WALL-1, UN-TAGGED-ROOF-1, UN-TAGGED-FLOOR-1, UN-TAGGED-CEILING-1. Never null.
-
-EXTRACT: Gypsum board (each layer separate), gypsum sheathing, steel framing (studs/tracks/metal/steel joists/steel angle/wire ties), batt/mineral wool insulation, plywood/OSB, blocking/bracing, steel deck, vapor barriers, sealants, trim/accessories. For ceiling assemblies: gypsum wallboard, shaft liner, steel joists, steel studs, steel angle, wire ties, mineral fibre insulation — extract all as applicable.
-
-EXCLUDE: Air barriers, cladding (brick/stone/metal/EIFS/siding/fibre cement), roofing membranes, rigid insulation, concrete/CMU/masonry, paint, window/curtain wall, aluminum panels/mullions, back pans, vertical support systems. Include sound batts; exclude acoustic caulk.
-
-SCOPE (critical): Materials must come ONLY from the content tied to THAT assembly (same row/section/block as its tag). Never copy materials from another assembly. If an assembly's content has no in-scope materials (e.g. only cladding/window/concrete), output it with ALL material arrays empty. One assembly's content = isolated; do not bleed across.
-
-Each material: "raw_text" = exact verbatim from PDF. Unstated properties = null.
-
-LAYERS (critical): Multiple gypsum layers = separate entries (never merge). If PDF says "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X", output TWO separate entries — each with layers=2 (the total layer count from the PDF as an integer). The "layers" field must always reflect the layer count stated in the PDF (1, 2, 3, etc.). If the PDF does not mention a layer count, set layers=1. Never set layers=null for gypsum board or gypsum sheathing.
-
-OUTPUT: JSON only. Structure: assemblies[].assembly_id, fire_rating, stc_rating, materials.{ gypsum_board[], gypsum_sheathing[], steel_framing[], insulation[], plywood[], blocking_and_bracing[], steel_deck[], vapor_barriers[], sealants[], trim_and_accessories[] }. Each item: raw_text, thickness/size/gauge/spacing/type/layers/description/r_value/depth as applicable or null. No assemblies on page → {"assemblies":[]}. Include every visible assembly from ALL pages; empty materials = empty arrays.`;
-
 export type { ExtractionResult };
 
 export async function extractAssembliesFromPDF(
   pdfBase64: string,
   apiKey: string,
+  promptText: string,
 ): Promise<ExtractionResult> {
   const requestBody = {
     model: "google/gemini-2.5-pro",
@@ -33,7 +16,7 @@ export async function extractAssembliesFromPDF(
       {
         role: "user",
         content: [
-          { type: "text", text: EXTRACT_PROMPT },
+          { type: "text", text: promptText },
           {
             type: "image_url",
             image_url: {

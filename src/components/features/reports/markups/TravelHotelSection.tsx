@@ -3,10 +3,8 @@
 import React, { useCallback } from 'react';
 
 import { NumberInput } from '@/components/ui';
-import {
-  calcTravelHotel,
-  type TravelHotelConfig,
-} from './types';
+import { calcTravelHotel } from './formulas';
+import type { TravelHotelConfig } from './types';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -157,11 +155,12 @@ export function TravelHotelSection({
         {/* Days — derived */}
         {calcRow('Days (calculated)', derived.days, false, true)}
 
-        {inputRow('Hours Premium', 'hoursPremium', '', 'hrs', false)}
+        {inputRow('Hours Premium', 'hoursPremium', '$', '')}
         {inputRow('Travel Per Diem', 'travelPerDiem', '$', '/day')}
         {inputRow('Hotel / Day', 'hotelPerDay', '$', '/day')}
 
         {/* Cost rows */}
+        {costRow('Hours Premium', config.hoursPremium)}
         {costRow('Travel Cost  (Travel per diem × Days)', derived.travelCost)}
         {costRow('Hotel Cost  (Hotel/day × Days)', derived.hotelCost)}
       </div>

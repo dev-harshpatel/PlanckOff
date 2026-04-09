@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
+import { AI_PROMPT_KEYS, getResolvedAIPrompt } from "@/lib/db/aiPrompts";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
 import { finalizeWithUnifiedPrompt } from "@/services/openrouter/processWithUnifiedPrompt";
 import { parseRawTakeoffSheet } from "@/services/takeoff/parseRawTakeoff";
@@ -78,7 +79,12 @@ export const POST = withAuth(async (req: NextRequest) => {
     // ── Step 1: PDF → Assembly JSON ──────────────────────────────────
     console.log(`\n${TAG} ── Step 1/4: Extracting assemblies from PDF ──`);
     const step1Start = performance.now();
-    const extractResult = await extractAssembliesFromPDF(pdfBase64, apiKey);
+    const extractPrompt = await getResolvedAIPrompt(AI_PROMPT_KEYS.PDF_EXTRACTION);
+    const extractResult = await extractAssembliesFromPDF(
+      pdfBase64,
+      apiKey,
+      extractPrompt,
+    );
     const assemblyPayload = { assemblies: extractResult.assemblies };
     const assemblyTs = Date.now();
     const assemblyFilename = `assembly-${assemblyTs}.json`;
