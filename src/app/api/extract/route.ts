@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveAssemblyExtraction } from "@/lib/db/assemblyData";
 import { AI_PROMPT_KEYS, getResolvedAIPrompt } from "@/lib/db/aiPrompts";
+import {
+  updatePipelineRunStep,
+  failPipelineRun,
+} from "@/lib/db/pipelineRuns";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
 import { withAuth } from "@/lib/auth/api-helpers";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s.
 export const maxDuration = 300;
@@ -22,7 +27,7 @@ export const POST = withAuth(async (req: NextRequest) => {
   }
 
   try {
-    let body: { pdfBase64?: string; projectId?: string };
+    let body: { pdfBase64?: string; projectId?: string; runId?: string };
     try {
       body = await req.json();
     } catch (parseErr) {
@@ -34,7 +39,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       );
     }
 
-    const { pdfBase64, projectId } = body;
+    const { pdfBase64, projectId, runId } = body;
     if (!pdfBase64) {
       console.error("[extract] No pdfBase64 provided");
       return NextResponse.json(
@@ -43,9 +48,14 @@ export const POST = withAuth(async (req: NextRequest) => {
       );
     }
 
+    // Mark step 1 as in-progress in the run record
+    if (runId) {
+      await updatePipelineRunStep(runId, 1);
+    }
+
     const totalStart = Date.now();
 
-    console.log(`[extract] Starting PDF extraction, projectId: ${projectId ?? "none"}`);
+    console.log(`[extract] Starting PDF extraction, projectId: ${projectId ?? "none"}, runId: ${runId ?? "none"}`);
     const extractStart = Date.now();
     const promptText = await getResolvedAIPrompt(AI_PROMPT_KEYS.PDF_EXTRACTION);
     const result = await extractAssembliesFromPDF(pdfBase64, apiKey, promptText);
@@ -61,18 +71,30 @@ export const POST = withAuth(async (req: NextRequest) => {
       projectId,
     );
     if (saveError) {
+      const msg = `Failed to save to database: ${JSON.stringify(saveError)}`;
       console.error("[extract] DB save error:", saveError);
-      throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
+      if (runId) await failPipelineRun(runId, 1, msg);
+      throw new Error(msg);
     }
 
-    // Local folder backup disabled — see process-pipeline / localJsonStorage.
-    console.log(`[extract] DB: ${savedData?.id} | Local: (disabled)`);
+    // Record extractionId in run so step 2 can be retried without re-extracting
+    if (runId && savedData?.id) {
+      await updatePipelineRunStep(runId, 1, { extractionId: savedData.id });
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      void writeJsonToLocal("assembly", { assemblies: result.assemblies }, filename).then((p) => {
+        if (p) console.log(`[extract] Local file written: ${p}`);
+      });
+    }
+    console.log(`[extract] DB: ${savedData?.id} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));
-    console.log(`[extract] ✅ Success. Phase times — extraction: ${(extractMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log(`[extract] ✅ Success. extraction: ${(extractMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
     console.log(`[extract] Extracted ${result.assemblies.length} assemblies`);
     console.log("-".repeat(70) + "\n");
+
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },

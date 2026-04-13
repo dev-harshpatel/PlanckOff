@@ -9,7 +9,7 @@ import {
   MaterialsFilterDropdown,
   MaterialsFilterState,
 } from '@/components/features/reports/MaterialsFilterDropdown';
-import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
+import { useReportFilters } from '@/hooks/useReportFilters';
 import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type {
   MaterialCosting,
@@ -147,7 +147,7 @@ export const MatLabView = ({
     selectedSections: new Set(),
     selectedCostCodes: new Set(),
   }), []);
-  const [filterState, setFilterState] = useSessionStorageSetState<MaterialsFilterState>(
+  const [filterState, setFilterState] = useReportFilters<MaterialsFilterState>(
     filterStorageKey,
     createDefaultFilterState,
   );

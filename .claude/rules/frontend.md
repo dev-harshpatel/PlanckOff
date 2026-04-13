@@ -467,7 +467,123 @@ useEffect(() => {
 
 ---
 
-## 12. Do Not Do
+## 12. Tab Navigation Pattern
+
+Every multi-tab feature uses this exact structure — no exceptions. Do not invent a different pattern.
+
+```tsx
+// 1. Define the tab IDs as a union type
+type TabId = 'overview' | 'details' | 'history';
+
+// 2. Define the tab config array (label maps to ID)
+const TABS: { id: TabId; label: string; icon?: React.ReactNode }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'details', label: 'Details' },
+  { id: 'history', label: 'History' },
+];
+
+// 3. State
+const [activeTab, setActiveTab] = useState<TabId>('overview');
+
+// 4. Tab bar JSX
+<div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
+  {TABS.map(tab => (
+    <button
+      key={tab.id}
+      onClick={() => setActiveTab(tab.id)}
+      className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+        activeTab === tab.id
+          ? 'bg-white text-slate-900 shadow-sm'
+          : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      {tab.icon}
+      {tab.label}
+    </button>
+  ))}
+</div>
+
+// 5. Content switching — use explicit equality checks, not a map
+{activeTab === 'overview' && <OverviewPanel />}
+{activeTab === 'details' && <DetailsPanel />}
+{activeTab === 'history' && <HistoryPanel />}
+```
+
+**Rules:**
+- Tab state is always `useState<TabId>` with the union type — never `useState<string>`.
+- TABS array is always defined as a `const` outside the component render.
+- Active state: `bg-white shadow-sm` pill on `bg-slate-100` tray — never underline or colored border.
+- When tab state should survive navigation, use `useReportFilters()` (URL params) instead of `useState`.
+
+---
+
+## 13. Page Layout Pattern
+
+Every full page inside `app/(protected)/(app)/` uses this outer wrapper:
+
+```tsx
+// Full-height page with header + scrollable content
+<div className="h-full flex flex-col overflow-hidden">
+  {/* Page header — always fixed at top */}
+  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
+    <div>
+      <h1 className="text-lg font-bold text-slate-900">Page Title</h1>
+      <p className="text-xs text-slate-500 mt-0.5">Optional subtitle</p>
+    </div>
+    <div className="flex items-center gap-2">
+      {/* Action buttons */}
+    </div>
+  </div>
+
+  {/* Scrollable content */}
+  <div className="flex-1 overflow-y-auto p-6">
+    {/* Page content */}
+  </div>
+</div>
+```
+
+For pages that do NOT scroll (e.g. split-panel layouts):
+```tsx
+<div className="h-full flex overflow-hidden">
+  <aside className="w-64 border-r border-slate-200 flex flex-col overflow-hidden shrink-0">
+    {/* Left panel */}
+  </aside>
+  <main className="flex-1 flex flex-col overflow-hidden">
+    {/* Right panel */}
+  </main>
+</div>
+```
+
+**Rules:**
+- The outer `div` is always `h-full` — never `h-screen` inside a layout that already controls height.
+- `overflow-hidden` on the outer wrapper + `overflow-y-auto` on the scroll target — never both on the same element.
+- Header is always `shrink-0` so it never collapses.
+- Never use `min-h-screen` inside the app shell — the shell already fills the viewport.
+
+---
+
+## 14. Section Headers
+
+```tsx
+// Primary section header — used at the top of a card or panel section
+<div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-4 shrink-0">
+  <h3 className="text-sm font-semibold text-slate-800">Section Title</h3>
+  {/* Optional: count badge or action button */}
+</div>
+
+// Sub-section header — inside tables, below a primary header
+<h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+  Sub-section
+</h4>
+
+// Inline label — next to a value in a detail panel
+<span className="text-xs font-medium text-slate-500 mr-2">Label:</span>
+<span className="text-sm text-slate-800">Value</span>
+```
+
+---
+
+## 15. Do Not Do
 
 - Do NOT use inline `style={{}}` for things achievable with Tailwind.
 - Do NOT introduce new color values (hex, rgb) in classNames.
@@ -476,3 +592,6 @@ useEffect(() => {
 - Do NOT create wrapper divs without purpose — keep DOM depth minimal.
 - Do NOT duplicate UI patterns that already exist in the UI component library.
 - Do NOT use `any` for event handler types — use `React.ChangeEvent<HTMLInputElement>`, etc.
+- Do NOT invent a new tab navigation pattern — use the exact structure from Section 12.
+- Do NOT use `h-screen` inside the app shell layout — use `h-full` instead.
+- Do NOT use underlines or colored borders for active tab state — use the white pill on `bg-slate-100` tray.

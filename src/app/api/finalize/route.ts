@@ -18,6 +18,7 @@ import {
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
 import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 import {
   type MaterialMatchInput,
   type ProjectContext,
@@ -26,6 +27,11 @@ import {
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 import { finalizeAssembliesWithTakeoff } from "@/services/openrouter/finalizeAssemblies";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  updatePipelineRunStep,
+  completePipelineRun,
+  failPipelineRun,
+} from "@/lib/db/pipelineRuns";
 import { withAuth } from "@/lib/auth/api-helpers";
 
 // Hobby plan max: 300s. Pro allows up to 900s.
@@ -47,6 +53,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       assemblyExtractionId?: string;
       materialMatch?: { assemblies?: unknown[] };
       projectId?: string;
+      runId?: string;
       takeoff?: unknown[];
       takeoffOutputId?: string;
     };
@@ -62,7 +69,11 @@ export const POST = withAuth(async (req: NextRequest) => {
       );
     }
 
-    const { materialMatch, projectId, assemblyExtractionId, takeoff, takeoffOutputId } = body;
+    const { materialMatch, projectId, assemblyExtractionId, takeoff, takeoffOutputId, runId } = body;
+
+    if (runId) {
+      await updatePipelineRunStep(runId, 3);
+    }
 
     let materialMatchData = materialMatch;
     let takeoffData: unknown[] | undefined;
@@ -232,17 +243,15 @@ export const POST = withAuth(async (req: NextRequest) => {
       assemblyExtractionId,
       resolvedTakeoffOutputId,
     );
-    // Local data/output folder writes disabled (writeJsonToLocal).
-    // if (process.env.NODE_ENV === "development") {
-    //   void writeJsonToLocal("final_output", result, filename).then((path) => {
-    //     if (path) {
-    //       console.log(`[finalize] Local file written: ${path}`);
-    //     }
-    //   });
-    // }
-    console.log(
-      `[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: (disabled)`,
-    );
+    if (process.env.NODE_ENV === "development") {
+      void writeJsonToLocal("final_output", result, filename).then((p) => {
+        if (p) console.log(`[finalize] Local file written: ${p}`);
+      });
+    }
+    if (runId && dbSaved?.id) {
+      await completePipelineRun(runId, dbSaved.id);
+    }
+    console.log(`[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

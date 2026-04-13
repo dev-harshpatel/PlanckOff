@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(npx tsc:*)",
+      "Bash(grep -v 'exportUtils\\\\|reportExport\\\\|Reports.tsx.*$$typeof\\\\|jspdf')",
+      "Bash(find:*)"
+    ]
+  }
+}

@@ -3,9 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, ProposalConfig } from '@/types';
 import type { MaterialCosting } from "@/types/assembly";
-import { calculateMaterials } from '@/services/gemini/calculateMaterials';
 import { FileText, Settings } from 'lucide-react';
-import { Select } from '@/components/ui';
+import { Select, EmptyState } from '@/components/ui';
+import { applyMarkupChain } from '@/lib/utils/markupChain';
 import { LaborView } from '@/components/features/reports/LaborView';
 import { MarkupsView } from '@/components/features/reports/Markups';
 import { MaterialsView, ExtendedLineItem } from '@/components/features/reports/MaterialsView';
@@ -28,10 +28,15 @@ const CSI_SECTION_DISPLAY_NAMES: Record<string, string> = {
     '09 51 00': 'Ceiling Systems',
 };
 
-/** Maps a raw section string (e.g. "09 22 16 - Non-Structural…" or "09 22 16") to a display name. */
+/**
+ * Maps a raw section string (e.g. "09 22 16 - Non-Structural…" or "09 22 16") to a display name.
+ * Prefers the static dictionary; falls back to the human-readable part of the section string itself,
+ * enabling dynamic extension from spec_database.section values without updating the dictionary.
+ */
 const getSectionDisplayName = (section: string): string => {
-    const code = section.split(' - ')[0].trim().substring(0, 8);
-    return CSI_SECTION_DISPLAY_NAMES[code] || section || 'Other';
+    const parts = section.split(' - ');
+    const code = parts[0].trim().substring(0, 8);
+    return CSI_SECTION_DISPLAY_NAMES[code] ?? (parts.length > 1 ? parts.slice(1).join(' - ').trim() : section || 'Other');
 };
 
 const fmt = (v: number) =>
@@ -104,62 +109,6 @@ export const Reports: React.FC<ReportsProps> = ({
     const reportCalculations = useMemo(() => {
         const proposalItems: CalculatedMaterial[] = [];
         const reportLineItems: ExtendedLineItem[] = [];
-        const scopeSummary = safeAssemblies
-            .map((assembly) => {
-                const insts = safeTakeoffs[assembly.id] || [];
-                const totalLF = insts.reduce((sum, instance) => sum + ((instance.length || 0) * (instance.quantity || 1)), 0);
-                const totalSF = insts.reduce((sum, instance) => {
-                    const quantity = instance.quantity || 1;
-                    if (instance.ceilingArea) return sum + (instance.ceilingArea * quantity);
-                    return sum + ((instance.length || 0) * (instance.height || 0) * quantity);
-                }, 0);
-                return { ...assembly, totalLF, totalSF };
-            })
-            .filter((assembly) => assembly.totalLF > 0 || assembly.totalSF > 0);
-
-        safeAssemblies.forEach((assembly) => {
-            const insts = safeTakeoffs[assembly.id] || [];
-
-            if (insts.length > 0) {
-                try {
-                    proposalItems.push(
-                        ...calculateMaterials(assembly, insts, materials || []),
-                    );
-                } catch (error) {
-                    console.error("Error calculating proposal materials:", error);
-                }
-            }
-
-            const levelGroups: Record<string, TakeoffInstance[]> = {};
-            insts.forEach((instance) => {
-                const level = instance.level || 'Unknown';
-                if (!levelGroups[level]) levelGroups[level] = [];
-                levelGroups[level].push(instance);
-            });
-
-            Object.entries(levelGroups).forEach(([level, levelInstances]) => {
-                try {
-                    const levelMaterials = calculateMaterials(
-                        assembly,
-                        levelInstances,
-                        materials || [],
-                    );
-                    levelMaterials.forEach((material) => {
-                        reportLineItems.push({
-                            ...material,
-                            area: level,
-                            section: getCSISection(material.category, material.item),
-                            costCode: material.laborCode || material.category,
-                            conditionType: assembly.description,
-                            supplier: 'Generic',
-                            assemblyType: assembly.assemblyType || 'Interior Walls',
-                        });
-                    });
-                } catch (error) {
-                    console.error("Report Calc Error", error);
-                }
-            });
-        });
 
         if (manualItems.length > 0) {
             proposalItems.push(...manualItems);
@@ -176,12 +125,8 @@ export const Reports: React.FC<ReportsProps> = ({
             });
         }
 
-        return {
-            proposalItems,
-            reportLineItems,
-            scopeSummary,
-        };
-    }, [manualItems, materials, safeAssemblies, safeTakeoffs]);
+        return { proposalItems, reportLineItems, scopeSummary: [] };
+    }, [manualItems]);
 
     // Data Processing
     const proposalData = useMemo(() => {
@@ -285,25 +230,25 @@ export const Reports: React.FC<ReportsProps> = ({
         };
     }, [materialCostingData, materials, priceMap]);
 
-    // Financial Totals — uses pipeline data (materialTotal + laborTotal) when available.
-    // Applies the same markup chain as the Markups tab:
-    //   escalation (on direct costs) → tax (material only) → burden (labour only) → overhead → profit
+    // Financial Totals — uses pipeline data when available.
+    // Markup chain: escalation (on direct costs) → tax (material only) → burden (labour only) → overhead → profit.
+    // Source of truth: applyMarkupChain() in src/lib/utils/markupChain.ts.
     const financials = useMemo(() => {
-        const materialTotal = pipelineProposalData
+        const totalMaterial = pipelineProposalData
             ? pipelineProposalData.materialTotal
-            : proposalData.subtotal || 0;
-        const laborTotal = pipelineProposalData ? pipelineProposalData.laborTotal : 0;
-        const netDirectCost = materialTotal + laborTotal;
-        const escalationCost = netDirectCost * ((config.escalation || 0) / 100);
-        const taxCost = materialTotal * ((config.taxRate || 0) / 100);
-        const burdenCost = laborTotal * ((config.laborBurden || 0) / 100);
-        const subWithMarkups = netDirectCost + escalationCost + taxCost + burdenCost;
-        const overheadCost = subWithMarkups * ((config.overhead || 0) / 100);
-        const profitBasis = subWithMarkups + overheadCost;
-        const profit = profitBasis * ((config.markup || 0) / 100);
-        const total = profitBasis + profit;
-        return { sub: netDirectCost, materialTotal, laborTotal, escalationCost, taxCost, burdenCost, overhead: overheadCost, profit, total };
-    }, [proposalData, pipelineProposalData, config]);
+            : proposalData.subtotal ?? 0;
+        const totalLabor = pipelineProposalData ? pipelineProposalData.laborTotal : 0;
+        return applyMarkupChain(
+            { totalMaterial, totalLabor, gcTotal: 0 },
+            {
+                escalation: config.escalation ?? 0,
+                tax: config.taxRate ?? 0,
+                laborBurden: config.laborBurden ?? 0,
+                overhead: config.overhead ?? 0,
+                profit: config.markup ?? 0,
+            },
+        );
+    }, [proposalData.subtotal, pipelineProposalData, config]);
 
     // Bidding Data
     const biddingData = useMemo(() => {
@@ -512,9 +457,6 @@ export const Reports: React.FC<ReportsProps> = ({
                     />
                 ) : activeReport === 'markups' ? (
                     <MarkupsView
-                        markupItems={reportLineItems}
-                        materialCostingData={materialCostingData}
-                        priceMap={priceMap}
                         filterStorageKey={`${reportFilterScope}:markups`}
                     />
                 ) : (
@@ -728,55 +670,13 @@ export const Reports: React.FC<ReportsProps> = ({
                                         </div>
                                     </>
                                 ) : (
-                                    <>
-                                        {/* Fallback: calculateMaterials-based view (no pipeline data) */}
-                                        <div className="flex-1">
-                                            <h3 className="bg-slate-100 px-3 py-1.5 font-bold text-slate-700 text-sm border-l-4 border-emerald-500 mb-4 uppercase tracking-wide">Detailed Cost Breakdown</h3>
-                                            {Object.keys(proposalData.csiGroups).length === 0 ? (
-                                                <p className="text-sm text-slate-500 py-8 text-center">
-                                                    No data available. Run the pipeline to generate cost estimates.
-                                                </p>
-                                            ) : (
-                                                <div className="space-y-6">
-                                                    {Object.entries(proposalData.csiGroups).sort().map(([csi, itemsAny]) => {
-                                                        const items = itemsAny as { material: CalculatedMaterial, cost: number }[];
-                                                        return (
-                                                            <div key={csi}>
-                                                                <h4 className="font-bold text-slate-600 text-sm mb-2 pb-1 border-b border-slate-200">{csi}</h4>
-                                                                <table className="w-full text-xs">
-                                                                    <tbody>
-                                                                        {items.map((x, i) => (
-                                                                            <tr key={i}>
-                                                                                <td className="py-1 text-slate-700 pl-2">{x.material.item}</td>
-                                                                                <td className="py-1 text-right text-slate-500 w-32 whitespace-nowrap">
-                                                                                    {(x.material.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} {x.material.unit}
-                                                                                </td>
-                                                                                <td className="py-1 text-right font-medium text-slate-800 w-36 whitespace-nowrap">
-                                                                                    ${x.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="border-t-2 border-slate-800 pt-4 flex justify-end">
-                                            <div className="w-64 space-y-2 text-sm">
-                                                <div className="flex justify-between text-slate-600">
-                                                    <span>Subtotal</span>
-                                                    <span>${financials.sub.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                                <div className="flex justify-between text-slate-800 font-bold text-lg border-t border-slate-300 pt-2 mt-2">
-                                                    <span>Total Price</span>
-                                                    <span>${financials.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
+                                    <div className="flex flex-col items-center justify-center py-16">
+                                        <EmptyState
+                                            icon={FileText}
+                                            title="No pipeline data"
+                                            description="Upload a PDF spec sheet and Excel takeoff, then run the pipeline to generate cost estimates."
+                                        />
+                                    </div>
                                 )}
 
                                 {/* Footer */}

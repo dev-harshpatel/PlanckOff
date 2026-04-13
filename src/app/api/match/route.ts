@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
 import { saveMaterialMatch } from "@/lib/db/assemblyData";
 import { AI_PROMPT_KEYS, getResolvedAIPrompt } from "@/lib/db/aiPrompts";
+import {
+  updatePipelineRunStep,
+  failPipelineRun,
+} from "@/lib/db/pipelineRuns";
 import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
 import { withAuth } from "@/lib/auth/api-helpers";
+import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s. Without Fluid Compute, Pro max 300s.
 export const maxDuration = 300;
@@ -29,7 +34,12 @@ export const POST = withAuth(async (req: NextRequest) => {
   try {
     console.log(`[match] START at ${new Date().toISOString()} (Vercel maxDuration: ${maxDuration}s)`);
 
-    let body: { extraction?: { assemblies?: unknown[] }; extractionId?: string; projectId?: string };
+    let body: {
+      extraction?: { assemblies?: unknown[] };
+      extractionId?: string;
+      projectId?: string;
+      runId?: string;
+    };
     try {
       body = await req.json();
     } catch (parseErr) {
@@ -42,13 +52,18 @@ export const POST = withAuth(async (req: NextRequest) => {
     }
     logElapsed("Request body parsed");
 
-    const { extraction, extractionId, projectId } = body;
+    const { extraction, extractionId, projectId, runId } = body;
     if (!extraction?.assemblies) {
       console.error("[match] No extraction.assemblies in body");
       return NextResponse.json(
         { error: "No extraction data provided" },
         { status: 400 },
       );
+    }
+
+    // Mark step 2 as in-progress in the run record
+    if (runId) {
+      await updatePipelineRunStep(runId, 2);
     }
 
     let dbLoadMs = 0;
@@ -63,6 +78,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     } catch (readErr) {
       const msg = readErr instanceof Error ? readErr.message : "Unknown error";
       console.error("[match] Failed to load material database:", msg);
+      if (runId) await failPipelineRun(runId, 2, `Material database not available: ${msg}`);
       return NextResponse.json(
         { error: `Material database not available: ${msg}` },
         { status: 500 },
@@ -96,29 +112,30 @@ export const POST = withAuth(async (req: NextRequest) => {
       projectId,
     );
     if (saveError) {
+      const msg = `Failed to save to database: ${JSON.stringify(saveError)}`;
       console.error("[match] DB save error:", saveError);
-      throw new Error(`Failed to save to database: ${JSON.stringify(saveError)}`);
+      if (runId) await failPipelineRun(runId, 2, msg);
+      throw new Error(msg);
     }
 
-    // Local data/output folder writes disabled (writeJsonToLocal).
-    // if (process.env.NODE_ENV === "development") {
-    //   void writeJsonToLocal("material_match", {
-    //     assemblies: result.assemblies,
-    //   }).then((path) => {
-    //     if (path) {
-    //       console.log(`[match] Local file written: ${path}`);
-    //     }
-    //   });
-    // }
-    console.log(
-      `[match] DB: ${savedData?.id} | Local: (disabled)`,
-    );
+    // Record matchId in run so step 3 can be retried
+    if (runId && savedData?.id) {
+      await updatePipelineRunStep(runId, 2, { matchId: savedData.id });
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      void writeJsonToLocal("material_match", { assemblies: result.assemblies }).then((p) => {
+        if (p) console.log(`[match] Local file written: ${p}`);
+      });
+    }
+    console.log(`[match] DB: ${savedData?.id} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));
-    console.log(`[match] ✅ Success. Phase times — material DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
+    console.log(`[match] ✅ Success. DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
     console.log(`[match] Matched ${result.assemblies.length} assemblies`);
     console.log("-".repeat(70) + "\n");
+
     return NextResponse.json({
       success: true,
       result: { assemblies: result.assemblies },

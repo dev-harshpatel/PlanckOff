@@ -55,6 +55,31 @@ Examples that trigger this:
 - "Add a constant"
 - "Refactor types in `src/types/`"
 
+### If the task involves data fetching, context, hooks, overrides, or how project data flows to components:
+→ **READ `.claude/rules/state-management.md` before writing a single line of code.**
+
+Examples that trigger this:
+- "Add a `useEffect` that fetches data"
+- "Create a new hook for project data"
+- "Why isn't the override updating in the Markups tab?"
+- "How does `materialCostingData` get into the Reports component?"
+- "The component is re-fetching too often"
+- "Move fetching logic out of the component"
+- Touching `AppContext.tsx`, `ProjectDataContext.tsx`, `useProjectData.ts`, `useCurrentUser.ts`
+- Any `useEffect` that calls `fetch()`
+
+### If the task involves the AI pipeline, `ImportFilesModal`, pipeline routes, or `PipelineContext`:
+→ **READ `.claude/rules/pipeline.md` before writing a single line of code.**
+
+Examples that trigger this:
+- "Add a step to the pipeline"
+- "Show progress during the pipeline run"
+- "The extract / match / finalize step is failing"
+- "Change the AI prompt for extraction"
+- "Add retry for a failed pipeline step"
+- Touching `/api/extract`, `/api/match`, `/api/finalize`, `/api/parse-takeoff`
+- Touching `ImportFilesModal.tsx`, `PipelineContext.tsx`, or any file in `src/services/`
+
 ### If the task involves the Markups tab, General Requirements (Division 01), or any section under `src/components/features/reports/markups/`:
 → **READ `.claude/rules/markups-general-requirements.md` before writing a single line of code.**
 
@@ -125,5 +150,106 @@ src/
 └── constants/           ← All app constants, formulas, defaults
 ```
 
+## Key Hooks and Contexts (Always Use These)
+
+| Need | Hook / Context | File |
+|------|---------------|------|
+| Current user + role | `useCurrentUser()` | `src/hooks/useCurrentUser.ts` |
+| Project assemblies + costing + costs | `useProjectDataContext()` | `src/context/ProjectDataContext.tsx` |
+| Global materials list | `useMaterials()` | `src/context/AppContext.tsx` |
+| Pipeline progress + open modal | `usePipeline()` | `src/context/PipelineContext.tsx` |
+| Role checks | `useRBAC()` | `src/hooks/useRBAC.ts` |
+
+---
+
+## Dependency Rules
+
+### Confirmed Unused (remove if present)
+- `@google/genai` — newer Google AI SDK, never imported anywhere. Remove from `package.json`.
+
+### Legacy (do not expand usage)
+- `@google/generative-ai` — used only in `/api/gemini/route.ts` (legacy path, will be removed in Pillar 4 cleanup). Do not import this in new files.
+
+### Pinning
+- `xlsx` must be pinned to a specific version — never use `"latest"`. Check `package.json`.
+- `@types/uuid` belongs in `devDependencies`, not `dependencies`.
+
+### Adding New Dependencies
+Before adding any new `npm` package:
+1. Check if the use case can be satisfied by a package already in `package.json`.
+2. Check if a built-in (`crypto`, `fs`, `path`) covers the need.
+3. If a new package is truly needed, add it with an exact version (no `^` or `~` for production deps).
+4. Never add UI libraries (no `shadcn`, `radix`, `headless-ui`, `react-select`) — use `src/components/ui/`.
+5. Never add state management libraries (no Redux, Zustand, Jotai) — use React Context.
+
+---
+
+## UI Standards (Always Consistent)
+
+### Page-level layout
+```tsx
+// Every page inside app/(protected)/(app)/ follows this wrapper:
+<div className="p-6 flex flex-col gap-6 h-full">
+  {/* Page header */}
+  <div className="flex items-center justify-between">
+    <h1 className="text-lg font-bold text-slate-900">Page Title</h1>
+    {/* Optional action buttons */}
+  </div>
+  {/* Page content */}
+</div>
+```
+
+### Tab navigation
+Every multi-tab feature uses this exact pattern — no exceptions:
+```tsx
+type TabId = 'general' | 'specs' | 'formulas';
+const [activeTab, setActiveTab] = useState<TabId>('general');
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'general', label: 'General' },
+  { id: 'specs', label: 'Specs' },
+  { id: 'formulas', label: 'Formulas' },
+];
+
+// Tab bar:
+<div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+  {TABS.map(tab => (
+    <button
+      key={tab.id}
+      onClick={() => setActiveTab(tab.id)}
+      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+        activeTab === tab.id
+          ? 'bg-white text-slate-900 shadow-sm'
+          : 'text-slate-600 hover:text-slate-900'
+      }`}
+    >
+      {tab.label}
+    </button>
+  ))}
+</div>
+```
+
+### Section headers inside panels
+```tsx
+// Primary section header (e.g. "Staffing", "Materials")
+<div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-4">
+  <h3 className="text-sm font-semibold text-slate-800">Section Title</h3>
+  {/* Optional badge or action */}
+</div>
+
+// Sub-section header (e.g. inside a table block)
+<h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+  Sub-section
+</h4>
+```
+
+### Cost / number display
+- Always use `tabular-nums` className on cells showing numbers.
+- Format costs at display layer only: `value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })`.
+- Show `—` (em dash) when a numeric value is zero and no user input has been made.
+- Currency prefix `$` is a separate `<span className="text-slate-400 text-xs mr-0.5">$</span>`.
+
+---
+
 ## Current Development Phase
-See `docs/WALL_ASSEMBLY_GUIDE.md` for phase tracking and `docs/PHASE_X_TEST.md` for test plans.
+See `REFACTOR_PLAN.md` for the 4-pillar refactoring roadmap. See `docs/WALL_ASSEMBLY_GUIDE.md` for assembly phase tracking.

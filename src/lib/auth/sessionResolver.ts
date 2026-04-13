@@ -6,7 +6,8 @@ import {
 } from '@/lib/db/auth';
 import type { SessionWithAdmin } from '@/lib/supabase/types';
 import type { Admin } from '@/types/auth';
-import type { RoleName, TeamMemberWithRole } from '@/types/team';
+import type { TeamMemberWithRole } from '@/types/team';
+import type { RoleName } from '@/types/team';
 import { AUTH_CONFIG } from '@/constants/auth';
 
 export interface ResolvedSession {
@@ -24,29 +25,17 @@ export interface ResolveSessionOptions {
 }
 
 const buildUserFromSession = (session: SessionWithAdmin): Admin | null => {
-  if (session.team_member) {
-    return {
-      id: session.team_member.id,
-      email: session.team_member.email,
-      name: session.team_member.name,
-      role: (session.team_member.role?.name || 'Estimator') as RoleName,
-      initials:
-        session.team_member.initials ||
-        session.team_member.name.charAt(0).toUpperCase(),
-    };
-  }
+  if (!session.team_member) return null;
 
-  if (session.admin) {
-    return {
-      id: session.admin.id,
-      email: session.admin.email,
-      name: session.admin.name,
-      role: session.admin.role as RoleName,
-      initials: session.admin.initials || session.admin.name.charAt(0).toUpperCase(),
-    };
-  }
-
-  return null;
+  return {
+    id: session.team_member.id,
+    email: session.team_member.email,
+    name: session.team_member.name,
+    role: (session.team_member.role?.name ?? 'Estimator') as RoleName,
+    initials:
+      session.team_member.initials ||
+      session.team_member.name.charAt(0).toUpperCase(),
+  };
 };
 
 export async function resolveSessionFromToken(

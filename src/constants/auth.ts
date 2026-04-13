@@ -46,18 +46,12 @@ export const AUTH_ERRORS = {
 // Fields to select from admins table (excludes password_hash)
 export const ADMIN_PUBLIC_FIELDS = 'id, email, name, role, initials' as const;
 
-// Fields for session with joined admin (legacy)
+// Fields for session with joined team_member.
+// The admins table join has been removed — all users now resolve via team_members.
 export const SESSION_WITH_ADMIN_FIELDS = `
   id,
   token,
   expires_at,
-  admin:admins (
-    id,
-    email,
-    name,
-    role,
-    initials
-  ),
   team_member:team_members (
     id,
     email,

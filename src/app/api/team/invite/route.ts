@@ -12,7 +12,6 @@ import {
   getRoleByName,
   getTeamMemberByEmail,
   getPendingInvitationsByEmail,
-  updateInvitation,
 } from "@/lib/db/team";
 import { withRoleAuth } from "@/lib/auth";
 import {
@@ -92,47 +91,31 @@ export const POST = withRoleAuth(
       }
 
       let invitation = existingInvitations?.[0] ?? null;
+      const isResend = !!invitation;
 
-      if (invitation) {
-        const refreshedExpiry = new Date();
-        refreshedExpiry.setDate(refreshedExpiry.getDate() + 7);
-        const { data: updatedInvitation, error: refreshError } = await updateInvitation(
-          invitation.id,
-          {
-            name: normalizedName,
-            role_id: roleData.id,
-            expires_at: refreshedExpiry.toISOString(),
-            used_at: null,
-          },
-        );
-
-        if (refreshError || !updatedInvitation) {
-          console.error("Failed to refresh invitation:", refreshError);
-          return NextResponse.json(
-            { success: false, error: "Failed to refresh invitation" },
-            { status: 500 },
-          );
-        }
-
-        invitation = updatedInvitation;
-      } else {
-        const { data: createdInvitation, error: inviteError } = await createInvitation({
-          email: normalizedEmail,
-          name: normalizedName,
-          role_id: roleData.id,
-          invited_by: teamMember.id,
-        });
-
-        if (inviteError || !createdInvitation) {
-          console.error("Failed to create invitation:", inviteError);
-          return NextResponse.json(
-            { success: false, error: "Failed to create invitation" },
-            { status: 500 },
-          );
-        }
-
-        invitation = createdInvitation;
+      if (isResend && invitation) {
+        // Delete the old invitation to invalidate its token — old invite links stop working.
+        await deleteInvitationById(invitation.id);
+        invitation = null;
       }
+
+      // Create a fresh invitation (generates a new token regardless of resend or first invite)
+      const { data: createdInvitation, error: inviteError } = await createInvitation({
+        email: normalizedEmail,
+        name: normalizedName,
+        role_id: roleData.id,
+        invited_by: teamMember.id,
+      });
+
+      if (inviteError || !createdInvitation) {
+        console.error("Failed to create invitation:", inviteError);
+        return NextResponse.json(
+          { success: false, error: "Failed to create invitation" },
+          { status: 500 },
+        );
+      }
+
+      invitation = createdInvitation;
 
       // Send invitation email
       const { success: emailSent, error: emailError } =
@@ -167,12 +150,10 @@ export const POST = withRoleAuth(
 
       return NextResponse.json({
         success: true,
-        message: existingInvitations?.length
-          ? "Invitation resent successfully"
-          : "Invitation sent successfully",
+        message: isResend ? "Invitation resent successfully" : "Invitation sent successfully",
         invitationUrl:
           process.env.NODE_ENV === "development" ? invitationUrl : undefined,
-        resent: !!existingInvitations?.length,
+        resent: isResend,
       });
     } catch (error) {
       console.error("Invite API error:", error);

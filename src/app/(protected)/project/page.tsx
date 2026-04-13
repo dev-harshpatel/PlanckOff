@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
@@ -14,19 +14,16 @@ import {
   Users,
   Loader2,
 } from "lucide-react";
-import { AppState, ProjectSummary, WallAssembly } from "@/types";
-import { AssemblyData, MaterialCosting } from "@/types/assembly";
-import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
-import { resolveProjectMaterials } from "@/lib/utils/resolveProjectMaterial";
+import { AppState, ProjectSummary } from "@/types";
+import { MaterialCosting } from "@/types/assembly";
 import { applyProjectCostingOverrides } from "@/lib/utils/projectPricing";
 import { syncProjectOverrides } from "@/lib/utils/projectOverrideSync";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
 import { identifyWallAssemblies } from "@/services/gemini/client";
 import { useApp } from "@/context/AppContext";
-import {
-  mapFinalOutputToWallAssemblies,
-  mapJsonToWallAssemblies,
-} from "@/lib/utils/assemblyJsonMapper";
+import { mapFinalOutputToWallAssemblies } from "@/lib/utils/assemblyJsonMapper";
+import { useProjectData } from "@/hooks/useProjectData";
+import { ProjectDataProvider } from "@/context/ProjectDataContext";
 
 const REPORT_TABS = ["materials", "matlab", "labor", "markups", "proposal", "bidding"] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
@@ -44,7 +41,6 @@ function ProjectContent() {
   const { materials, setMaterials } = useApp();
 
   const [state, setState] = useState<AppState>(AppState.ESTIMATING);
-  const [assemblies, setAssemblies] = useState<WallAssembly[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<
@@ -88,21 +84,33 @@ function ProjectContent() {
   });
   const [isLoadingProject, setIsLoadingProject] = useState(true);
 
-  // Assembly and Material Costing Data
-  const [assemblyData, setAssemblyData] = useState<AssemblyData[]>([]);
-  const [materialCostingData, setMaterialCostingData] = useState<
-    MaterialCosting[]
-  >([]);
-  const [rawTakeoffRows, setRawTakeoffRows] = useState<unknown[]>([]);
-  const [isLoadingAssemblyData, setIsLoadingAssemblyData] = useState(true);
-  const [assemblyDataRefreshTrigger, setAssemblyDataRefreshTrigger] =
-    useState(0);
-  const [finalOutputId, setFinalOutputId] = useState<string | null>(null);
-  const [takeoffOutputId, setTakeoffOutputId] = useState<string | null>(null);
-  const [overrideMap, setOverrideMap] = useState<ProjectOverrideMap>({});
-  // Always-current ref so useEffect([overrideMap]) reads the latest materialCostingData
-  // rather than the stale closure value from when the effect was last registered.
-  const materialCostingDataRef = useRef<MaterialCosting[]>(materialCostingData);
+  // ─── Project data via canonical hook ────────────────────────────────────────
+  // Single fetch point — replaces assemblyDataRefreshTrigger + two separate useEffects.
+  // materialCostingData is RAW; effectiveCostingData (below) has overrides baked in
+  // for backward-compat components. Phase 3 will remove effectiveCostingData when all
+  // tabs switch to reading from projectCosts.lineItems via ProjectDataContext.
+  const projectData = useProjectData(projectId);
+  const {
+    assemblies,
+    setAssemblies,
+    materialCostingData,
+    setMaterialCostingData,
+    rawTakeoffRows,
+    overrideMap,
+    setOverrideMap,
+    finalOutputId,
+    takeoffOutputId,
+    isLoading: isLoadingAssemblyData,
+    refresh,
+  } = projectData;
+
+  // Backward-compat: bake overrides into costing data for existing tab components.
+  // ProjectDataContext.projectCosts uses aggregateProjectCosts (no baking needed there).
+  // Remove this once Phase 3 migrates all tabs to read from projectCosts.lineItems.
+  const effectiveCostingData = useMemo(
+    () => applyProjectCostingOverrides(materialCostingData, overrideMap),
+    [materialCostingData, overrideMap],
+  );
 
   // Fetch project data
   useEffect(() => {
@@ -153,118 +161,8 @@ function ProjectContent() {
     loadMaterials();
   }, [materials.length, setMaterials]);
 
-  // Load assembly and material costing data when projectId is in URL
-  useEffect(() => {
-    const loadAssemblyData = async () => {
-      if (!projectId) {
-        setIsLoadingAssemblyData(false);
-        return;
-      }
-
-      const url = `/api/assembly-data?projectId=${projectId}`;
-      try {
-        const response = await fetch(url, { credentials: "include" });
-        const rawText = await response.text();
-
-        let data: {
-          success?: boolean;
-          hasData?: boolean;
-          assemblyData?: { assemblies?: unknown[] };
-          materialData?: { assemblies?: unknown[] };
-          assemblyFilename?: string;
-          materialFilename?: string;
-          rawTakeoffRows?: unknown[];
-          error?: string;
-          finalOutputId?: string | null;
-          takeoffOutputId?: string | null;
-        };
-        try {
-          data = JSON.parse(rawText);
-        } catch (parseErr) {
-          console.error("[Project] Failed to parse assembly-data response:", parseErr);
-          setIsLoadingAssemblyData(false);
-          return;
-        }
-
-        if (!data.success || !data.hasData) {
-          setIsLoadingAssemblyData(false);
-          return;
-        }
-
-        const assemblyDataArray = (data.assemblyData?.assemblies || []) as AssemblyData[];
-        const costingDataArray = (data.materialData?.assemblies || []) as MaterialCosting[];
-
-        const hasFinalOutputFormat =
-          costingDataArray.length > 0 &&
-          costingDataArray.every(
-            (a) =>
-              typeof (a as { height_ft?: number }).height_ft === "number" &&
-              typeof (a as { total_length?: number }).total_length === "number",
-          );
-
-        let effectiveOverrideMap: ProjectOverrideMap = {};
-        try {
-          const ovRes = await fetch(`/api/projects/${projectId}/material-overrides`, {
-            credentials: "include",
-          });
-          const ovJson = await ovRes.json();
-          if (ovJson.success) {
-            effectiveOverrideMap = ovJson.data ?? {};
-          }
-        } catch {
-          // Non-critical — overrides simply won't apply if load fails
-        }
-
-        const effectiveCostingData = applyProjectCostingOverrides(
-          costingDataArray,
-          effectiveOverrideMap,
-        );
-
-        const mappedAssemblies = hasFinalOutputFormat
-          ? mapFinalOutputToWallAssemblies(effectiveCostingData)
-          : mapJsonToWallAssemblies(
-              assemblyDataArray,
-              effectiveCostingData,
-            );
-
-        const newAssemblyIds = new Set(mappedAssemblies.map((a) => a.id));
-
-        // Batch all primary state updates together (before any await) so EstimateResult's
-        // useEffect receives updated initialAssemblies and materialCostingData in the same
-        // render. Without this, materialCostingData updating first triggers the useEffect
-        // with stale initialAssemblies, causing the wasteFactor (and other overrides) to
-        // flicker back to the old value while the overrides fetch is in-flight.
-        setAssemblyData(assemblyDataArray);
-        setMaterialCostingData(effectiveCostingData);
-        setRawTakeoffRows(data.rawTakeoffRows ?? []);
-        setFinalOutputId(data.finalOutputId ?? null);
-        setTakeoffOutputId(data.takeoffOutputId ?? null);
-        setOverrideMap(effectiveOverrideMap);
-        setAssemblies((prev) => [
-          ...prev.filter((a) => !newAssemblyIds.has(a.id)),
-          ...mappedAssemblies,
-        ]);
-      } catch (err) {
-        console.error("[Project] Failed to load assembly data:", err);
-      } finally {
-        setIsLoadingAssemblyData(false);
-      }
-    };
-
-    loadAssemblyData();
-  }, [projectId, assemblyDataRefreshTrigger]);
-
-  useEffect(() => {
-    // Use the ref (not closure) so we always apply overrides on top of the
-    // LATEST materialCostingData — including height_ft_override written by a
-    // just-completed save — even if the state update and the overrideMap update
-    // land in different render cycles.
-    const current = materialCostingDataRef.current;
-    const nextCostingData = applyProjectCostingOverrides(current, overrideMap);
-    if (nextCostingData === current) return;
-    syncUiFromCostingData(nextCostingData);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overrideMap]);
+  // Data loading is now handled by useProjectData() above.
+  // Override reactivity is now handled by effectiveCostingData useMemo above.
 
   const syncProjectUnitCostOverride = async (
     code: string,
@@ -331,13 +229,10 @@ function ProjectContent() {
     }
   };
 
-  // Keep the ref always in sync with state so useEffect([overrideMap]) can read
-  // the freshest materialCostingData without adding it to the deps array.
-  materialCostingDataRef.current = materialCostingData;
-
+  // Optimistic update helper — updates raw costing data + remaps assembly tiles.
+  // effectiveCostingData (useMemo above) auto-recomputes with overrides applied.
   const syncUiFromCostingData = (updatedCostingData: MaterialCosting[]) => {
     const mappedAssemblies = mapFinalOutputToWallAssemblies(updatedCostingData);
-    materialCostingDataRef.current = updatedCostingData;
     setMaterialCostingData(updatedCostingData);
     setAssemblies(mappedAssemblies);
   };
@@ -446,6 +341,7 @@ function ProjectContent() {
   };
 
   return (
+    <ProjectDataProvider projectId={projectId ?? ''} data={projectData}>
     <div className="h-full flex flex-col">
       {/* Project View Header */}
       <header className="sticky top-0 bg-white border-b border-slate-200 flex-none z-50">
@@ -627,8 +523,7 @@ function ProjectContent() {
           activeReportTab={activeReportTab}
           setActiveReportTab={setActiveReportTab}
           onCloseReport={closeReport}
-          assemblyData={assemblyData}
-          materialCostingData={materialCostingData}
+          materialCostingData={effectiveCostingData}
           rawTakeoffRows={rawTakeoffRows}
           projectId={projectId}
           finalOutputId={finalOutputId}
@@ -637,13 +532,12 @@ function ProjectContent() {
           onWasteChange={handleWasteChange}
           overrideMap={overrideMap}
           onOverrideMapChange={setOverrideMap}
-          onImportComplete={() =>
-            setAssemblyDataRefreshTrigger((t) => t + 1)
-          }
+          onImportComplete={refresh}
           onAssemblySaveComplete={handleAssemblySaveComplete}
         />
       </div>
     </div>
+    </ProjectDataProvider>
   );
 }
 

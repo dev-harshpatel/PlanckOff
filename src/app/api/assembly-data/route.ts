@@ -12,6 +12,11 @@ import {
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
 import { withAuth } from "@/lib/auth/api-helpers";
+import {
+  mapFinalOutputToWallAssemblies,
+  mapJsonToWallAssemblies,
+} from "@/lib/utils/assemblyJsonMapper";
+import type { AssemblyData, MaterialCosting } from "@/types/assembly";
 
 /**
  * GET /api/assembly-data?projectId=xxx
@@ -145,10 +150,28 @@ export const GET = withAuth(async (req: NextRequest) => {
       });
     }
 
+    // Map raw DB rows → WallAssembly[] on the server so the client receives typed data.
+    // Rule: mapFinalOutputToWallAssemblies / mapJsonToWallAssemblies must not run in the browser.
+    const assemblyDataArray = (assemblyData.assemblies ?? []) as AssemblyData[];
+    const costingDataArray = (materialData.assemblies ?? []) as MaterialCosting[];
+
+    const hasFinalOutputFormat =
+      costingDataArray.length > 0 &&
+      costingDataArray.every(
+        (a) =>
+          typeof (a as { height_ft?: number }).height_ft === "number" &&
+          typeof (a as { total_length?: number }).total_length === "number",
+      );
+
+    const wallAssemblies = hasFinalOutputFormat
+      ? mapFinalOutputToWallAssemblies(costingDataArray)
+      : mapJsonToWallAssemblies(assemblyDataArray, costingDataArray);
+
     return NextResponse.json({
       success: true,
       hasData: true,
       hasExtraction: true,
+      assemblies: wallAssemblies,
       assemblyData,
       materialData,
       assemblyFilename: assemblyRecord?.filename ?? "",

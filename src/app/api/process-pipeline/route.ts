@@ -18,7 +18,7 @@ import {
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
 import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
-import { withAuth } from "@/lib/auth/api-helpers";
+import { withRoleAuth } from "@/lib/auth/api-helpers";
 
 // Hobby plan max: 300s. Pro allows up to 900s.
 export const maxDuration = 300;
@@ -26,7 +26,8 @@ export const maxDuration = 300;
 const TAG = "[process-pipeline]";
 const elapsed = (start: number) => `${((performance.now() - start) / 1000).toFixed(2)}s`;
 
-export const POST = withAuth(async (req: NextRequest) => {
+// Deprecated route — Administrator-only. Use /api/extract → /api/match → /api/finalize instead.
+export const POST = withRoleAuth(["Administrator"], async (req: NextRequest) => {
   const pipelineStart = performance.now();
   console.log(`\n${"=".repeat(70)}`);
   console.log(`${TAG} POST /api/process-pipeline — started at ${new Date().toISOString()}`);

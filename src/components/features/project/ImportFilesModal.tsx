@@ -14,6 +14,7 @@ import {
   Loader2,
   Minimize2,
   Maximize2,
+  RefreshCw,
   Upload,
   FileText,
   TableProperties,
@@ -91,16 +92,22 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
   const takeoffResultRef = useRef<unknown[] | null>(null);
   const finalResultRef = useRef<{ assemblies?: unknown[] } | null>(null);
   
-  // Strategy 1: Store IDs for sequential API calls
+  // Strategy 1: Store IDs for sequential API calls + retry
   const takeoffOutputIdRef = useRef<string | null>(null);
   const assemblyExtractionIdRef = useRef<string | null>(null);
   const materialMatchIdRef = useRef<string | null>(null);
+  const runIdRef = useRef<string | null>(null);
+  const materialMatchResultRef = useRef<{ assemblies: unknown[] } | null>(null);
+
+  /** Which step failed — used to show targeted retry options. */
+  const [failedStep, setFailedStep] = useState<1 | 2 | 3 | null>(null);
 
   const pdfReady = pdfSlot.status === "ready";
   const excelReady = excelSlot.status === "ready";
   const isProcessing = stage === "processing";
 
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Overwrite confirmation: show when project has existing extraction data
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
@@ -193,7 +200,11 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     takeoffOutputIdRef.current = null;
     assemblyExtractionIdRef.current = null;
     materialMatchIdRef.current = null;
-  }, []);
+    runIdRef.current = null;
+    materialMatchResultRef.current = null;
+    setFailedStep(null);
+    pipeline.resetProgress();
+  }, [pipeline]);
 
   const handleCancel = useCallback(() => {
     if (abortRef.current) {
@@ -204,125 +215,152 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
     setErrorMessage('Processing cancelled');
   }, []);
 
-  // Strategy 1: Sequential API calls instead of single process-pipeline
-  const runFullPipeline = useCallback(async () => {
-    if (!pdfReady || !pdfSlot.file || !excelReady || !excelSlot.file) return;
+  // Sequential API calls with run tracking and per-step retry
+  const runFullPipeline = useCallback(async (fromStep: 1 | 2 | 3 = 1) => {
+    if (fromStep === 1 && (!pdfReady || !pdfSlot.file)) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
 
     const pipelineStartTime = Date.now();
-    console.log("\n" + "=".repeat(70));
-    console.log("[ImportFiles] 🚀 Starting SEQUENTIAL PIPELINE (Strategy 1 + Strategy 2)");
-    console.log("[ImportFiles] ⚡ Optimized: Split into 3 steps with reduced batch sizes");
-    console.log("=".repeat(70));
+    setStage("processing");
+    setFailedStep(null);
+
+    // Track which step is currently running so the catch block can report it
+    let lastAttemptedStep: 0 | 1 | 2 | 3 = 0;
+
+    // Reuse existing runId on retry, create new one for fresh runs
+    let currentRunId = fromStep > 1 ? runIdRef.current : null;
 
     try {
-      setStage("processing");
-      
-      const [pdfBase64] = await Promise.all([
-        fileToBase64(pdfSlot.file),
-      ]);
+      let localAssemblyCount = assemblyCount; // capture for summary (updated during step 1)
 
-      // Step 1: Extract assemblies from PDF
-      const step1Start = Date.now();
-      setStatusMessage("Step 1/3: Extracting assemblies from PDF...");
-      console.log(`\n[ImportFiles] 📄 Step 1/3: Extracting assemblies from PDF...`);
-      const extractRes = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pdfBase64,
-          projectId: projectId ?? undefined,
-        }),
-        signal: controller.signal,
-      });
-      if (!extractRes.ok) {
-        const err = await extractRes.json();
-        throw new Error(err.error || `Extraction failed (${extractRes.status})`);
+      // Create a pipeline run record for fresh starts
+      if (!currentRunId) {
+        try {
+          const runRes = await fetch("/api/pipeline-runs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ projectId }),
+            signal: controller.signal,
+          });
+          if (runRes.ok) {
+            const runJson = await runRes.json() as { runId?: string };
+            currentRunId = runJson.runId ?? null;
+            runIdRef.current = currentRunId;
+          }
+        } catch {
+          // Run tracking is non-critical — proceed without it
+        }
       }
-      const extractJson = await extractRes.json();
-      const extractionId = extractJson.extractionId;
-      assemblyExtractionIdRef.current = extractionId;
-      const assemblyCount = extractJson.assemblyCount ?? 0;
-      setAssemblyCount(assemblyCount);
-      assemblyResultRef.current = extractJson.result ?? null;
-      const step1Time = ((Date.now() - step1Start) / 1000).toFixed(2);
-      console.log(`[ImportFiles] ✅ Step 1 complete: ${assemblyCount} assemblies extracted in ${step1Time}s`);
 
-      // Step 2: Match materials (already have takeoff parsed, now match materials)
-      const step2Start = Date.now();
-      setStatusMessage("Step 2/3: Matching materials to database...");
-      console.log(`\n[ImportFiles] 🔍 Step 2/3: Matching materials to database...`);
-      const matchRes = await fetch("/api/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          extraction: extractJson.result,
-          extractionId,
-          projectId: projectId ?? undefined,
-        }),
-        signal: controller.signal,
-      });
-      if (!matchRes.ok) {
-        const err = await matchRes.json();
-        throw new Error(err.error || `Material matching failed (${matchRes.status})`);
+      let extractionId: string | null = assemblyExtractionIdRef.current;
+
+      // ── Step 1: Extract ──────────────────────────────────────────────────
+      if (fromStep <= 1) {
+        lastAttemptedStep = 1;
+        pipeline.setProgress(currentRunId, 1, "running");
+        setStatusMessage("Step 1/3: Extracting assemblies from PDF...");
+
+        const pdfBase64 = await fileToBase64(pdfSlot.file!);
+
+        const extractRes = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pdfBase64,
+            projectId: projectId ?? undefined,
+            runId: currentRunId,
+          }),
+          signal: controller.signal,
+        });
+        if (!extractRes.ok) {
+          const err = await extractRes.json() as { error?: string };
+          throw new Error(err.error ?? `Extraction failed (${extractRes.status})`);
+        }
+        const extractJson = await extractRes.json() as {
+          extractionId?: string;
+          assemblyCount?: number;
+          result?: { assemblies: unknown[] };
+        };
+        extractionId = extractJson.extractionId ?? null;
+        assemblyExtractionIdRef.current = extractionId;
+        const extractedCount = extractJson.assemblyCount ?? 0;
+        localAssemblyCount = extractedCount;
+        setAssemblyCount(extractedCount);
+        assemblyResultRef.current = extractJson.result ?? null;
+        console.log(`[ImportFiles] Step 1 done: ${extractedCount} assemblies`);
       }
-      const matchJson = await matchRes.json();
-      materialMatchIdRef.current = matchJson.matchId;
-      const matchedCount = matchJson.matchedCount ?? 0;
-      setMatchedCount(matchedCount);
-      const step2Time = ((Date.now() - step2Start) / 1000).toFixed(2);
-      console.log(`[ImportFiles] ✅ Step 2 complete: ${matchedCount} assemblies matched in ${step2Time}s`);
 
-      // Step 3: Finalize (combine match + takeoff)
-      const step3Start = Date.now();
+      // ── Step 2: Match ────────────────────────────────────────────────────
+      if (fromStep <= 2) {
+        lastAttemptedStep = 2;
+        pipeline.setProgress(currentRunId, 2, "running");
+        setStatusMessage("Step 2/3: Matching materials to database...");
+
+        const matchRes = await fetch("/api/match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            extraction: assemblyResultRef.current,
+            extractionId,
+            projectId: projectId ?? undefined,
+            runId: currentRunId,
+          }),
+          signal: controller.signal,
+        });
+        if (!matchRes.ok) {
+          const err = await matchRes.json() as { error?: string };
+          throw new Error(err.error ?? `Material matching failed (${matchRes.status})`);
+        }
+        const matchJson = await matchRes.json() as {
+          matchId?: string;
+          matchedCount?: number;
+          result?: { assemblies: unknown[] };
+        };
+        materialMatchIdRef.current = matchJson.matchId ?? null;
+        materialMatchResultRef.current = matchJson.result ?? null;
+        setMatchedCount(matchJson.matchedCount ?? 0);
+        console.log(`[ImportFiles] Step 2 done: ${matchJson.matchedCount ?? 0} matched`);
+      }
+
+      // ── Step 3: Finalize ─────────────────────────────────────────────────
+      lastAttemptedStep = 3;
+      pipeline.setProgress(currentRunId, 3, "running");
       setStatusMessage("Step 3/3: Finalizing assemblies with takeoff data...");
-      console.log(`\n[ImportFiles] 🎯 Step 3/3: Finalizing assemblies with takeoff data...`);
+
       const finalizeRes = await fetch("/api/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          materialMatch: matchJson.result,
+          materialMatch: materialMatchResultRef.current,
           projectId: projectId ?? undefined,
           assemblyExtractionId: extractionId,
           takeoffOutputId: takeoffOutputIdRef.current,
+          runId: currentRunId,
         }),
         signal: controller.signal,
       });
       if (!finalizeRes.ok) {
-        const err = await finalizeRes.json();
-        throw new Error(err.error || `Finalization failed (${finalizeRes.status})`);
+        const err = await finalizeRes.json() as { error?: string };
+        throw new Error(err.error ?? `Finalization failed (${finalizeRes.status})`);
       }
-      const finalizeJson = await finalizeRes.json();
+      const finalizeJson = await finalizeRes.json() as {
+        result?: { assemblies?: unknown[] };
+      };
       const finalCount = finalizeJson.result?.assemblies?.length ?? 0;
       finalResultRef.current = finalizeJson.result ?? null;
-      const step3Time = ((Date.now() - step3Start) / 1000).toFixed(2);
-      console.log(`[ImportFiles] ✅ Step 3 complete: ${finalCount} final assemblies in ${step3Time}s`);
+      console.log(`[ImportFiles] Step 3 done: ${finalCount} final assemblies`);
 
-      // Get takeoff count from parsed data
-      const takeoffCount = takeoffResultRef.current?.length ?? 0;
       const totalTime = ((Date.now() - pipelineStartTime) / 1000).toFixed(2);
+      console.log(`[ImportFiles] Pipeline complete in ${totalTime}s`);
 
-      console.log("\n" + "=".repeat(70));
-      console.log(`[ImportFiles] 🎉 SEQUENTIAL PIPELINE COMPLETE`);
-      console.log(`[ImportFiles] ⏱️  Total time: ${totalTime}s`);
-      console.log(`[ImportFiles]    Step 1 (Extract): ${step1Time}s`);
-      console.log(`[ImportFiles]    Step 2 (Match):   ${step2Time}s`);
-      console.log(`[ImportFiles]    Step 3 (Finalize): ${step3Time}s`);
-      console.log(`[ImportFiles] 📊 Results: ${assemblyCount} assemblies → ${matchedCount} matched → ${finalCount} final`);
-      console.log("=".repeat(70) + "\n");
-
+      pipeline.setProgress(currentRunId, 3, "complete");
       setStage("done");
-      const summaryParts: string[] = [
-        `${assemblyCount} assemblies`,
-        `${finalCount} final assemblies`,
-      ];
-      if (takeoffCount > 0) {
-        summaryParts.splice(1, 0, `${takeoffCount} takeoff rows`);
-      }
+      const summaryParts: string[] = [`${localAssemblyCount} assemblies`, `${finalCount} final assemblies`];
       setStatusMessage(`Complete! ${summaryParts.join(", ")}.`);
-      toast.success("Pipeline Complete", `${assemblyCount} assemblies, ${finalCount} final output.`);
+      toast.success("Pipeline Complete", `${localAssemblyCount} assemblies, ${finalCount} final output.`);
+
     } catch (err) {
       if ((err as Error).name === "AbortError") {
         setStage("error");
@@ -331,10 +369,18 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       }
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error("[ImportFiles] Pipeline error:", message);
+      if (lastAttemptedStep > 0) {
+        setFailedStep(lastAttemptedStep as 1 | 2 | 3);
+        pipeline.setProgress(currentRunId, lastAttemptedStep, "failed", message);
+      }
       setStage("error");
       setErrorMessage(message);
     }
-  }, [pdfReady, pdfSlot.file, excelReady, excelSlot.file, projectId, toast]);
+  }, [pdfReady, pdfSlot.file, projectId, pipeline, toast, assemblyCount]); // assemblyCount used as initial value for localAssemblyCount
+
+  const handleRetry = useCallback((fromStep: 1 | 2 | 3) => {
+    runFullPipeline(fromStep);
+  }, [runFullPipeline]);
 
   const handleContinue = useCallback(async () => {
     if (!pdfReady || !pdfSlot.file || !excelReady || !excelSlot.file) return;
@@ -344,7 +390,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       setIsCheckingExisting(true);
       try {
         const res = await fetch(`/api/assembly-data?projectId=${projectId}`);
-        const data = await res.json();
+        const data = await res.json() as { success?: boolean; hasExtraction?: boolean; hasData?: boolean };
         if (data.success && (data.hasExtraction ?? data.hasData)) {
           setShowOverwriteModal(true);
           setIsCheckingExisting(false);
@@ -356,8 +402,8 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       setIsCheckingExisting(false);
     }
 
-    await runFullPipeline();
-  }, [pdfReady, pdfSlot.file, projectId, runFullPipeline]);
+    await runFullPipeline(1);
+  }, [pdfReady, pdfSlot.file, excelReady, excelSlot.file, projectId, runFullPipeline]);
 
   const handleOverwriteConfirm = useCallback(async () => {
     if (!projectId) return;
@@ -378,7 +424,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      await runFullPipeline();
+      await runFullPipeline(1);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setStage('error');
@@ -491,6 +537,37 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       >
         Close & Apply
       </Button>
+
+      {/* Dev-only JSON inspector — not shown in production */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="mt-6 w-full max-w-lg">
+          <button
+            onClick={() => setShowDebugPanel((v) => !v)}
+            className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2"
+          >
+            {showDebugPanel ? "Hide" : "Show"} debug output
+          </button>
+          {showDebugPanel && (
+            <div className="mt-3 flex flex-col gap-3">
+              {[
+                { label: "Step 1 — Extraction", data: assemblyResultRef.current },
+                { label: "Step 2 — Material Match", data: materialMatchResultRef.current },
+                { label: "Step 3 — Final Output", data: finalResultRef.current },
+              ].map(({ label, data }) => (
+                <div key={label} className="text-left">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    {label}
+                  </p>
+                  <pre className="text-[10px] text-slate-600 bg-slate-50 border border-slate-200 rounded p-2 overflow-x-auto max-h-40">
+                    {data ? JSON.stringify(data, null, 2).slice(0, 2000) : "—"}
+                    {data && JSON.stringify(data).length > 2000 ? "\n…(truncated)" : ""}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -501,11 +578,60 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       </div>
       <p className="text-base font-semibold text-slate-800 mb-1.5">Processing Failed</p>
       <p className="text-sm text-red-600 text-center max-w-md">{errorMessage}</p>
+
+      {/* Retry options based on which step failed */}
+      {failedStep !== null && errorMessage !== "Processing cancelled" && (
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <p className="text-xs text-slate-500 mb-1">Retry options:</p>
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            {failedStep === 1 && pdfReady && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RefreshCw}
+                onClick={() => handleRetry(1)}
+              >
+                Retry from Step 1 (Extract)
+              </Button>
+            )}
+            {failedStep === 2 && assemblyExtractionIdRef.current && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RefreshCw}
+                onClick={() => handleRetry(2)}
+              >
+                Retry from Step 2 (Match)
+              </Button>
+            )}
+            {failedStep === 3 && materialMatchResultRef.current && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={RefreshCw}
+                onClick={() => handleRetry(3)}
+              >
+                Retry from Step 3 (Finalize)
+              </Button>
+            )}
+            {failedStep > 1 && pdfReady && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRetry(1)}
+              >
+                Restart from beginning
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <Button
         variant="ghost"
         onClick={handleClose}
         size="sm"
-        className="mt-8"
+        className="mt-6"
       >
         Close
       </Button>

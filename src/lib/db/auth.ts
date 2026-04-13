@@ -89,43 +89,7 @@ export async function updateAdminPassword(params: {
 }
 
 /**
- * Create a new auth session for legacy admin users
- *
- * Supabase Query Explanation:
- * - from('auth_sessions') → INSERT INTO auth_sessions
- * - insert({...}) → VALUES (...)
- * - select('token') → RETURNING token (PostgreSQL feature)
- * - single() → Returns the inserted row as object
- */
-export async function createSession(params: {
-  adminId: string;
-  ipAddress?: string;
-  userAgent?: string;
-}): Promise<{
-  data: { token: string } | null;
-  error: { message: string; code: string } | null;
-}> {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + AUTH_CONFIG.SESSION_DURATION_DAYS);
-
-  const sessionData: AuthSessionInsert = {
-    admin_id: params.adminId,
-    expires_at: expiresAt.toISOString(),
-    ip_address: params.ipAddress,
-    user_agent: params.userAgent,
-  };
-
-  const { data, error } = await supabaseAdmin
-    .from(DB_TABLES.AUTH_SESSIONS)
-    .insert(sessionData)
-    .select("token")
-    .single();
-
-  return { data, error };
-}
-
-/**
- * Create a new auth session for team members (new system)
+ * Create a new auth session for a team member.
  */
 export async function createTeamMemberSession(params: {
   teamMemberId: string;

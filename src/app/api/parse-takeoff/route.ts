@@ -8,6 +8,7 @@ import {
 import { saveTakeoffOutput } from '@/lib/db/pipelineOutputs';
 import { ParsedTakeoffResult, TakeoffEntry } from '@/types/takeoff';
 import { withAuth } from '@/lib/auth/api-helpers';
+import { writeJsonToLocal } from '@/lib/utils/localJsonStorage';
 
 type ParserName = 'ost' | 'raw';
 
@@ -291,6 +292,12 @@ export const POST = withAuth(async (request: NextRequest) => {
           warnings.push("Takeoff preview parsed successfully, but saving raw takeoff data failed.");
         } else {
           takeoffOutputId = takeoffSaved?.id;
+          if (process.env.NODE_ENV === "development") {
+            void writeJsonToLocal("takeoff", rawRecords, takeoffFilename).then((p) => {
+              if (p) console.log(`[parse-takeoff] Local file written: ${p}`);
+            });
+          }
+          console.log(`[parse-takeoff] DB: ${takeoffOutputId} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
         }
       }
     }

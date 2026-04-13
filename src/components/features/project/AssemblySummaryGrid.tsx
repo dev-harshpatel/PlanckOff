@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from "react";
 import { WallAssembly, TakeoffInstance, MaterialDefinition } from "@/types";
-import { calculateMaterials } from "@/services/gemini/calculateMaterials";
 import { ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui";
 
@@ -37,7 +36,6 @@ interface SummaryRow {
 export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
   assemblies,
   takeoffs,
-  materials,
   priceMap,
   onSelectAssembly,
   onEditAssembly,
@@ -138,16 +136,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
         }
         const entry = byHeight.get(h)!;
         entry.instances.push(inst);
-
-        const mats = calculateMaterials(asm, [inst], materials);
-        let instCost = 0;
-        mats.forEach((m) => {
-          let unitPrice = m.overridePrice || 0;
-          if (!unitPrice && priceMap[m.item]) unitPrice = priceMap[m.item].cost;
-          if (m.category === "Labor" && !unitPrice) unitPrice = 65;
-          instCost += m.quantity * unitPrice;
-        });
-        entry.cost += instCost;
+        // Cost is computed from pipeline output (materialCostingData) via the parent — not calculated here.
 
         if (asm.assemblyType === "Ceiling") {
           entry.qty += inst.ceilingArea || 0;
@@ -178,7 +167,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
       });
     });
     return rows;
-  }, [assemblies, takeoffs, materials, priceMap]);
+  }, [assemblies, takeoffs, priceMap]);
 
   // Grouping
   const groupedRows = useMemo(() => {

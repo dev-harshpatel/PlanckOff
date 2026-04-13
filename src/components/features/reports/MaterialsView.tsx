@@ -10,7 +10,8 @@ import {
   MaterialsFilterDropdown,
   MaterialsFilterState,
 } from '@/components/features/reports/MaterialsFilterDropdown';
-import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
+import { useReportFilters } from '@/hooks/useReportFilters';
+import { useProjectDataContext } from '@/context/ProjectDataContext';
 import { aggregateMaterialsFromCosting } from '@/lib/utils/aggregateMaterialsFromCosting';
 import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type { MaterialCosting } from "@/types/assembly";
@@ -110,10 +111,11 @@ export const MaterialsView = ({
     selectedSections: new Set(),
     selectedCostCodes: new Set(),
   }), []);
-  const [filterState, setFilterState] = useSessionStorageSetState<MaterialsFilterState>(
+  const [filterState, setFilterState] = useReportFilters<MaterialsFilterState>(
     filterStorageKey,
     createDefaultFilterState,
   );
+  const { projectCosts } = useProjectDataContext();
 
   // Local overrides take priority over aggregated unit costs (handles spec_database priority issue)
   const [unitCostOverrides, setUnitCostOverrides] = useState<Record<string, number>>({});
@@ -469,7 +471,7 @@ export const MaterialsView = ({
             onFilterChange={handleFilterChange}
           />
           <div className="text-sm font-bold text-slate-700">
-            Total: ${formatCurrency(displayTotalCost)}
+            Total Material: ${formatCurrency(projectCosts.totalMaterial)}
           </div>
         </div>
         <Button

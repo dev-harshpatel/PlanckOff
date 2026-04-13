@@ -10,7 +10,8 @@ import {
   LaborFilterDropdown,
   LaborFilterState,
 } from '@/components/features/reports/LaborFilterDropdown';
-import { useSessionStorageSetState } from '@/hooks/useSessionStorageSetState';
+import { useReportFilters } from '@/hooks/useReportFilters';
+import { useProjectDataContext } from '@/context/ProjectDataContext';
 import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type { ExtendedLineItem } from '@/components/features/reports/MaterialsView';
 import type {
@@ -123,10 +124,11 @@ export const LaborView = ({
     selectedCostCodes: new Set(),
     selectedConditions: new Set(),
   }), []);
-  const [filterState, setFilterState] = useSessionStorageSetState<LaborFilterState>(
+  const [filterState, setFilterState] = useReportFilters<LaborFilterState>(
     filterStorageKey,
     createDefaultFilterState,
   );
+  const { projectCosts } = useProjectDataContext();
 
   const [qtyOverrides, setQtyOverrides] = useState<Record<string, { qty: number | null; secQty: number | null }>>({});
 
@@ -478,7 +480,7 @@ export const LaborView = ({
             onFilterChange={handleFilterChange}
           />
           <div className="text-sm font-bold text-slate-700">
-            Total Labor: ${formatCurrency(displayTotal)}
+            Total Labor: ${formatCurrency(projectCosts.totalLabor)}
           </div>
         </div>
         <Button
