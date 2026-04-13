@@ -1,3 +1,9 @@
+/**
+ * @deprecated
+ * Superseded by the deterministic code matching engine in src/lib/matching/.
+ * Still used when ?mode=legacy is explicitly passed to /api/match.
+ * Do not expand usage — will be removed in a future cleanup.
+ */
 import { repairJSONForMaterialMatch, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
 import {
   trimMaterialDbForMatching,

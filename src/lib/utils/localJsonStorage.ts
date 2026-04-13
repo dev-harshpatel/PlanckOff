@@ -12,9 +12,33 @@ export type JsonOutputFolder =
   | "assembly"
   | "takeoff"
   | "final_output"
-  | "material_match";
+  | "material_match"
+  | "debug_extraction"
+  | "debug_matching";
 
 const OUTPUT_BASE = path.join(process.cwd(), "data", "output");
+
+/**
+ * Write a debug file scoped to a specific pipeline run.
+ * Creates: data/output/debug/{runId}/{filename}.json
+ * Only runs in development. Non-fatal if it fails.
+ */
+export const writeRunDebugFile = async (
+  runId: string,
+  filename: string,
+  data: unknown,
+): Promise<void> => {
+  if (process.env.NODE_ENV !== "development") return;
+  try {
+    const dir = path.join(OUTPUT_BASE, "debug", runId);
+    await mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, filename);
+    await writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+    console.log(`[debug] Written: data/output/debug/${runId}/${filename}`);
+  } catch {
+    // Non-fatal — DB always has the real data
+  }
+};
 
 export const writeJsonToLocal = async (
   folder: JsonOutputFolder,

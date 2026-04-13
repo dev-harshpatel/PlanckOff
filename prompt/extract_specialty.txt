@@ -1,0 +1,30 @@
+You are a construction document reader specializing in specialty structural and finishing components.
+
+Read this PDF and extract ONLY steel deck and trim/accessories. Extract nothing else.
+
+DEFINITIONS:
+- steel_deck: steel roof deck panels, metal floor deck, composite deck, corrugated metal deck. These are structural panels — not to be confused with gypsum wallboard.
+- trim_and_accessories: corner bead (metal or vinyl), J-trim / J-bead, L-trim, U-bead, control joints, expansion joints, reveal moulding, casing bead, drip screed, architectural reveals used at edges and transitions of gypsum assemblies.
+
+DO NOT EXTRACT (ignore completely):
+- Gypsum board or gypsum sheathing
+- Steel framing (studs, tracks, channels)
+- Insulation (batt, spray foam, mineral wool)
+- Vapor barriers or air barriers
+- Sealants or caulk
+- Plywood, OSB, or wood panels
+- Blocking or wood bracing
+- Structural steel (beams, columns — not in scope)
+
+For each assembly in the list provided, fill in its steel_deck and trim_and_accessories arrays.
+If an assembly has no items in a category, return an empty array [] — never omit the assembly.
+
+Each item fields:
+- raw_text: exact verbatim text from the spec (copy word-for-word)
+- type: brief product descriptor (e.g. "metal corner bead", "control joint", "1.5B steel deck") — or null
+- description: brief human-readable description (5–10 words)
+
+SELF-CHECK before returning: Control joints are often required at intervals in large gypsum board areas. Corner bead appears at all exposed outside corners. Have you checked both interior and exterior edges?
+
+OUTPUT (valid JSON only — no markdown, no code fences, no explanation):
+{"assemblies":[{"assembly_id":"string","steel_deck":[{"raw_text":"string","type":"string|null","description":"string|null"}],"trim_and_accessories":[{"raw_text":"string","type":"string|null","description":"string|null"}]}]}

@@ -19,6 +19,11 @@ import {
   FileText,
   TableProperties,
 } from "lucide-react";
+import {
+  PIPELINE_STEP_MESSAGES,
+  EXTRACT_SUB_STEP_LABELS,
+  EXTRACT_CHUNK_COUNT,
+} from "@/constants/pipelineMessages";
 
 type Stage = "idle" | "processing" | "done" | "error";
 
@@ -109,6 +114,11 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
 
+  // Live pipeline log stream (SSE)
+  const [pipelineLogs, setPipelineLogs] = useState<string[]>([]);
+  const logEndRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
   // Overwrite confirmation: show when project has existing extraction data
   const [showOverwriteModal, setShowOverwriteModal] = useState(false);
   const [isCheckingExisting, setIsCheckingExisting] = useState(false);
@@ -130,6 +140,37 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isProcessing]);
+
+  // SSE log subscription — connects when a new run starts, disconnects on cleanup
+  useEffect(() => {
+    const runId = pipeline.runId;
+    if (!runId) return;
+
+    setPipelineLogs([]);
+    const es = new EventSource(`/api/pipeline-logs?runId=${encodeURIComponent(runId)}`);
+    eventSourceRef.current = es;
+
+    es.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data as string) as { type: string; message?: string };
+        if (parsed.type === "log" && parsed.message) {
+          setPipelineLogs((prev) => [...prev, parsed.message!]);
+        }
+      } catch { /* skip malformed frames */ }
+    };
+
+    es.onerror = () => es.close();
+
+    return () => {
+      es.close();
+      eventSourceRef.current = null;
+    };
+  }, [pipeline.runId]);
+
+  // Auto-scroll log panel to the latest entry
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [pipelineLogs]);
 
   const handleFileSelected = useCallback(async (file: File, type: 'pdf' | 'excel') => {
     if (type === 'pdf') {
@@ -260,7 +301,8 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       if (fromStep <= 1) {
         lastAttemptedStep = 1;
         pipeline.setProgress(currentRunId, 1, "running");
-        setStatusMessage("Step 1/3: Extracting assemblies from PDF...");
+        setStatusMessage(PIPELINE_STEP_MESSAGES.STEP_1_EXTRACT);
+        pipeline.setSubStep(EXTRACT_SUB_STEP_LABELS.SKELETON, 0, EXTRACT_CHUNK_COUNT);
 
         const pdfBase64 = await fileToBase64(pdfSlot.file!);
 
@@ -289,6 +331,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
         localAssemblyCount = extractedCount;
         setAssemblyCount(extractedCount);
         assemblyResultRef.current = extractJson.result ?? null;
+        pipeline.setSubStep(null, null, null);
         console.log(`[ImportFiles] Step 1 done: ${extractedCount} assemblies`);
       }
 
@@ -296,7 +339,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       if (fromStep <= 2) {
         lastAttemptedStep = 2;
         pipeline.setProgress(currentRunId, 2, "running");
-        setStatusMessage("Step 2/3: Matching materials to database...");
+        setStatusMessage(PIPELINE_STEP_MESSAGES.STEP_2_MATCH);
 
         const matchRes = await fetch("/api/match", {
           method: "POST",
@@ -327,7 +370,7 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
       // ── Step 3: Finalize ─────────────────────────────────────────────────
       lastAttemptedStep = 3;
       pipeline.setProgress(currentRunId, 3, "running");
-      setStatusMessage("Step 3/3: Finalizing assemblies with takeoff data...");
+      setStatusMessage(PIPELINE_STEP_MESSAGES.STEP_3_FINALIZE);
 
       const finalizeRes = await fetch("/api/finalize", {
         method: "POST",
@@ -473,10 +516,49 @@ export const ImportFilesModal: React.FC<ImportFilesModalProps> = ({
         </div>
       </div>
       <p className="text-base font-semibold text-slate-800 mb-1.5">{statusMessage}</p>
-      <p className="text-sm text-slate-400 tabular-nums font-mono">
+      {pipeline.subStepLabel && (
+        <div className="mt-2 pl-4 w-full max-w-xs">
+          <p className="text-xs text-slate-500">{pipeline.subStepLabel}</p>
+          {pipeline.subStepIndex !== null && pipeline.subStepTotal !== null && (
+            <div className="mt-1 h-1 w-full rounded-full bg-slate-100">
+              <div
+                className="h-1 rounded-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${Math.round((pipeline.subStepIndex / pipeline.subStepTotal) * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+      <p className="text-sm text-slate-400 tabular-nums font-mono mt-1.5">
         {formatElapsed(elapsedSeconds)}
       </p>
-      <div className="mt-8 flex gap-3">
+
+      {/* Live log panel */}
+      {pipelineLogs.length > 0 && (
+        <div className="mt-5 w-full max-w-md">
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-1.5 text-left">
+            Pipeline log
+          </p>
+          <div className="bg-slate-900 rounded-lg px-3 py-2.5 h-40 overflow-y-auto text-left">
+            {pipelineLogs.map((msg, i) => (
+              <p
+                key={i}
+                className={`text-xs font-mono leading-relaxed ${
+                  msg.includes("⚠") ? "text-amber-400"
+                  : msg.includes("✓") ? "text-emerald-500"
+                  : msg.includes("Error") || msg.includes("failed") ? "text-red-400"
+                  : "text-slate-300"
+                }`}
+              >
+                {msg}
+              </p>
+            ))}
+            <div ref={logEndRef} />
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 flex gap-3">
         <Button
           variant="secondary"
           icon={Minimize2}

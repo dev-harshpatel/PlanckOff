@@ -30,5 +30,8 @@ dist-ssr
 !.cursor/rules/
 !.cursor/rules/**/*.mdc
 
-#folder 
+#folder
 /data-extract
+
+# Pipeline debug output (local dev only)
+data/output/debug/

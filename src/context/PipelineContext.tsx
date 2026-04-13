@@ -38,6 +38,14 @@ interface PipelineContextValue {
   setProgress: (runId: string | null, step: 0 | 1 | 2 | 3, status: PipelineStatus, error?: string | null) => void;
   /** Reset run-tracking state (called when the modal is reopened for a fresh run). */
   resetProgress: () => void;
+  /** Fine-grained sub-step label (e.g. "Extracting gypsum board"). Null when not in a sub-step. */
+  subStepLabel: string | null;
+  /** Current sub-step index (1-based). Null when not in a sub-step. */
+  subStepIndex: number | null;
+  /** Total number of sub-steps in the current major step. Null when not in a sub-step. */
+  subStepTotal: number | null;
+  /** Set the active sub-step. Pass all nulls to clear. */
+  setSubStep: (label: string | null, index: number | null, total: number | null) => void;
 }
 
 const PipelineContext = createContext<PipelineContextValue | undefined>(
@@ -54,6 +62,11 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [status, setStatus] = useState<PipelineStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+
+  // Sub-step tracking (for chunked extraction progress)
+  const [subStepLabel, setSubStepLabelState] = useState<string | null>(null);
+  const [subStepIndex, setSubStepIndexState] = useState<number | null>(null);
+  const [subStepTotal, setSubStepTotalState] = useState<number | null>(null);
 
   const openImportModal = useCallback(
     (pid: string | undefined, onComplete?: PipelineCompleteCallback) => {
@@ -87,11 +100,23 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const setSubStep = useCallback(
+    (label: string | null, index: number | null, total: number | null) => {
+      setSubStepLabelState(label);
+      setSubStepIndexState(index);
+      setSubStepTotalState(total);
+    },
+    [],
+  );
+
   const resetProgress = useCallback(() => {
     setRunId(null);
     setStep(0);
     setStatus("idle");
     setError(null);
+    setSubStepLabelState(null);
+    setSubStepIndexState(null);
+    setSubStepTotalState(null);
   }, []);
 
   const value: PipelineContextValue = {
@@ -106,6 +131,10 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
     getOnComplete,
     setProgress,
     resetProgress,
+    subStepLabel,
+    subStepIndex,
+    subStepTotal,
+    setSubStep,
   };
 
   return (

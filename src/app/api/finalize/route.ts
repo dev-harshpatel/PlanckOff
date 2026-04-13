@@ -7,9 +7,8 @@
  * Saves to database (local folder backup can be re-enabled via writeJsonToLocal).
  */
 
-import { readFile } from "fs/promises";
-import path from "path";
 import { getLatestMaterialMatch } from "@/lib/db/assemblyData";
+import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
 import { getAllMaterials } from "@/lib/db/materials";
 import {
   getLatestTakeoffOutput,
@@ -18,7 +17,8 @@ import {
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
 import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { writeJsonToLocal, writeRunDebugFile } from "@/lib/utils/localJsonStorage";
+import { appendRunLog, markRunComplete } from "@/lib/utils/pipelineLogger";
 import {
   type MaterialMatchInput,
   type ProjectContext,
@@ -175,16 +175,16 @@ export const POST = withAuth(async (req: NextRequest) => {
     let result: { assemblies: unknown[] };
 
     if (useCodeMerge) {
+      appendRunLog(runId ?? "no-run", `[finalize] Merging takeoff data with ${materialMatchData.assemblies.length} matched assemblies...`);
       console.log(
         `[finalize] Code merge: ${materialMatchData.assemblies.length} match assemblies, ${takeoffRows.length} takeoff rows`,
       );
-      // Load material DB for height-segmented labor lookup
+      // Load material DB for height-segmented labor lookup (same Redis-cached source as match route)
       let materialDb: unknown[] = [];
       try {
-        const dbRaw = await readFile(path.join(process.cwd(), "data", "material-database.json"), "utf-8");
-        materialDb = JSON.parse(dbRaw) as unknown[];
+        materialDb = await getMaterialDatabase();
       } catch {
-        console.warn("[finalize] Could not load material-database.json for labor index — height segmentation will use fallback");
+        console.warn("[finalize] Could not load material DB from cache — height segmentation will use fallback");
       }
       result = mergeTakeoffWithMaterialMatch(
         { assemblies: materialMatchData.assemblies } as MaterialMatchInput,
@@ -201,6 +201,7 @@ export const POST = withAuth(async (req: NextRequest) => {
           { status: 500 },
         );
       }
+      appendRunLog(runId ?? "no-run", `[finalize] No takeoff data — calling AI to finalize ${materialMatchData.assemblies.length} assemblies...`);
       console.log(
         `[finalize] AI finalize (fallback): ${materialMatchData.assemblies.length} assemblies`,
       );
@@ -212,6 +213,9 @@ export const POST = withAuth(async (req: NextRequest) => {
       );
       result = { assemblies: aiResult.assemblies ?? [] };
     }
+
+    // Debug: capture merge result before quantity enrichment
+    await writeRunDebugFile(runId ?? "no-run", "12_finalize_merge.json", result);
 
     // Safety net: ensure project_country/location/province are set on every assembly
     if (projectContext) {
@@ -229,11 +233,17 @@ export const POST = withAuth(async (req: NextRequest) => {
     // Enrich with computed quantities (single source of truth for Materials/MatLab tabs)
     const { data: materials } = await getAllMaterials();
     if (materials && materials.length > 0) {
+      appendRunLog(runId ?? "no-run", "[finalize] Enriching assemblies with quantities...");
       enrichFinalOutputWithQuantities(result, materials);
+      appendRunLog(runId ?? "no-run", `[finalize] ✓ Enrichment complete — ${result.assemblies?.length ?? 0} assemblies ready`);
       console.log("[finalize] Enriched assemblies with stored quantities");
     } else {
+      appendRunLog(runId ?? "no-run", "[finalize] ⚠ No materials in DB — skipping quantity enrichment", "warn");
       console.warn("[finalize] No materials in DB — skipping quantity enrichment");
     }
+
+    // Debug: capture final enriched output before DB save
+    await writeRunDebugFile(runId ?? "no-run", "13_finalize_enriched.json", result);
 
     const filename = `final_output-${Date.now()}.json`;
     const { data: dbSaved } = await saveFinalOutput(
@@ -251,6 +261,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     if (runId && dbSaved?.id) {
       await completePipelineRun(runId, dbSaved.id);
     }
+    markRunComplete(runId ?? "no-run");
     console.log(`[finalize] DB: ${dbSaved?.id ?? "ok"} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
 
     const totalMs = Date.now() - totalStart;

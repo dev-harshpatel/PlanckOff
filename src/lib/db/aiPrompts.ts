@@ -3,8 +3,15 @@ import path from "path";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const AI_PROMPT_KEYS = {
-  PDF_EXTRACTION: "pdf_extraction",
-  MATERIAL_MATCH: "material_match",
+  PDF_EXTRACTION:           "pdf_extraction",
+  MATERIAL_MATCH:           "material_match",   // kept — legacy mode still uses it
+  EXTRACT_SKELETON:         "extract_skeleton",
+  EXTRACT_GYPSUM:           "extract_gypsum",
+  EXTRACT_STEEL_FRAMING:    "extract_steel_framing",
+  EXTRACT_INSULATION:       "extract_insulation",
+  EXTRACT_MOISTURE_CONTROL: "extract_moisture_control",
+  EXTRACT_WOOD_SUBSTRATES:  "extract_wood_substrates",
+  EXTRACT_SPECIALTY:        "extract_specialty",
 } as const;
 
 export type AIPromptKey = (typeof AI_PROMPT_KEYS)[keyof typeof AI_PROMPT_KEYS];
@@ -19,8 +26,15 @@ export interface AIPromptRecord {
 }
 
 const PROMPT_FILE_BY_KEY: Record<AIPromptKey, string> = {
-  [AI_PROMPT_KEYS.PDF_EXTRACTION]: path.join(process.cwd(), "prompt", "extractAssemblies.txt"),
-  [AI_PROMPT_KEYS.MATERIAL_MATCH]: path.join(process.cwd(), "prompt", "matchMaterials.txt"),
+  [AI_PROMPT_KEYS.PDF_EXTRACTION]:           path.join(process.cwd(), "prompt", "extractAssemblies.txt"),
+  [AI_PROMPT_KEYS.MATERIAL_MATCH]:           path.join(process.cwd(), "prompt", "matchMaterials.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_SKELETON]:         path.join(process.cwd(), "prompt", "extract_skeleton.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_GYPSUM]:           path.join(process.cwd(), "prompt", "extract_gypsum.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_STEEL_FRAMING]:    path.join(process.cwd(), "prompt", "extract_steel_framing.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_INSULATION]:       path.join(process.cwd(), "prompt", "extract_insulation.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_MOISTURE_CONTROL]: path.join(process.cwd(), "prompt", "extract_moisture_control.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_WOOD_SUBSTRATES]:  path.join(process.cwd(), "prompt", "extract_wood_substrates.txt"),
+  [AI_PROMPT_KEYS.EXTRACT_SPECIALTY]:        path.join(process.cwd(), "prompt", "extract_specialty.txt"),
 };
 
 async function readDefaultPromptFile(promptKey: AIPromptKey) {
