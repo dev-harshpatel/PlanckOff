@@ -59,7 +59,7 @@ export const GET = withAuth(async (request, { user }) => {
 export const POST = withAuth(async (request, { user }) => {
   try {
     const body = await request.json();
-    const { name, company, status, dueDate, projectNumber, assignedTo, location } = body;
+    const { name, company, status, dueDate, projectNumber, assignedTo, location, country, province } = body;
 
     // Validation
     if (!name || !company) {
@@ -86,6 +86,8 @@ export const POST = withAuth(async (request, { user }) => {
       projectNumber,
       assignedTo,
       location,
+      country,
+      province,
       createdBy: user.id,
     });
 

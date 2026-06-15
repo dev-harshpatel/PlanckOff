@@ -6,6 +6,7 @@ import { Admin, AuthState, LoginCredentials, LoginResponse, SessionResponse } fr
 interface AuthContextValue extends AuthState {
   login: (credentials: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  refreshSession: (showLoading?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -18,16 +19,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<Admin | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const validateSession = useCallback(async () => {
+  const validateSession = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
+
     try {
       const response = await fetch('/api/auth/session', {
         method: 'GET',
         credentials: 'include',
+        cache: 'no-store',
       });
 
       const data: SessionResponse = await response.json();
 
-      if (data.valid && data.user) {
+      if (response.ok && data.valid && data.user) {
         setUser(data.user);
       } else {
         setUser(null);
@@ -41,7 +47,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   useEffect(() => {
-    validateSession();
+    validateSession(true);
+  }, [validateSession]);
+
+  useEffect(() => {
+    const refreshSession = () => {
+      void validateSession(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSession();
+      }
+    };
+
+    window.addEventListener('focus', refreshSession);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', refreshSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [validateSession]);
 
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
@@ -57,7 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const data: LoginResponse = await response.json();
 
-      if (data.success && data.user) {
+      if (response.ok && data.success && data.user) {
         setUser(data.user);
         return { success: true };
       } else {
@@ -79,6 +105,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
+      setIsLoading(false);
     }
   };
 
@@ -88,6 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     login,
     logout,
+    refreshSession: validateSession,
   };
 
   return (

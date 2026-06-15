@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { readdir } from "fs/promises";
 import path from "path";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 /**
  * GET /api/assembly-files
  * Returns the latest assembly-data and material-match JSON filenames
  */
-export async function GET() {
+export const GET = withAuth(async () => {
   try {
     const assemblyDir = path.join(process.cwd(), "public", "assembly-data");
     const materialDir = path.join(process.cwd(), "public", "material-data");
@@ -69,4 +70,4 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+});

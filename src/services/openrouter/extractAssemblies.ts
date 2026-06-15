@@ -1,100 +1,22 @@
-const PROMPT = `Extract wall, roof, and floor assembly data from the page image. Return ONLY valid JSON. No commentary, no markdown.
+import { repairJSONForAssemblyExtraction, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
+import type { ExtractionResult } from "@/types/pipeline";
 
-ASSEMBLY ID: Short alphanumeric tag from page (e.g. W14, RF2B, WT1a). No long names. Untagged: UN-TAGGED-WALL-1, UN-TAGGED-ROOF-1, UN-TAGGED-FLOOR-1. Never null.
-
-EXTRACT: Gypsum board (each layer separate), gypsum sheathing, steel framing (studs/tracks/metal), batt/mineral wool insulation, plywood/OSB, blocking/bracing, steel deck, vapor barriers, sealants, trim/accessories.
-
-EXCLUDE: Air barriers, cladding (brick/stone/metal/EIFS/siding/fibre cement), roofing membranes, rigid insulation, concrete/CMU/masonry, paint, window/curtain wall, aluminum panels/mullions, back pans, vertical support systems. Include sound batts; exclude acoustic caulk.
-
-SCOPE (critical): Materials must come ONLY from the content tied to THAT assembly (same row/section/block as its tag). Never copy materials from another assembly. If an assembly's content has no in-scope materials (e.g. only cladding/window/concrete), output it with ALL material arrays empty. One assembly's content = isolated; do not bleed across.
-
-Each material: "raw_text" = exact verbatim from PDF. Unstated properties = null.
-
-LAYERS (critical): Multiple gypsum layers = separate entries (never merge). If PDF says "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X", output TWO separate entries — each with layers=2 (the total layer count from the PDF as an integer). The "layers" field must always reflect the layer count stated in the PDF (1, 2, 3, etc.). If the PDF does not mention a layer count, set layers=1. Never set layers=null for gypsum board or gypsum sheathing.
-
-OUTPUT: JSON only. Structure: assemblies[].assembly_id, fire_rating, stc_rating, materials.{ gypsum_board[], gypsum_sheathing[], steel_framing[], insulation[], plywood[], blocking_and_bracing[], steel_deck[], vapor_barriers[], sealants[], trim_and_accessories[] }. Each item: raw_text, thickness/size/gauge/spacing/type/layers/description/r_value/depth as applicable or null. No assemblies on page → {"assemblies":[]}. Include every visible assembly; empty materials = empty arrays.`;
-
-function repairJSON(input: string): string {
-  try {
-    JSON.parse(input);
-    return input;
-  } catch {
-    // continue to repair
-  }
-
-  const assemblyEndPattern = /\}\s*\}\s*(?=,|\])/g;
-  let lastCompleteEnd = -1;
-  let match;
-  while ((match = assemblyEndPattern.exec(input)) !== null) {
-    lastCompleteEnd = match.index + match[0].length;
-  }
-
-  if (lastCompleteEnd > 0) {
-    let fixed = input.substring(0, lastCompleteEnd);
-    fixed = fixed.replace(/,\s*$/, "");
-    fixed += "\n  ]\n}";
-    try {
-      JSON.parse(fixed);
-      return fixed;
-    } catch {
-      // fall through
-    }
-  }
-
-  let fixed = input;
-
-  let inString = false;
-  let escape = false;
-  for (const ch of fixed) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; }
-  }
-  if (inString) fixed += '"';
-
-  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*"[^"]*"\s*$/, "");
-  fixed = fixed.replace(/,\s*"[^"]*"\s*:\s*$/, "");
-  fixed = fixed.replace(/,\s*"[^"]*$/, "");
-  fixed = fixed.replace(/,\s*$/, "");
-
-  const closeMap: Record<string, string> = { "{": "}", "[": "]" };
-  const stack: string[] = [];
-  inString = false;
-  escape = false;
-  for (const ch of fixed) {
-    if (escape) { escape = false; continue; }
-    if (ch === "\\") { escape = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (ch === "{" || ch === "[") stack.push(ch);
-    if (ch === "}" || ch === "]") stack.pop();
-  }
-  while (stack.length > 0) {
-    const open = stack.pop()!;
-    fixed += closeMap[open];
-  }
-
-  return fixed;
-}
-
-export interface ExtractionResult {
-  assemblies: unknown[];
-  truncated: boolean;
-  usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-}
+export type { ExtractionResult };
 
 export async function extractAssembliesFromPDF(
   pdfBase64: string,
   apiKey: string,
+  promptText: string,
 ): Promise<ExtractionResult> {
   const requestBody = {
     model: "google/gemini-2.5-pro",
-    max_tokens: 32768,
+    max_tokens: 65536,
+    temperature: 0.1,
     messages: [
       {
         role: "user",
         content: [
-          { type: "text", text: PROMPT },
+          { type: "text", text: promptText },
           {
             type: "image_url",
             image_url: {
@@ -133,10 +55,7 @@ export async function extractAssembliesFromPDF(
     console.log(`[extract] Tokens: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total`);
   }
 
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*\n?/, "")
-    .replace(/\n?```\s*$/, "")
-    .trim();
+  const cleaned = stripMarkdownAndTrim(raw);
 
   let parsed;
   try {
@@ -144,7 +63,7 @@ export async function extractAssembliesFromPDF(
   } catch {
     console.warn("[extract] JSON parse failed, attempting repair...");
     try {
-      parsed = JSON.parse(repairJSON(cleaned));
+      parsed = JSON.parse(repairJSONForAssemblyExtraction(cleaned));
       console.log(`[extract] Repaired JSON — ${parsed.assemblies?.length ?? 0} assemblies`);
     } catch (repairErr) {
       console.error("[extract] JSON repair failed:", repairErr);
@@ -152,10 +71,41 @@ export async function extractAssembliesFromPDF(
     }
   }
 
-  console.log(`[extract] Extracted ${parsed.assemblies?.length ?? 0} assemblies`);
+  const assemblies = (parsed.assemblies ?? []) as Array<{
+    assembly_id?: string;
+    fire_rating?: string | null;
+    materials?: {
+      gypsum_board?: unknown[];
+      steel_framing?: unknown[];
+      vapor_barriers?: unknown[];
+      insulation?: unknown[];
+    };
+  }>;
+
+  console.log(`[extract] Extracted ${assemblies.length} assemblies`);
+
+  // --- Post-extraction validation warnings ---
+  for (const a of assemblies) {
+    const id = a.assembly_id ?? "?";
+    const m = a.materials ?? {};
+    const hasGyp = (m.gypsum_board?.length ?? 0) > 0;
+    const hasStuds = (m.steel_framing?.length ?? 0) > 0;
+    const hasVapor = (m.vapor_barriers?.length ?? 0) > 0;
+    const isFireRated = a.fire_rating && a.fire_rating !== "NA" && a.fire_rating !== "N/A";
+
+    if (hasStuds && !hasGyp) {
+      console.warn(`[extract] WARNING: ${id} has steel_framing but NO gypsum_board — likely missing interior finish`);
+    }
+    if (hasVapor && !hasGyp) {
+      console.warn(`[extract] WARNING: ${id} has vapor_barriers but NO gypsum_board — likely missing interior finish`);
+    }
+    if (isFireRated && !hasGyp) {
+      console.warn(`[extract] WARNING: ${id} is fire-rated (${a.fire_rating}) but NO gypsum_board — fire-rated walls always have gypsum`);
+    }
+  }
 
   return {
-    assemblies: parsed.assemblies ?? [],
+    assemblies,
     truncated: finishReason === "length",
     usage: {
       prompt_tokens: usage.prompt_tokens ?? 0,

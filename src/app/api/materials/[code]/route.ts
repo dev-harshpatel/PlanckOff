@@ -2,9 +2,10 @@
  * API routes for individual material operations
  * GET /api/materials/[code] - Fetch single material
  * PUT /api/materials/[code] - Update single material
+ * PATCH /api/materials/[code] - Partial update (same as PUT)
  * DELETE /api/materials/[code] - Delete material
  *
- * Only accessible by Administrators and Team Leads
+ * Only accessible by Administrators and Team Leads (write operations)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,6 +15,10 @@ import {
   getMaterialByCode,
   updateMaterial,
 } from "@/lib/db/materials";
+import {
+  getMaterialDatabase,
+  refreshMaterialDbCache,
+} from "@/lib/cache/materialDbCache";
 import { MaterialDefinition } from "@/types";
 
 /**
@@ -33,17 +38,9 @@ export const GET = withRoleAuth(
         );
       }
 
-      const { data: material, error } = await getMaterialByCode(
-        decodeURIComponent(code),
-      );
-
-      if (error) {
-        console.error("Failed to fetch material:", error);
-        return NextResponse.json(
-          { success: false, error: "Failed to fetch material" },
-          { status: 500 },
-        );
-      }
+      const decodedCode = decodeURIComponent(code);
+      const materials = await getMaterialDatabase();
+      const material = materials.find((item) => item.code === decodedCode) ?? null;
 
       if (!material) {
         return NextResponse.json(
@@ -119,6 +116,7 @@ export const PUT = withRoleAuth(
         );
       }
 
+      await refreshMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "Material updated successfully",
@@ -133,6 +131,12 @@ export const PUT = withRoleAuth(
     }
   },
 );
+
+/**
+ * PATCH /api/materials/[code]
+ * Partial update — same logic as PUT (used by UOM/Formula Local/Global flow)
+ */
+export const PATCH = PUT;
 
 /**
  * DELETE /api/materials/[code]
@@ -161,6 +165,7 @@ export const DELETE = withRoleAuth(
         );
       }
 
+      await refreshMaterialDbCache();
       return NextResponse.json({
         success: true,
         message: "Material deleted successfully",

@@ -5,11 +5,12 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { parseWallSpecPDF } from "@/services/openrouter/parseWallSpec";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest) => {
   console.log("\n🧪 === TEST ENDPOINT CALLED ===");
   
   try {
@@ -58,4 +59,4 @@ WALL TYPE W4 - EXTERIOR WALL
       { status: 500 },
     );
   }
-}
+});

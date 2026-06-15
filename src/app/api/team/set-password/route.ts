@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import {
+  cleanupExpiredInvitations,
   getInvitationByToken,
   isInvitationValid,
   markInvitationAsUsed,
@@ -18,6 +19,7 @@ import { SetPasswordRequest, SetPasswordResponse } from '@/types/team';
 
 export async function POST(request: NextRequest) {
   try {
+    await cleanupExpiredInvitations();
     // Parse request body
     const body: SetPasswordRequest = await request.json();
     const { token, password } = body;

@@ -28,8 +28,7 @@ export interface AuthSessionRow {
 
 // Insert types (what we send to Supabase)
 export interface AuthSessionInsert {
-  admin_id?: string; // Legacy: for admins table
-  team_member_id?: string; // New: for team_members table
+  team_member_id: string;
   expires_at: string;
   ip_address?: string;
   user_agent?: string;
@@ -40,14 +39,7 @@ export interface SessionWithAdmin {
   id: string;
   token: string;
   expires_at: string;
-  admin: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-    initials: string | null;
-  } | null;
-  team_member?: {
+  team_member: {
     id: string;
     email: string;
     name: string;

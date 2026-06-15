@@ -28,6 +28,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
     cellMode = false,
     className = '',
     placeholder,
+    onBlur: externalOnBlur,
     ...props
 }) => {
     const [localVal, setLocalVal] = useState<string>(
@@ -63,6 +64,11 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         onChange(num);
     };
 
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        commit();
+        externalOnBlur?.(e);
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const v = e.target.value;
         const regex = allowNegative ? /^-?\d*\.?\d*$/ : /^\d*\.?\d*$/;
@@ -84,7 +90,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
                 className={className}
                 value={localVal}
                 onChange={handleChange}
-                onBlur={commit}
+                onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 type="text"
@@ -100,7 +106,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
             helperText={helperText}
             value={localVal}
             onChange={handleChange}
-            onBlur={commit}
+            onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             type="text"

@@ -2,23 +2,57 @@
 
 import React, { useState, useMemo } from 'react';
 import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, ProposalConfig } from '@/types';
-import { calculateMaterials } from '@/services/gemini/calculateMaterials';
-import { Printer, FileText, Settings } from 'lucide-react';
-import { Select } from '@/components/ui';
+import type { MaterialCosting } from "@/types/assembly";
+import { FileText, Settings } from 'lucide-react';
+import { Select, EmptyState } from '@/components/ui';
+import { applyMarkupChain } from '@/lib/utils/markupChain';
+import { LaborView } from '@/components/features/reports/LaborView';
 import { MarkupsView } from '@/components/features/reports/Markups';
 import { MaterialsView, ExtendedLineItem } from '@/components/features/reports/MaterialsView';
-import { LaborView } from '@/components/features/reports/LaborView';
-import { parsePer } from '@/lib/utils/calculationUtils';
+import { MatLabView } from '@/components/features/reports/MatLabView';
 import { getCSISection } from '@/constants/csiSections';
+import { buildProjectPriceMap } from '@/lib/utils/projectPricing';
+import { aggregateMaterialsFromCosting } from '@/lib/utils/aggregateMaterialsFromCosting';
+
+// Maps CSI division prefix (first 8 chars) → human-readable section name for the Summary Report
+const CSI_SECTION_DISPLAY_NAMES: Record<string, string> = {
+    '09 22 16': 'Steel Framing',
+    '05 40 00': 'Structural Framing',
+    '09 22 00': 'Fasteners & Accessories',
+    '09 29 00': 'Drywall Boards',
+    '07 21 00': 'Insulation',
+    '07 84 00': 'Fire & Acoustic Caulking',
+    '07 92 00': 'Fire & Acoustic Caulking',
+    '07 26 00': 'Vapor Barrier',
+    '06 16 00': 'Exterior Sheathing',
+    '09 51 00': 'Ceiling Systems',
+};
+
+/**
+ * Maps a raw section string (e.g. "09 22 16 - Non-Structural…" or "09 22 16") to a display name.
+ * Prefers the static dictionary; falls back to the human-readable part of the section string itself,
+ * enabling dynamic extension from spec_database.section values without updating the dictionary.
+ */
+const getSectionDisplayName = (section: string): string => {
+    const parts = section.split(' - ');
+    const code = parts[0].trim().substring(0, 8);
+    return CSI_SECTION_DISPLAY_NAMES[code] ?? (parts.length > 1 ? parts.slice(1).join(' - ').trim() : section || 'Other');
+};
+
+const fmt = (v: number) =>
+    v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface ReportsProps {
     assemblies: WallAssembly[];
     takeoffs: Record<string, TakeoffInstance[]>;
     manualItems: CalculatedMaterial[];
     materials: MaterialDefinition[];
+    materialCostingData?: MaterialCosting[];
+    onUnitCostChange?: (code: string, newCost: number, type: 'material' | 'labor', unit?: string) => void;
     displayUnit: 'imperial' | 'metric';
-    activeReportTab?: 'proposal' | 'bidding' | 'markups' | 'materials' | 'labor';
-    setActiveReportTab?: (tab: 'proposal' | 'bidding' | 'markups' | 'materials' | 'labor') => void;
+    reportScopeId?: string | null;
+    activeReportTab?: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor';
+    setActiveReportTab?: (tab: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor') => void;
     onCloseReport?: () => void;
 }
 
@@ -27,75 +61,79 @@ export const Reports: React.FC<ReportsProps> = ({
     takeoffs,
     manualItems,
     materials,
+    materialCostingData = [],
+    onUnitCostChange,
     displayUnit,
+    reportScopeId,
     activeReportTab,
     setActiveReportTab,
     onCloseReport
 }) => {
-    console.log("Reports Component Rendered", { assemblyCount: assemblies.length });
-
     // Configuration
-    const [config, setConfig] = useState<ProposalConfig>({
+    const [config, setConfig] = useState<ProposalConfig & { escalation: number; laborBurden: number }>({
         clientName: 'Client Name',
         clientAddress: 'Project Address',
         preparedBy: 'Your Company Name',
         validityDays: 30,
         taxRate: 8.25,
         markup: 15.0,
-        overhead: 10.0
+        overhead: 10.0,
+        escalation: 0,
+        laborBurden: 15,
     });
 
     const [showConfig, setShowConfig] = useState(false);
-    const [localActiveReport, setLocalActiveReport] = useState<'proposal' | 'bidding' | 'markups' | 'materials' | 'labor'>('proposal');
+    const [localActiveReport, setLocalActiveReport] = useState<'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor'>('proposal');
 
     const activeReport = activeReportTab || localActiveReport;
+    const reportFilterScope = reportScopeId || 'project-report';
     const handleReportChange = (tab: 'proposal' | 'bidding' | 'markups') => {
         if (setActiveReportTab) setActiveReportTab(tab);
         else setLocalActiveReport(tab);
     };
     const [floorFilter, setFloorFilter] = useState<string>('All');
 
+    const safeAssemblies = assemblies || [];
+    const safeTakeoffs: Record<string, TakeoffInstance[]> = takeoffs || {};
+
+    const assemblyMap = useMemo(
+        () => new Map(safeAssemblies.map((assembly) => [assembly.id, assembly])),
+        [safeAssemblies],
+    );
+
     // Price Map Calculation
     const priceMap = useMemo(() => {
-        const map: Record<string, { cost: number, per: number }> = {};
-        if (materials) {
-            materials.forEach(m => {
-                if (m && m.description) {
-                    map[m.description] = { cost: m.matCost || 0, per: parsePer(m.per || '1') };
-                }
+        return buildProjectPriceMap(materials || []);
+    }, [materials]);
+
+    const reportCalculations = useMemo(() => {
+        const proposalItems: CalculatedMaterial[] = [];
+        const reportLineItems: ExtendedLineItem[] = [];
+
+        if (manualItems.length > 0) {
+            proposalItems.push(...manualItems);
+            manualItems.forEach((material) => {
+                reportLineItems.push({
+                    ...material,
+                    area: 'Manual',
+                    section: getCSISection(material.category, material.item),
+                    costCode: material.laborCode || material.category,
+                    conditionType: 'Manual Entry',
+                    supplier: 'Generic',
+                    assemblyType: 'Manual',
+                });
             });
         }
-        return map;
-    }, [materials]);
+
+        return { proposalItems, reportLineItems, scopeSummary: [] };
+    }, [manualItems]);
 
     // Data Processing
     const proposalData = useMemo(() => {
-        let allMats: CalculatedMaterial[] = [];
-        const safeAssemblies = assemblies || [];
-        const safeTakeoffs: Record<string, TakeoffInstance[]> = takeoffs || {};
-
-        // 1. Calculate Materials for all assemblies
-        Object.entries(safeTakeoffs).forEach(([aid, insts]) => {
-            const asm = safeAssemblies.find(a => a.id === aid);
-            if (asm && insts && insts.length > 0) {
-                try {
-                    const mats = calculateMaterials(asm, insts as TakeoffInstance[], materials || []);
-                    allMats = [...allMats, ...mats];
-                } catch (err) {
-                    console.error("Error calculating materials:", err);
-                }
-            }
-        });
-
-        // Add manual items
-        if (manualItems && manualItems.length > 0) {
-            allMats = [...allMats, ...manualItems];
-        }
-
         // 2. Group by CSI and Cost
         const csiGroups: Record<string, { material: CalculatedMaterial, cost: number }[]> = {};
 
-        allMats.forEach(m => {
+        reportCalculations.proposalItems.forEach(m => {
             if (!m) return;
 
             // Cost Logic
@@ -125,43 +163,100 @@ export const Reports: React.FC<ReportsProps> = ({
             }
         });
 
-        // 3. Scope Summary
-        const scopeSummary = safeAssemblies.map(a => {
-            const insts = safeTakeoffs[a.id] || [];
-            const totalLF = insts.reduce((s, i) => s + ((i.length || 0) * (i.quantity || 1)), 0);
-            const totalSF = insts.reduce((s, i) => {
-                const q = i.quantity || 1;
-                if (i.ceilingArea) return s + (i.ceilingArea * q);
-                return s + ((i.length || 0) * (i.height || 0) * q);
-            }, 0);
-            return { ...a, totalLF, totalSF };
-        }).filter(a => a.totalLF > 0 || a.totalSF > 0);
-
         const subtotal = Object.values(csiGroups).flat().reduce((s, i) => s + i.cost, 0);
 
-        return { csiGroups, scopeSummary, subtotal, allMats };
-    }, [assemblies, takeoffs, manualItems, materials, priceMap]);
+        return {
+            csiGroups,
+            scopeSummary: reportCalculations.scopeSummary,
+            subtotal,
+            allMats: reportCalculations.proposalItems,
+        };
+    }, [priceMap, reportCalculations]);
 
-    // Financial Totals
+    // ─── Pipeline-driven proposal data (Summary Report format) ─────────────────
+    const pipelineProposalData = useMemo(() => {
+        if (!materialCostingData.length) return null;
+
+        // Aggregate materials by section display name
+        const materialRows = aggregateMaterialsFromCosting(materialCostingData, materials || [], priceMap);
+
+        // Aggregate labor by code+description+unit across all assemblies
+        const laborMap = new Map<string, {
+            code: string; item: string; section: string;
+            quantity: number; unit: string; unitCost: number; totalCost: number;
+        }>();
+        materialCostingData.forEach((asm) => {
+            (asm.materials_costing ?? []).forEach((ci) => {
+                (ci.matched_labor ?? []).forEach((lab) => {
+                    const qty = (lab.quantity != null && typeof lab.quantity === 'number') ? lab.quantity : 0;
+                    const key = `${lab.code}|${lab.description}|${lab.unit}`;
+                    if (laborMap.has(key)) {
+                        const existing = laborMap.get(key)!;
+                        existing.quantity += qty;
+                        existing.totalCost += qty * lab.unit_cost;
+                    } else {
+                        laborMap.set(key, {
+                            code: lab.code,
+                            item: lab.description,
+                            section: lab.section ?? '—',
+                            quantity: qty,
+                            unit: lab.unit === 'EA' ? 'Hrs' : lab.unit,
+                            unitCost: lab.unit_cost,
+                            totalCost: qty * lab.unit_cost,
+                        });
+                    }
+                });
+            });
+        });
+        const laborRows = Array.from(laborMap.values());
+
+        // Group materials by display section name
+        const sectionMap = new Map<string, typeof materialRows>();
+        materialRows.forEach((row) => {
+            const name = getSectionDisplayName(row.section);
+            if (!sectionMap.has(name)) sectionMap.set(name, []);
+            sectionMap.get(name)!.push(row);
+        });
+
+        const materialTotal = materialRows.reduce((s, r) => s + r.totalCost, 0);
+        const laborTotal = laborRows.reduce((s, r) => s + r.totalCost, 0);
+
+        return {
+            sectionMap,
+            laborRows,
+            materialTotal,
+            laborTotal,
+            grandTotal: materialTotal + laborTotal,
+        };
+    }, [materialCostingData, materials, priceMap]);
+
+    // Financial Totals — uses pipeline data when available.
+    // Markup chain: escalation (on direct costs) → tax (material only) → burden (labour only) → overhead → profit.
+    // Source of truth: applyMarkupChain() in src/lib/utils/markupChain.ts.
     const financials = useMemo(() => {
-        const sub = proposalData.subtotal || 0;
-        const tax = sub * ((config.taxRate || 0) / 100);
-        const overhead = sub * ((config.overhead || 0) / 100);
-        const profitBase = sub + overhead + tax;
-        const profit = profitBase * ((config.markup || 0) / 100);
-        const total = profitBase + profit;
-        return { sub, tax, overhead, profit, total };
-    }, [proposalData, config]);
+        const totalMaterial = pipelineProposalData
+            ? pipelineProposalData.materialTotal
+            : proposalData.subtotal ?? 0;
+        const totalLabor = pipelineProposalData ? pipelineProposalData.laborTotal : 0;
+        return applyMarkupChain(
+            { totalMaterial, totalLabor, gcTotal: 0 },
+            {
+                escalation: config.escalation ?? 0,
+                tax: config.taxRate ?? 0,
+                laborBurden: config.laborBurden ?? 0,
+                overhead: config.overhead ?? 0,
+                profit: config.markup ?? 0,
+            },
+        );
+    }, [proposalData.subtotal, pipelineProposalData, config]);
 
     // Bidding Data
     const biddingData = useMemo(() => {
         const rows: any[] = [];
         const levels = new Set<string>(['All']);
-        const safeAssemblies = assemblies || [];
-        const safeTakeoffs: Record<string, TakeoffInstance[]> = takeoffs || {};
 
         Object.entries(safeTakeoffs).forEach(([aid, insts]) => {
-            const asm = safeAssemblies.find(a => a.id === aid);
+            const asm = assemblyMap.get(aid);
             if (!asm) return;
 
             (insts as TakeoffInstance[]).forEach(inst => {
@@ -206,68 +301,23 @@ export const Reports: React.FC<ReportsProps> = ({
             rows: Object.values(aggregated).sort((a: any, b: any) => a.level.localeCompare(b.level) || a.code.localeCompare(b.code)),
             levels: Array.from(levels).sort()
         };
-    }, [assemblies, takeoffs, floorFilter]);
+    }, [assemblyMap, floorFilter, safeTakeoffs]);
 
-    // Detailed Report Data Generation (Preserving Area/Level)
-    const reportLineItems: ExtendedLineItem[] = useMemo(() => {
-        let items: ExtendedLineItem[] = [];
-        const safeAssemblies = assemblies || [];
-        const safeTakeoffs: Record<string, TakeoffInstance[]> = takeoffs || {};
-
-        // Iterate Assemblies
-        safeAssemblies.forEach(asm => {
-            const insts = safeTakeoffs[asm.id] || [];
-
-            // Group Instances by Level to preserve "Area" context
-            // doing calculation per level group to maintain some efficiency while allowing filtering
-            const levelGroups: Record<string, TakeoffInstance[]> = {};
-            insts.forEach(i => {
-                const lvl = i.level || 'Unknown';
-                if (!levelGroups[lvl]) levelGroups[lvl] = [];
-                levelGroups[lvl].push(i);
-            });
-
-            // Calculate for each level
-            Object.entries(levelGroups).forEach(([lvl, levelInsts]) => {
-                try {
-                    const mats = calculateMaterials(asm, levelInsts, materials || []);
-                    mats.forEach(m => {
-                        items.push({
-                            ...m,
-                            area: lvl,
-                            section: getCSISection(m.category, m.item),
-                            costCode: m.laborCode || m.category, // Fallback
-                            conditionType: asm.description,
-                            supplier: 'Generic' // Helper to lookup if needed, but 'Generic' for now
-                        });
-                    });
-                } catch (e) {
-                    console.error("Report Calc Error", e);
-                }
-            });
-        });
-
-        // Add Manual Items (Default Area to 'Manual')
-        if (manualItems) {
-            manualItems.forEach(m => {
-                items.push({
-                    ...m,
-                    area: 'Manual',
-                    section: getCSISection(m.category, m.item),
-                    costCode: m.laborCode || m.category,
-                    conditionType: 'Manual Entry',
-                    supplier: 'Generic'
-                });
-            });
-        }
-
-        return items;
-    }, [assemblies, takeoffs, manualItems, materials]);
+    const reportLineItems = reportCalculations.reportLineItems;
+    const materialReportLineItems = useMemo(
+        () => reportLineItems.filter((item) => item.category !== 'Labor'),
+        [reportLineItems],
+    );
+    const laborReportLineItems = useMemo(
+        () => reportLineItems.filter((item) => item.category === 'Labor'),
+        [reportLineItems],
+    );
 
     // Dynamic Header Logic
     const getHeaderInfo = () => {
         switch (activeReport) {
             case 'materials': return { title: 'Materials', icon: null };
+            case 'matlab': return { title: 'Mat+Lab', icon: null };
             case 'labor': return { title: 'Labor', icon: null };
             case 'markups': return { title: 'Markups', icon: null };
             case 'proposal':
@@ -313,7 +363,7 @@ export const Reports: React.FC<ReportsProps> = ({
                         <button onClick={() => setShowConfig(!showConfig)} className={`px-3 py-2 rounded-md border flex items-center gap-2 text-sm font-medium transition-colors ${showConfig ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                             <Settings className="w-4 h-4" /> Configuration
                         </button>
-                    ) : (activeReport === 'bidding' || activeReport === 'materials' || activeReport === 'labor' ? (
+                    ) : (activeReport === 'bidding' || activeReport === 'materials' || activeReport === 'matlab' || activeReport === 'labor' ? (
                         // Show Floor Filter for Bidding, Materials and Labor views if desired, or just Bidding
                         // The user requested explicit separation.
                         // Let's keep specific controls per view.
@@ -333,15 +383,12 @@ export const Reports: React.FC<ReportsProps> = ({
                         />
                     )}
 
-                    <button onClick={() => window.print()} className="px-3 py-2 bg-slate-800 text-white rounded-md flex items-center gap-2 text-sm font-medium hover:bg-slate-900 shadow-sm">
-                        <Printer className="w-4 h-4" /> Print
-                    </button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-hidden flex flex-col">
                 {activeReport === 'bidding' ? (
-                    <div className="flex-1 overflow-y-auto p-8 bg-slate-100 flex justify-center">
+                    <div className="flex-1 overflow-y-auto p-8 bg-slate-100 flex justify-center items-start">
                         <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg p-[15mm] flex flex-col gap-6 print:w-full print:shadow-none print:p-0">
                             <header className="border-b-2 border-slate-800 pb-4 mb-4">
                                 <h1 className="text-2xl font-bold text-slate-800">BIDDING SUMMARY</h1>
@@ -385,13 +432,32 @@ export const Reports: React.FC<ReportsProps> = ({
                         </div>
                     </div>
                 ) : activeReport === 'materials' ? (
-                    <MaterialsView items={reportLineItems.filter(i => i.category !== 'Labor')} priceMap={priceMap} />
+                    <MaterialsView
+                        items={materialReportLineItems}
+                        materialCostingData={materialCostingData}
+                        materials={materials}
+                        priceMap={priceMap}
+                        filterStorageKey={`${reportFilterScope}:materials`}
+                        onUnitCostChange={onUnitCostChange ? (code, newCost, unit) => onUnitCostChange(code, newCost, 'material', unit) : undefined}
+                    />
+                ) : activeReport === 'matlab' ? (
+                    <MatLabView
+                        materialCostingData={materialCostingData}
+                        priceMap={priceMap}
+                        filterStorageKey={`${reportFilterScope}:matlab`}
+                    />
                 ) : activeReport === 'labor' ? (
-                    <LaborView items={reportLineItems.filter(i => i.category === 'Labor')} priceMap={priceMap} />
+                    <LaborView
+                        items={laborReportLineItems}
+                        materialCostingData={materialCostingData}
+                        priceMap={priceMap}
+                        materials={materials}
+                        filterStorageKey={`${reportFilterScope}:labor`}
+                        onUnitCostChange={onUnitCostChange ? (code, newCost) => onUnitCostChange(code, newCost, 'labor') : undefined}
+                    />
                 ) : activeReport === 'markups' ? (
                     <MarkupsView
-                        calculatedMaterials={proposalData.allMats}
-                        priceMap={priceMap}
+                        filterStorageKey={`${reportFilterScope}:markups`}
                     />
                 ) : (
                     <div className="flex h-full">
@@ -413,71 +479,208 @@ export const Reports: React.FC<ReportsProps> = ({
                                             <label className="text-xs font-semibold text-slate-500 mb-1 block">Prepared By</label>
                                             <input type="text" value={config.preparedBy} onChange={e => setConfig({ ...config, preparedBy: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" />
                                         </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500 mb-1 block">Project Name</label>
+                                            <input type="text" value={config.clientName} onChange={e => setConfig({ ...config, clientName: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500 mb-1 block">Project Location</label>
+                                            <input type="text" value={config.clientAddress} onChange={e => setConfig({ ...config, clientAddress: e.target.value })} className="w-full border rounded px-2 py-1 text-sm" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Proposal Preview */}
-                        <div className="flex-1 overflow-y-auto p-8 bg-slate-100 flex justify-center">
-                            <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg p-[15mm] flex flex-col gap-8 print:w-full print:shadow-none print:p-0">
-                                {/* Header */}
-                                <header className="border-b-4 border-slate-800 pb-6 flex justify-between items-start">
-                                    <div>
-                                        <h1 className="text-3xl font-bold text-slate-800">PROPOSAL</h1>
-                                    </div>
-                                    <div className="text-right">
-                                        <h2 className="font-bold text-lg text-slate-700">{config.preparedBy}</h2>
-                                        <p className="text-sm text-slate-500">{new Date().toLocaleDateString()}</p>
+                        {/* Summary Report Preview */}
+                        <div className="flex-1 overflow-y-auto p-8 bg-slate-100 flex justify-center items-start">
+                            <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg p-[15mm] flex flex-col gap-6 print:w-full print:shadow-none print:p-0">
+
+                                {/* Report Header */}
+                                <header className="border-b-2 border-slate-800 pb-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h1 className="text-2xl font-bold text-slate-800 uppercase tracking-wide">Summary Report</h1>
+                                            <div className="mt-2 space-y-0.5 text-sm text-slate-600">
+                                                <p><span className="font-semibold">Project:</span> {config.clientName}</p>
+                                                <p><span className="font-semibold">Project Location:</span> {config.clientAddress}</p>
+                                                <p><span className="font-semibold">Scope of Work:</span> Metal Stud, Insulation &amp; Drywall</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right text-sm text-slate-500">
+                                            <p className="font-semibold text-slate-700">{config.preparedBy}</p>
+                                            <p>{new Date().toLocaleDateString()}</p>
+                                        </div>
                                     </div>
                                 </header>
 
-                                {/* Detailed Pricing */}
-                                <div className="flex-1">
-                                    <h3 className="bg-slate-100 px-3 py-1.5 font-bold text-slate-700 text-sm border-l-4 border-emerald-500 mb-4 uppercase tracking-wide">Detailed Cost Breakdown</h3>
-                                    <div className="space-y-6">
-                                        {Object.entries(proposalData.csiGroups).sort().map(([csi, itemsAny]) => {
-                                            const items = itemsAny as { material: CalculatedMaterial, cost: number }[];
+                                {pipelineProposalData ? (
+                                    <>
+                                        {/* Material Sections */}
+                                        {Array.from(pipelineProposalData.sectionMap.entries()).map(([sectionName, rows]) => {
+                                            const sectionTotal = rows.reduce((s, r) => s + r.totalCost, 0);
                                             return (
-                                                <div key={csi}>
-                                                    <h4 className="font-bold text-slate-600 text-sm mb-2 pb-1 border-b border-slate-200">{csi}</h4>
-                                                    <table className="w-full text-xs">
-                                                        <tbody>
-                                                            {items.map((x, i) => (
-                                                                <tr key={i}>
-                                                                    <td className="py-1 text-slate-700 pl-2">{x.material.item}</td>
-                                                                    <td className="py-1 text-right text-slate-500 w-24">
-                                                                        {(x.material.quantity || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} {x.material.unit}
+                                                <div key={sectionName}>
+                                                    <h3 className="text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1.5 mb-0 uppercase tracking-wide">
+                                                        {sectionName}
+                                                    </h3>
+                                                    <table className="w-full text-xs border border-slate-200 border-t-0 table-fixed">
+                                                        <colgroup>
+                                                            <col />
+                                                            <col className="w-20" />
+                                                            <col className="w-10" />
+                                                            <col className="w-24" />
+                                                            <col className="w-32" />
+                                                        </colgroup>
+                                                        <thead className="bg-slate-100 text-slate-600">
+                                                            <tr>
+                                                                <th className="text-left px-3 py-2 font-semibold">Description</th>
+                                                                <th className="text-right px-3 py-2 font-semibold">Quantity</th>
+                                                                <th className="text-center px-3 py-2 font-semibold">Unit</th>
+                                                                <th className="text-right px-3 py-2 font-semibold">Unit Price</th>
+                                                                <th className="text-right px-3 py-2 font-semibold">Total</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {rows.map((row, i) => (
+                                                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                                                                    <td className="px-3 py-1.5 text-slate-800">{row.item}</td>
+                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-700 whitespace-nowrap">
+                                                                        {row.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                                                     </td>
-                                                                    <td className="py-1 text-right font-medium text-slate-800 w-24">
-                                                                        ${x.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    <td className="px-3 py-1.5 text-center text-slate-500 whitespace-nowrap">{row.unit}</td>
+                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                                                                        ${row.unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                                                                    </td>
+                                                                    <td className="px-3 py-1.5 text-right font-semibold font-mono text-slate-800 whitespace-nowrap">
+                                                                        ${fmt(row.totalCost)}
                                                                     </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
+                                                        <tfoot className="bg-slate-100 border-t border-slate-300">
+                                                            <tr>
+                                                                <td colSpan={4} className="px-3 py-1.5 text-right text-xs font-bold text-slate-700 uppercase tracking-wide whitespace-nowrap">
+                                                                    {sectionName} Total
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-right font-bold text-slate-900 font-mono whitespace-nowrap">
+                                                                    ${fmt(sectionTotal)}
+                                                                </td>
+                                                            </tr>
+                                                        </tfoot>
                                                     </table>
                                                 </div>
                                             );
                                         })}
-                                    </div>
-                                </div>
 
-                                {/* Financial Summary */}
-                                <div className="border-t-2 border-slate-800 pt-4 flex justify-end">
-                                    <div className="w-64 space-y-2 text-sm">
-                                        <div className="flex justify-between text-slate-600">
-                                            <span>Subtotal</span>
-                                            <span>${financials.sub.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        {/* Labour Cost */}
+                                        {pipelineProposalData.laborRows.length > 0 && (
+                                            <div>
+                                                <h3 className="text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1.5 mb-0 uppercase tracking-wide">
+                                                    Labour Cost
+                                                </h3>
+                                                <table className="w-full text-xs border border-slate-200 border-t-0 table-fixed">
+                                                    <colgroup>
+                                                        <col />
+                                                        <col className="w-20" />
+                                                        <col className="w-10" />
+                                                        <col className="w-24" />
+                                                        <col className="w-32" />
+                                                    </colgroup>
+                                                    <thead className="bg-slate-100 text-slate-600">
+                                                        <tr>
+                                                            <th className="text-left px-3 py-2 font-semibold">Description</th>
+                                                            <th className="text-right px-3 py-2 font-semibold">Quantity</th>
+                                                            <th className="text-center px-3 py-2 font-semibold">Unit</th>
+                                                            <th className="text-right px-3 py-2 font-semibold">Unit Price</th>
+                                                            <th className="text-right px-3 py-2 font-semibold">Total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {pipelineProposalData.laborRows.map((row, i) => (
+                                                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                                                                <td className="px-3 py-1.5 text-slate-800">{row.item}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-slate-700 whitespace-nowrap">
+                                                                    {row.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-center text-slate-500 whitespace-nowrap">{row.unit}</td>
+                                                                <td className="px-3 py-1.5 text-right font-mono text-slate-600 whitespace-nowrap">
+                                                                    ${fmt(row.unitCost)}
+                                                                </td>
+                                                                <td className="px-3 py-1.5 text-right font-semibold font-mono text-slate-800 whitespace-nowrap">
+                                                                    {row.totalCost > 0 ? `$${fmt(row.totalCost)}` : <span className="text-slate-300">—</span>}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                    <tfoot className="bg-slate-100 border-t border-slate-300">
+                                                        <tr>
+                                                            <td colSpan={4} className="px-3 py-1.5 text-right text-xs font-bold text-slate-700 uppercase tracking-wide whitespace-nowrap">
+                                                                Labour Total
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right font-bold text-slate-900 font-mono whitespace-nowrap">
+                                                                ${fmt(pipelineProposalData.laborTotal)}
+                                                            </td>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        )}
+
+                                        {/* Grand Total Summary */}
+                                        <div className="border-t-2 border-slate-800 pt-4">
+                                            <table className="w-full text-xs mb-4">
+                                                <thead className="bg-slate-800 text-white">
+                                                    <tr>
+                                                        <th className="text-left px-3 py-2">Cost Category</th>
+                                                        <th className="text-right px-3 py-2 w-36">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {Array.from(pipelineProposalData.sectionMap.entries()).map(([name, rows]) => (
+                                                        <tr key={name} className="bg-white">
+                                                            <td className="px-3 py-1.5 text-slate-700">{name} Material Cost</td>
+                                                            <td className="px-3 py-1.5 text-right font-mono text-slate-800">
+                                                                ${fmt(rows.reduce((s, r) => s + r.totalCost, 0))}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {pipelineProposalData.laborRows.length > 0 && (
+                                                        <tr className="bg-white">
+                                                            <td className="px-3 py-1.5 text-slate-700">Total Labour Cost</td>
+                                                            <td className="px-3 py-1.5 text-right font-mono text-slate-800">
+                                                                ${fmt(pipelineProposalData.laborTotal)}
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr className="bg-slate-800 text-white">
+                                                        <td className="px-3 py-2 font-bold text-sm">Grand Total (without markups)</td>
+                                                        <td className="px-3 py-2 text-right font-bold text-sm font-mono">
+                                                            ${fmt(pipelineProposalData.grandTotal)}
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                            <p className="text-[10px] text-slate-400 mt-2">
+                                                A 5% consideration has been included in the estimate to account for general project variations.
+                                                All wall heights have been rounded up to the nearest full foot to align with standard stud lengths.
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between text-slate-800 font-bold text-lg border-t border-slate-300 pt-2 mt-2">
-                                            <span>Total Price</span>
-                                            <span>${financials.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-16">
+                                        <EmptyState
+                                            icon={FileText}
+                                            title="No pipeline data"
+                                            description="Upload a PDF spec sheet and Excel takeoff, then run the pipeline to generate cost estimates."
+                                        />
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Footer */}
-                                <footer className="text-center text-[10px] text-slate-400 mt-8 pt-8 border-t border-slate-100">
+                                <footer className="text-center text-[10px] text-slate-400 mt-4 pt-4 border-t border-slate-100">
                                     All Prices are Estimates Subject to Verification
                                 </footer>
                             </div>

@@ -5,7 +5,7 @@ import { RouteGuard } from "@/components/auth";
 
 export default function TeamPage() {
   return (
-    <RouteGuard allowedRoles={["Administrator", "Team Lead"]}>
+    <RouteGuard path="/team">
       <TeamManagement />
     </RouteGuard>
   );

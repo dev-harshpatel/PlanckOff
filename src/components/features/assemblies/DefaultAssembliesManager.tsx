@@ -326,6 +326,8 @@ export const DefaultAssembliesManager: React.FC<DefaultAssembliesManagerProps> =
                     getRowDetails={getRowDetails}
                     takeoffInstances={mockInstances}
                     statsByHeight={{ "10": { len: 100, area: 1000 } }}
+                    selectedHeight={null}
+                    onSelectHeight={() => {}}
                     templates={templates}
                     onLoadTemplate={handleLoadMockTemplate}
                 />

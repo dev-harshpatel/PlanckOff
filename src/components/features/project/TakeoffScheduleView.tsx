@@ -83,11 +83,12 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
 
         // Filter
         let filtered = list.filter(item => {
-            if (filterType !== 'All') {
-                const type = item.assembly.assemblyType || 'Interior Wall';
-                if (filterType === 'Ceiling' && !type.includes('Ceiling')) return false;
-                if (filterType === 'Wall' && !type.includes('Wall')) return false;
-                if (filterType !== 'Ceiling' && filterType !== 'Wall' && type !== filterType) return false;
+            if (filterType !== "All") {
+                const type = item.assembly.assemblyType || "Interior Walls";
+                if (filterType === "Ceiling" && !type.includes("Ceiling")) return false;
+                if (filterType === "Interior Walls" && !type.includes("Interior")) return false;
+                if (filterType === "Exterior Walls" && !type.includes("Exterior")) return false;
+                if (!["Ceiling", "Interior Walls", "Exterior Walls"].includes(filterType) && type !== filterType) return false;
             }
             if (filterLevel !== 'All' && item.instance.level !== filterLevel) return false;
             if (filterText) {
@@ -158,13 +159,13 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                     <Select
                         containerClassName="w-auto"
                         options={[
-                            { value: 'All', label: 'All Types' },
-                            { value: 'Interior Wall', label: 'Interior Walls' },
-                            { value: 'Exterior Wall', label: 'Exterior Walls' },
-                            { value: 'Ceiling', label: 'Ceilings' },
-                            { value: 'Soffit', label: 'Soffits' },
-                            { value: 'Bulkhead', label: 'Bulkheads' },
-                            { value: 'Hollow Metal Frame', label: 'Frames' },
+                            { value: "All", label: "All Types" },
+                            { value: "Interior Walls", label: "Interior Walls" },
+                            { value: "Exterior Walls", label: "Exterior Walls" },
+                            { value: "Ceiling", label: "Ceiling" },
+                            { value: "BulkHead", label: "BulkHead" },
+                            { value: "Access Pannel", label: "Access Pannel" },
+                            { value: "HM Frames", label: "HM Frames" },
                         ]}
                         size="xs"
                         value={filterType}
@@ -236,18 +237,20 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                         <div key={row.id} className={`flex px-4 py-1 border-b border-slate-100 text-xs hover:bg-slate-50 items-center group ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                             {/* TYPE DROPDOWN */}
                             <div className="w-32 pr-2">
-                                <Select
-                                    options={[
-                                        { value: 'Interior Wall', label: 'Interior Wall' },
-                                        { value: 'Exterior Wall', label: 'Exterior Wall' },
-                                        { value: 'Ceiling', label: 'Ceiling' },
-                                        { value: 'Soffit', label: 'Soffit' },
-                                        { value: 'Bulkhead', label: 'Bulkhead' },
-                                        { value: 'Hollow Metal Frame', label: 'H.M. Frame' },
-                                        { value: 'Access Panel', label: 'Access Panel' },
-                                    ]}
-                                    size="xs"
-                                    value={row.assembly.assemblyType === 'Wall' ? 'Interior Wall' : (row.assembly.assemblyType || 'Interior Wall')}
+                                    <Select
+                                        options={[
+                                            { value: "Interior Walls", label: "Interior Walls" },
+                                            { value: "Exterior Walls", label: "Exterior Walls" },
+                                            { value: "Ceiling", label: "Ceiling" },
+                                            { value: "BulkHead", label: "BulkHead" },
+                                            { value: "Access Pannel", label: "Access Pannel" },
+                                            { value: "HM Frames", label: "HM Frames" },
+                                        ]}
+                                        size="xs"
+                                        value={
+                                            row.assembly.assemblyType ||
+                                            "Interior Walls"
+                                        }
                                     variant="ghost"
                                     className="text-[11px]"
                                     onValueChange={(nextValue) => {

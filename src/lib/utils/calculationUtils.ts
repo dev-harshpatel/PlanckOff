@@ -377,9 +377,12 @@ export const getRowDetails = (comp: AssemblyComponent, assembly: WallAssembly, i
         } else {
             const rate = comp.laborHourlyRate || 65;
             const crew = comp.crew || 1;
+            // productionRate: component override first, then productivityFromDb (populated from
+            // spec_database.productivity when the material was matched), then installRate fallback.
+            const effectiveProductionRate = comp.productionRate ?? comp.productivityFromDb;
 
-            if (comp.productionRate && comp.productionRate > 0) {
-                const manHours = (quantity / comp.productionRate) * crew;
+            if (effectiveProductionRate && effectiveProductionRate > 0) {
+                const manHours = (quantity / effectiveProductionRate) * crew;
                 laborTotal = manHours * rate;
             } else if (comp.installRate) {
                 laborTotal = quantity * comp.installRate * rate;

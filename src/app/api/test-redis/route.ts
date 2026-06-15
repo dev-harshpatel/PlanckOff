@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
+import { withRoleAuth } from "@/lib/auth/api-helpers";
 
-export async function GET() {
+export const GET = withRoleAuth(['Administrator'], async () => {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -38,4 +39,4 @@ export async function GET() {
       message: `Redis error: ${message}`,
     });
   }
-}
+});

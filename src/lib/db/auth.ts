@@ -40,44 +40,56 @@ export async function findAdminByEmail(email: string): Promise<{
   return { data, error };
 }
 
-/**
- * Create a new auth session for legacy admin users
- *
- * Supabase Query Explanation:
- * - from('auth_sessions') → INSERT INTO auth_sessions
- * - insert({...}) → VALUES (...)
- * - select('token') → RETURNING token (PostgreSQL feature)
- * - single() → Returns the inserted row as object
- */
-export async function createSession(params: {
-  adminId: string;
-  ipAddress?: string;
-  userAgent?: string;
-}): Promise<{
-  data: { token: string } | null;
+export async function getAdminById(id: string): Promise<{
+  data: AdminRow | null;
   error: { message: string; code: string } | null;
 }> {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + AUTH_CONFIG.SESSION_DURATION_DAYS);
-
-  const sessionData: AuthSessionInsert = {
-    admin_id: params.adminId,
-    expires_at: expiresAt.toISOString(),
-    ip_address: params.ipAddress,
-    user_agent: params.userAgent,
-  };
-
   const { data, error } = await supabaseAdmin
-    .from(DB_TABLES.AUTH_SESSIONS)
-    .insert(sessionData)
-    .select("token")
+    .from(DB_TABLES.ADMINS)
+    .select("*")
+    .eq("id", id)
     .single();
 
   return { data, error };
 }
 
+export async function updateAdminProfile(params: {
+  id: string;
+  name?: string;
+  initials?: string | null;
+}): Promise<{
+  data: AdminRow | null;
+  error: { message: string; code: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from(DB_TABLES.ADMINS)
+    .update({
+      ...(params.name !== undefined ? { name: params.name } : {}),
+      ...(params.initials !== undefined ? { initials: params.initials } : {}),
+    })
+    .eq("id", params.id)
+    .select("*")
+    .single();
+
+  return { data, error };
+}
+
+export async function updateAdminPassword(params: {
+  id: string;
+  passwordHash: string;
+}): Promise<{
+  error: { message: string; code: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from(DB_TABLES.ADMINS)
+    .update({ password_hash: params.passwordHash })
+    .eq("id", params.id);
+
+  return { error };
+}
+
 /**
- * Create a new auth session for team members (new system)
+ * Create a new auth session for a team member.
  */
 export async function createTeamMemberSession(params: {
   teamMemberId: string;
@@ -167,6 +179,23 @@ export async function deleteSessionById(id: string): Promise<{
     .from(DB_TABLES.AUTH_SESSIONS)
     .delete()
     .eq("id", id);
+
+  return { error };
+}
+
+/**
+ * Extend an existing session expiry.
+ */
+export async function updateSessionExpiry(params: {
+  sessionId: string;
+  expiresAt: string;
+}): Promise<{
+  error: { message: string; code: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from(DB_TABLES.AUTH_SESSIONS)
+    .update({ expires_at: params.expiresAt })
+    .eq("id", params.sessionId);
 
   return { error };
 }

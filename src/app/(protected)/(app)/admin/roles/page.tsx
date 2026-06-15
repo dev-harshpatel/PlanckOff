@@ -5,7 +5,7 @@ import { RouteGuard } from "@/components/auth";
 
 export default function RolesPage() {
   return (
-    <RouteGuard allowedRoles={["Administrator"]}>
+    <RouteGuard path="/admin/roles">
       <RoleManagement />
     </RouteGuard>
   );

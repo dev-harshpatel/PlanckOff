@@ -1,0 +1,5208 @@
+{
+  "assemblies": [
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WEF1",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "REVIEW REQUIRED",
+      "framing_category": "Structural",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WC3",
+      "project_location": "CAN",
+      "height_ft": 1,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "FC-78-25",
+          "category": "Framing",
+          "description": "7/8\" Furring Channel 25ga (Hat Channel)",
+          "label": "7/8\" Furring Channel 25ga (Hat Channel)"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-FUR-WALL",
+          "trade": "Framing",
+          "labor_type": "Install Furring Channel (Wall)",
+          "label": "Install Furring Channel (Wall)"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE2",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "18ga (43mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-43",
+          "category": "Framing",
+          "description": "6\" Metal Stud 18ga (43mil) Structural",
+          "label": "6\" Metal Stud 18ga (43mil) Structural"
+        },
+        {
+          "material_id": "TR-600-43",
+          "category": "Framing",
+          "description": "6\" Track 18ga (43mil) 1-1/2\" Leg",
+          "label": "6\" Track 18ga (43mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE4",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "18ga (43mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-43",
+          "category": "Framing",
+          "description": "6\" Metal Stud 18ga (43mil) Structural",
+          "label": "6\" Metal Stud 18ga (43mil) Structural"
+        },
+        {
+          "material_id": "TR-600-43",
+          "category": "Framing",
+          "description": "6\" Track 18ga (43mil) 1-1/2\" Leg",
+          "label": "6\" Track 18ga (43mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE5",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "18ga (43mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-43",
+          "category": "Framing",
+          "description": "6\" Metal Stud 18ga (43mil) Structural",
+          "label": "6\" Metal Stud 18ga (43mil) Structural"
+        },
+        {
+          "material_id": "TR-600-43",
+          "category": "Framing",
+          "description": "6\" Track 18ga (43mil) 1-1/2\" Leg",
+          "label": "6\" Track 18ga (43mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WM1",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P1",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-358-18",
+          "category": "Framing",
+          "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-358-18",
+          "category": "Framing",
+          "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "FG-R11-UF",
+          "category": "Insulation",
+          "description": "R-11 Unfaced Fiberglass Batt (3.5\")",
+          "label": "R-11 Unfaced Fiberglass Batt (3.5\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P3",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P3",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P4",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-400-30",
+          "category": "Framing",
+          "description": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-400-33",
+          "category": "Framing",
+          "description": "4\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "4\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "TF-SAFB-40",
+          "category": "Insulation",
+          "description": "Thermafiber SAFB 4\" (Sound Attenuation)",
+          "label": "Thermafiber SAFB 4\" (Sound Attenuation)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P4",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-400-30",
+          "category": "Framing",
+          "description": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-400-33",
+          "category": "Framing",
+          "description": "4\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "4\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "TF-SAFB-40",
+          "category": "Insulation",
+          "description": "Thermafiber SAFB 4\" (Sound Attenuation)",
+          "label": "Thermafiber SAFB 4\" (Sound Attenuation)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P9",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        },
+        {
+          "material_id": "FS-400-16",
+          "category": "Framing",
+          "description": "4\" Flat Strap 16ga (54mil)",
+          "label": "4\" Flat Strap 16ga (54mil)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF1",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-158-30",
+          "category": "Framing",
+          "description": "1-5/8\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "1-5/8\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-158-18",
+          "category": "Framing",
+          "description": "1-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "1-5/8\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF2",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for nullmm Gypsum Wallboard (type: TYPE X)",
+          "label": "REVIEW: nullmm Gypsum Wallboard"
+        },
+        {
+          "material_id": "ST-250-18",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-18",
+          "category": "Framing",
+          "description": "2-1/2\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF4",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FRM-15",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (12' to 15')",
+          "label": "Install Metal Studs (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS2",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-250-25",
+          "category": "Framing",
+          "description": "2-1/2\" CT Shaftwall Stud 25ga",
+          "label": "2-1/2\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-250-25",
+          "category": "Framing",
+          "description": "2-1/2\" J-Track (J-Runner) 25ga",
+          "label": "2-1/2\" J-Track (J-Runner) 25ga"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS3",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-400-25",
+          "category": "Framing",
+          "description": "4\" CT Shaftwall Stud 25ga",
+          "label": "4\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-400-25",
+          "category": "Framing",
+          "description": "4\" J-Track (J-Runner) 25ga",
+          "label": "4\" J-Track (J-Runner) 25ga"
+        },
+        {
+          "material_id": "INS-QZ-35",
+          "category": "Insulation",
+          "description": "SND QTZNE 3.5\" 15\"/110.0",
+          "label": "SND QTZNE 3.5\" 15\"/110.0"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS4",
+      "project_location": "CAN",
+      "height_ft": 15,
+      "height_category": "12' to 15'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-400-25",
+          "category": "Framing",
+          "description": "4\" CT Shaftwall Stud 25ga",
+          "label": "4\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-400-25",
+          "category": "Framing",
+          "description": "4\" J-Track (J-Runner) 25ga",
+          "label": "4\" J-Track (J-Runner) 25ga"
+        },
+        {
+          "material_id": "INS-QZ-35",
+          "category": "Insulation",
+          "description": "SND QTZNE 3.5\" 15\"/110.0",
+          "label": "SND QTZNE 3.5\" 15\"/110.0"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-15",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (12' to 15')",
+          "label": "Hang Drywall (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-FIN-15",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (12' to 15')",
+          "label": "Tape & Finish (12' to 15')"
+        },
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        },
+        {
+          "labor_id": "LAB-INS-15",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (12' to 15')",
+          "label": "Install Insulation (12' to 15')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C1",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C1",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C1 - UL502",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C2",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C3",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C3",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "C3 - BULKHEAD - W - 34\"",
+      "project_location": "CAN",
+      "height_ft": 1,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "C3 - BULKHEAD - W-16\"",
+      "project_location": "CAN",
+      "height_ft": 1,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WEF1",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WEF2",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE2",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-33",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (33mil) Structural",
+          "label": "6\" Metal Stud 20ga (33mil) Structural"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE4",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-33",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (33mil) Structural",
+          "label": "6\" Metal Stud 20ga (33mil) Structural"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE5",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-33",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (33mil) Structural",
+          "label": "6\" Metal Stud 20ga (33mil) Structural"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P1",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-358-18",
+          "category": "Framing",
+          "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-358-18",
+          "category": "Framing",
+          "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "FG-R11-UF",
+          "category": "Insulation",
+          "description": "R-11 Unfaced Fiberglass Batt (3.5\")",
+          "label": "R-11 Unfaced Fiberglass Batt (3.5\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P3",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P3",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P4",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-400-30",
+          "category": "Framing",
+          "description": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-400-33",
+          "category": "Framing",
+          "description": "4\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "4\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "TF-SAFB-40",
+          "category": "Insulation",
+          "description": "Thermafiber SAFB 4\" (Sound Attenuation)",
+          "label": "Thermafiber SAFB 4\" (Sound Attenuation)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P7",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P8",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P9",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        },
+        {
+          "material_id": "FS-400-16",
+          "category": "Framing",
+          "description": "4\" Flat Strap 16ga (54mil)",
+          "label": "4\" Flat Strap 16ga (54mil)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF1",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-158-30",
+          "category": "Framing",
+          "description": "1-5/8\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "1-5/8\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-158-18",
+          "category": "Framing",
+          "description": "1-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "1-5/8\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF4",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF5",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS2",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-250-25",
+          "category": "Framing",
+          "description": "2-1/2\" CT Shaftwall Stud 25ga",
+          "label": "2-1/2\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-250-25",
+          "category": "Framing",
+          "description": "2-1/2\" J-Track (J-Runner) 25ga",
+          "label": "2-1/2\" J-Track (J-Runner) 25ga"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS3",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-400-25",
+          "category": "Framing",
+          "description": "4\" CT Shaftwall Stud 25ga",
+          "label": "4\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-400-25",
+          "category": "Framing",
+          "description": "4\" J-Track (J-Runner) 25ga",
+          "label": "4\" J-Track (J-Runner) 25ga"
+        },
+        {
+          "material_id": "INS-QZ-35",
+          "category": "Insulation",
+          "description": "SND QTZNE 3.5\" 15\"/110.0",
+          "label": "SND QTZNE 3.5\" 15\"/110.0"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS4",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-400-25",
+          "category": "Framing",
+          "description": "4\" CT Shaftwall Stud 25ga",
+          "label": "4\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-400-25",
+          "category": "Framing",
+          "description": "4\" J-Track (J-Runner) 25ga",
+          "label": "4\" J-Track (J-Runner) 25ga"
+        },
+        {
+          "material_id": "INS-QZ-35",
+          "category": "Insulation",
+          "description": "SND QTZNE 3.5\" 15\"/110.0",
+          "label": "SND QTZNE 3.5\" 15\"/110.0"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "TB board",
+      "project_location": "CAN",
+      "height_ft": 10,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C1",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C1",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C1 - UL502",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C2",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C3",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "ceiling",
+      "assembly_id": "C3",
+      "project_location": "CAN",
+      "height_ft": 0,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "C3 - BULKHEAD - W - 34\"",
+      "project_location": "CAN",
+      "height_ft": 1,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "C3 - BULKHEAD - W-16\"",
+      "project_location": "CAN",
+      "height_ft": 1,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WEF1",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WEF2",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "WE4",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (33mil)",
+      "framing_category": "Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DG-58-8",
+          "category": "Drywall",
+          "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+          "label": "5/8\" DensGlass Gold Exterior Sheathing 4x8"
+        },
+        {
+          "material_id": "ST-600-33",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (33mil) Structural",
+          "label": "6\" Metal Stud 20ga (33mil) Structural"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "INS-R20",
+          "category": "Insulation",
+          "description": "INSULATION R20",
+          "label": "INSULATION R20"
+        },
+        {
+          "material_id": "VAP-6MIL",
+          "category": "Insulation",
+          "description": "6 mil Polyethylene Vapor Barrier",
+          "label": "6 mil Polyethylene Vapor Barrier"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P1",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-358-18",
+          "category": "Framing",
+          "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-358-18",
+          "category": "Framing",
+          "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "FG-R11-UF",
+          "category": "Insulation",
+          "description": "R-11 Unfaced Fiberglass Batt (3.5\")",
+          "label": "R-11 Unfaced Fiberglass Batt (3.5\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P3",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P3",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P4",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-400-30",
+          "category": "Framing",
+          "description": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "4\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-400-33",
+          "category": "Framing",
+          "description": "4\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "4\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "TF-SAFB-40",
+          "category": "Insulation",
+          "description": "Thermafiber SAFB 4\" (Sound Attenuation)",
+          "label": "Thermafiber SAFB 4\" (Sound Attenuation)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P5",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-30",
+          "category": "Framing",
+          "description": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-33",
+          "category": "Framing",
+          "description": "6\" Track 20ga (33mil) 1-1/2\" Leg",
+          "label": "6\" Track 20ga (33mil) 1-1/2\" Leg"
+        },
+        {
+          "material_id": "FG-R19-UF",
+          "category": "Insulation",
+          "description": "R-19 Unfaced Fiberglass Batt (6.25\")",
+          "label": "R-19 Unfaced Fiberglass Batt (6.25\")"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P6",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "gypsum_board",
+          "description": "Could not find material for 16mm Gypsum Wallboard (type: null)",
+          "label": "REVIEW: 16mm Gypsum Wallboard"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-800-43",
+          "category": "Framing",
+          "description": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange",
+          "label": "8\" Structural Stud 18ga (43mil) 1-5/8\" Flange"
+        },
+        {
+          "material_id": "REVIEW REQUIRED",
+          "category": "steel_framing",
+          "description": "Could not find track for 8\" width and 25ga (18mil) gauge",
+          "label": "REVIEW: 8\" Track 25ga (18mil)"
+        },
+        {
+          "material_id": "RW-AFB-60",
+          "category": "Insulation",
+          "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 6\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P7",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "",
+      "framing_category": "",
+      "materials": [],
+      "labor": [],
+      "status": "REVIEW REQUIRED"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P8",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "P9",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "ST-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "2-1/2\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-250-30",
+          "category": "Framing",
+          "description": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg",
+          "label": "2-1/2\" Track 20ga (30mil) 1-1/4\" Leg"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        },
+        {
+          "material_id": "RW-AFB-25",
+          "category": "Insulation",
+          "description": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)",
+          "label": "Rockwool AFB 2.5\" Sound Batt (Steel Stud)"
+        },
+        {
+          "material_id": "FS-400-16",
+          "category": "Framing",
+          "description": "4\" Flat Strap 16ga (54mil)",
+          "label": "4\" Flat Strap 16ga (54mil)"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF1",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "20ga (30mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-158-30",
+          "category": "Framing",
+          "description": "1-5/8\" Metal Stud 20ga (30mil) 1-1/4\" Flange",
+          "label": "1-5/8\" Metal Stud 20ga (30mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-158-18",
+          "category": "Framing",
+          "description": "1-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "1-5/8\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF4",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PF5",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga (18mil)",
+      "framing_category": "Non-Structural",
+      "materials": [
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-600-18",
+          "category": "Framing",
+          "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+          "label": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange"
+        },
+        {
+          "material_id": "TR-600-18",
+          "category": "Framing",
+          "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+          "label": "6\" Track 25ga (18mil) 1-1/4\" Leg"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FRM-10",
+          "trade": "Framing",
+          "labor_type": "Install Metal Studs (Up to 10')",
+          "label": "Install Metal Studs (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS2",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-250-25",
+          "category": "Framing",
+          "description": "2-1/2\" CT Shaftwall Stud 25ga",
+          "label": "2-1/2\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-250-25",
+          "category": "Framing",
+          "description": "2-1/2\" J-Track (J-Runner) 25ga",
+          "label": "2-1/2\" J-Track (J-Runner) 25ga"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        }
+      ],
+      "status": "OK"
+    },
+    {
+      "assembly_type": "wall",
+      "assembly_id": "PS3",
+      "project_location": "CAN",
+      "height_ft": 9.7,
+      "height_category": "Up to 10'",
+      "selected_gauge": "25ga",
+      "framing_category": "Shaftwall",
+      "materials": [
+        {
+          "material_id": "DW-100-SL",
+          "category": "Drywall",
+          "description": "1\" Shaftliner Panel 2x8 (Shaftwall)",
+          "label": "1\" Shaftliner Panel 2x8 (Shaftwall)"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "DW-58-12-X",
+          "category": "Drywall",
+          "description": "5/8\" Type X Fire Rated Board 4x12",
+          "label": "5/8\" Type X Fire Rated Board 4x12"
+        },
+        {
+          "material_id": "ST-CT-400-25",
+          "category": "Framing",
+          "description": "4\" CT Shaftwall Stud 25ga",
+          "label": "4\" CT Shaftwall Stud 25ga"
+        },
+        {
+          "material_id": "TR-J-400-25",
+          "category": "Framing",
+          "description": "4\" J-Track (J-Runner) 25ga",
+          "label": "4\" J-Track (J-Runner) 25ga"
+        },
+        {
+          "material_id": "INS-QZ-35",
+          "category": "Insulation",
+          "description": "SND QTZNE 3.5\" 15\"/110.0",
+          "label": "SND QTZNE 3.5\" 15\"/110.0"
+        }
+      ],
+      "labor": [
+        {
+          "labor_id": "LAB-SHAFT-LNR",
+          "trade": "Hanging",
+          "labor_type": "Install Shaftliner (1\")",
+          "label": "Install Shaftliner (1\")"
+        },
+        {
+          "labor_id": "LAB-HNG-10",
+          "trade": "Hanging",
+          "labor_type": "Hang Drywall (Up to 10')",
+          "label": "Hang Drywall (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIN-10",
+          "trade": "Finishing",
+          "labor_type": "Tape & Finish (Up to 10')",
+          "label": "Tape & Finish (Up to 10')"
+        },
+        {
+          "labor_id": "LAB-FIRE-SAFE",
+          "trade": "Insulation",
+          "labor_type": "Install Fire Safing (Head of Wall)",
+          "label": "Install Fire Safing (Head of Wall)"
+        },
+        {
+          "labor_id": "LAB-SHAFT-ST",
+          "trade": "Framing",
+          "labor_type": "Install CH/CT Studs (Shaftwall)",
+          "label": "Install CH/CT Studs (Shaftwall)"
+        },
+        {
+          "labor_id": "LAB-INS-10",
+          "trade": "Insulation",
+          "labor_type": "Install Insulation (Up to 10')",
+          "label": "Install Insulation (Up to 10')"
+        }
+      ],
+      "status": "OK"
+    }
+  ]
+}

@@ -1,0 +1,5203 @@
+{
+  "assemblies": [
+    {
+      "assembly_id": "WC1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WC2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WC3",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WS1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WS2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WE1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WE2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WE3",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WS4",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WE5",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WWF1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WW2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm EXTERIOR GYPSUM SHEATHING",
+            "thickness": "16 mm",
+            "layers": 1,
+            "type": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DG-58-8",
+              "section": "06 16 00",
+              "description": "5/8\" DensGlass Gold Exterior Sheathing 4x8",
+              "manufacturer": "Georgia-Pacific",
+              "unit": "SF",
+              "unit_cost": 35
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-PLY-SH",
+              "section": "06 10 00",
+              "description": "Install Plywood Sheathing",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "152 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm MINERAL WOOL BATT INSULATION",
+            "thickness": "152 mm",
+            "description": "MINERAL WOOL BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-60",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 6\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 2100
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WF71",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS",
+            "size": "152 mm",
+            "spacing": null,
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "WF72",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "152 mm STEEL STUDS",
+            "size": "152 mm",
+            "spacing": null,
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-600-18",
+              "section": "09 22 16",
+              "description": "6\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1350
+            },
+            {
+              "code": "TR-600-18",
+              "section": "09 22 16",
+              "description": "6\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 1250
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": null,
+      "stc_rating": null
+    },
+    {
+      "assembly_id": "P1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "NA"
+    },
+    {
+      "assembly_id": "P2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "50-54"
+    },
+    {
+      "assembly_id": "P3",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "50-54"
+    },
+    {
+      "assembly_id": "P4",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "\"manufacturer\"": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "50-54"
+    },
+    {
+      "assembly_id": "P5",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "55-59"
+    },
+    {
+      "assembly_id": "P6",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "2 HR",
+      "stc_rating": "60-64"
+    },
+    {
+      "assembly_id": "P7",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2-92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": "2-",
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2-92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "2- SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "60-64"
+    },
+    {
+      "assembly_id": "P8",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2-92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": "2-",
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2-92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "2- SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "2 HR",
+      "stc_rating": "65+"
+    },
+    {
+      "assembly_id": "PF1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "NA",
+      "stc_rating": "NA"
+    },
+    {
+      "assembly_id": "PF2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "NA",
+      "stc_rating": "NA"
+    },
+    {
+      "assembly_id": "PF3",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "NA",
+      "stc_rating": "NA"
+    },
+    {
+      "assembly_id": "PF4",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "NA",
+      "stc_rating": "NA"
+    },
+    {
+      "assembly_id": "PS1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "35-39"
+    },
+    {
+      "assembly_id": "PS2",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "45-49"
+    },
+    {
+      "assembly_id": "PS3",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "50-54"
+    },
+    {
+      "assembly_id": "PS4",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "2 LAYERS 16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 2,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            },
+            {
+              "code": "SC-S-158",
+              "section": "09 22 00",
+              "description": "1-5/8\" Fine Thread Drywall Screw (Bucket of 5,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 75
+            },
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            },
+            {
+              "code": "SC-FRM-TEK",
+              "section": "09 22 16",
+              "description": "1/2\" Pan Head Framing Screw Self-Drill (Bucket of 10,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 115
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            },
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        }
+      ],
+      "fire_rating": "2 HR",
+      "stc_rating": "55-59"
+    },
+    {
+      "assembly_id": "FS1",
+      "materials_costing": [
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "16 mm GYPSUM WALLBOARD TYPE X",
+            "thickness": "16 mm",
+            "type": "X",
+            "layers": 1,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "DW-58-8-X",
+              "section": "09 29 00",
+              "description": "5/8\" Type X Fire Rated Board 4x8",
+              "manufacturer": "USG",
+              "unit": "SF",
+              "unit_cost": 18.5
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-HNG-STD",
+              "section": "09 29 00",
+              "description": "Hang Drywall (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            },
+            {
+              "code": "LAB-FIN-L3",
+              "section": "09 29 00",
+              "description": "Tape & Finish Level 3 (Fire Tape)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm STEEL STUDS @ 406 mm O.C.",
+            "size": "92 mm",
+            "spacing": "406 mm O.C.",
+            "gauge": null,
+            "type": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "ST-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Metal Stud 25ga (18mil) 1-1/4\" Flange",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 850
+            },
+            {
+              "code": "TR-358-18",
+              "section": "09 22 16",
+              "description": "3-5/8\" Track 25ga (18mil) 1-1/4\" Leg",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 800
+            },
+            {
+              "code": "SLT-358-33",
+              "section": "09 22 16",
+              "description": "3-5/8\" MaxTrak Slotted Deflection Track 33mil (20ga)",
+              "manufacturer": "ClarkDietrich",
+              "unit": "LF",
+              "unit_cost": 3200
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FRM-STD",
+              "section": "09 22 16",
+              "description": "Install Metal Studs (Walls < 12ft)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "92 mm SOUND BATT INSULATION",
+            "thickness": "92 mm",
+            "description": "SOUND BATT",
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "RW-AFB-35",
+              "section": "07 21 00",
+              "description": "Rockwool AFB 3.5\" Sound Batt (Steel Stud)",
+              "manufacturer": "Rockwool",
+              "unit": "SF",
+              "unit_cost": 1450
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-INS-STD",
+              "section": "07 21 00",
+              "description": "Install Insulation (Walls < 12ft)",
+              "unit": "SF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "FIRE SEALANT",
+            "thickness": null,
+            "type": null,
+            "layers": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "SEAL-FIRE-10",
+              "section": "07 84 00",
+              "description": "Firestop Sealant (Intumescent) 10oz Tube",
+              "manufacturer": "STI",
+              "unit": "Tube",
+              "unit_cost": 18
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-FIRE-SAFE",
+              "section": "07 84 00",
+              "description": "Install Fire Safing (Head of Wall)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "ACOUSTIC SEALANT",
+            "thickness": null,
+            "type": null,
+            "layers": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "SEAL-AC",
+              "section": "07 92 00",
+              "description": "Acoustical Sealant (28oz Tube)",
+              "manufacturer": "USG",
+              "unit": "Tube",
+              "unit_cost": 12
+            }
+          ],
+          "matched_labor": [
+            {
+              "code": "LAB-CAULK-S",
+              "section": "07 92 00",
+              "description": "Install Sound Caulk (Top/Btm)",
+              "unit": "LF",
+              "unit_cost": 60
+            }
+          ]
+        },
+        {
+          "extracted_material": {
+            "raw_text": "DRYWALL SCREWS",
+            "thickness": null,
+            "type": null,
+            "layers": null,
+            "size": null,
+            "gauge": null,
+            "spacing": null,
+            "description": null,
+            "r_value": null,
+            "depth": null
+          },
+          "matched_materials": [
+            {
+              "code": "SC-S-114",
+              "section": "09 22 00",
+              "description": "1-1/4\" Fine Thread Drywall Screw (Bucket of 8,000)",
+              "manufacturer": "Grabber",
+              "unit": "Bucket",
+              "unit_cost": 85
+            }
+          ],
+          "matched_labor": []
+        }
+      ],
+      "fire_rating": "1 HR",
+      "stc_rating": "45-49"
+    }
+  ]
+}

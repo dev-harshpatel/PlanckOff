@@ -9,11 +9,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseWallSpecWithPDF } from "@/services/openrouter/parseWallSpec";
 import type { ParsePDFRequest, ParsePDFResponse } from "@/types/wallSpec";
+import { withAuth } from "@/lib/auth/api-helpers";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // 60 seconds for AI processing
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest) => {
   let body: ParsePDFRequest;
   try {
     body = await request.json();
@@ -70,4 +71,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});

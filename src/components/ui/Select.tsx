@@ -66,6 +66,8 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
     const selectedIndex = Math.max(0, options.findIndex((opt) => opt.value === value));
     const [activeIndex, setActiveIndex] = React.useState<number>(selectedIndex);
     const [menuWidthPx, setMenuWidthPx] = React.useState<number>(MIN_DROPDOWN_WIDTH_PX);
+    const [typeahead, setTypeahead] = React.useState<string>('');
+    const typeaheadTimeoutRef = React.useRef<number | null>(null);
 
     const selectedOption = options.find((opt) => opt.value === value);
     const displayLabel = selectedOption?.label || placeholder || 'Select...';
@@ -121,6 +123,24 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
         return fromIndex;
     }, [options]);
 
+    const findIndexByTypeahead = React.useCallback(
+        (search: string, startFromIndex: number): number => {
+            if (!search || options.length === 0) return startFromIndex;
+            const normalized = search.toLowerCase();
+            const total = options.length;
+            for (let step = 1; step <= total; step += 1) {
+                const idx = (startFromIndex + step) % total;
+                const opt = options[idx];
+                if (opt?.disabled) continue;
+                if (opt.label.toLowerCase().startsWith(normalized)) {
+                    return idx;
+                }
+            }
+            return startFromIndex;
+        },
+        [options],
+    );
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
         if (disabled) return;
 
@@ -128,6 +148,15 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 handleOpen();
+                return;
+            }
+            // Allow quick type-to-select even when menu is closed
+            if (e.key.length === 1 && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                const next = e.key.toLowerCase();
+                const idx = findIndexByTypeahead(next, selectedIndex);
+                if (idx !== selectedIndex) {
+                    onValueChange(options[idx].value);
+                }
             }
             return;
         }
@@ -164,6 +193,27 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
                 handleClose();
                 break;
             }
+            default: {
+                if (e.key.length === 1 && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                    const char = e.key.toLowerCase();
+                    if (typeaheadTimeoutRef.current != null) {
+                        window.clearTimeout(typeaheadTimeoutRef.current);
+                    }
+                    setTypeahead((prev) => {
+                        const nextSearch = (prev + char).trim();
+                        const idx = findIndexByTypeahead(nextSearch, activeIndex);
+                        if (idx !== activeIndex) {
+                            setActiveIndex(idx);
+                        }
+                        return nextSearch;
+                    });
+                    typeaheadTimeoutRef.current = window.setTimeout(() => {
+                        setTypeahead('');
+                        typeaheadTimeoutRef.current = null;
+                    }, 500);
+                }
+                break;
+            }
         }
     };
 
@@ -193,6 +243,14 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
         const triggerWidth = triggerRef.current?.getBoundingClientRect().width || 0;
         setMenuWidthPx(Math.max(MIN_DROPDOWN_WIDTH_PX, Math.ceil(triggerWidth)));
     }, [isOpen]);
+
+    React.useEffect(() => {
+        return () => {
+            if (typeaheadTimeoutRef.current != null) {
+                window.clearTimeout(typeaheadTimeoutRef.current);
+            }
+        };
+    }, []);
 
     return (
         <div className={['w-full', containerClassName].filter(Boolean).join(' ')} ref={containerRef}>
@@ -238,17 +296,17 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(({
                         'flex items-center gap-2',
                         sizeClasses[size],
                         variantButtonClasses[variant],
-                        Icon ? 'pl-10 pr-9' : 'pr-9',
+                        Icon ? 'pl-10 pr-10' : 'pr-10',
                         error ? 'border-red-300 focus:ring-red-500' : '',
                         className,
                     ].filter(Boolean).join(' ')}
                 >
-                    <span className={selectedOption ? 'truncate' : 'truncate text-slate-400'}>
+                    <span className={['min-w-0 flex-1 truncate', selectedOption ? '' : 'text-slate-400'].filter(Boolean).join(' ')}>
                         {displayLabel}
                     </span>
                 </button>
 
-                <ChevronDown className={['absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-transform', isOpen ? 'rotate-180 text-slate-500' : 'text-slate-400'].join(' ')} />
+                <ChevronDown className={['absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 shrink-0 pointer-events-none transition-transform text-slate-500', isOpen ? 'rotate-180' : ''].join(' ')} aria-hidden />
 
                 {isOpen && (
                     <div

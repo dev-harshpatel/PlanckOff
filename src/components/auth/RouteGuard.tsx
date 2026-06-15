@@ -6,11 +6,13 @@ import { useAuth } from '@/context/AuthContext';
 import { useRBAC } from '@/hooks/useRBAC';
 import { RoleName } from '@/types/team';
 import { Loader2, ShieldX } from 'lucide-react';
+import { canAccessRoute } from '@/lib/auth/rbac';
 
 interface RouteGuardProps {
   children: React.ReactNode;
   allowedRoles?: RoleName[];
   minRole?: RoleName;
+  path?: string;
   fallback?: React.ReactNode;
   redirectTo?: string;
 }
@@ -42,6 +44,7 @@ export function RouteGuard({
   children,
   allowedRoles,
   minRole,
+  path,
   fallback,
   redirectTo,
 }: RouteGuardProps) {
@@ -61,9 +64,13 @@ export function RouteGuard({
       return hasMinRole(minRole);
     }
 
+    if (path) {
+      return canAccessRoute(userRole, path).allowed;
+    }
+
     // If no restrictions, just require authentication
     return true;
-  }, [isAuthenticated, allowedRoles, minRole, hasAnyRole, hasMinRole]);
+  }, [isAuthenticated, allowedRoles, minRole, path, hasAnyRole, hasMinRole, userRole]);
 
   // Redirect if specified and no access
   useEffect(() => {
@@ -100,7 +107,7 @@ export function RouteGuard({
       return <>{fallback}</>;
     }
 
-    const requiredRoles = allowedRoles?.join(', ') || minRole || 'Unknown';
+    const requiredRoles = allowedRoles?.join(', ') || minRole || path || 'Unknown';
     return (
       <AccessDenied
         message={`This page is restricted to: ${requiredRoles}`}
@@ -153,7 +160,7 @@ function AccessDenied({
  *
  * Usage:
  * ```tsx
- * export default withRouteGuard(AdminPage, { allowedRoles: ['Administrator'] });
+ * export default withRouteGuard(AdminPage, { path: '/admin/roles' });
  * ```
  */
 export function withRouteGuard<P extends object>(
