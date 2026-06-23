@@ -6,7 +6,6 @@ import {
     roundToTwoDecimals,
     type ExtractedDimensions,
 } from '@/lib/utils/formulaEvaluator';
-import { getEffectiveProjectUnitCost } from '@/lib/utils/projectPricing';
 
 /**
  * Resolve the MaterialDefinition for a component row.
@@ -42,15 +41,14 @@ export const findExtractedDimsForComponent = (
 };
 
 /**
- * Unit Cost for a row: component override → effective project unit cost from DB.
+ * Unit Cost for a row: component override only — spec_database lookup removed 2026-06-22.
+ * Unit costs will come from material_database.unit_price via the rule-based pipeline (Phase 2+).
  */
 export const getUnitCostForRow = (
     comp: AssemblyComponent,
-    materials: MaterialDefinition[],
+    _materials: MaterialDefinition[],
 ): number | undefined => {
-    const mat = getMaterialByRowCode(comp, materials);
-    const val = comp.overrideMatCost ?? (mat ? getEffectiveProjectUnitCost(mat) : undefined);
-    return val != null ? val : undefined;
+    return comp.overrideMatCost ?? undefined;
 };
 
 /**

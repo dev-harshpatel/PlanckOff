@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import { CalculationMethod, MaterialDefinition, TakeoffInstance, WallAssembly } from "@/types";
 import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
-import { resolveProjectMaterials } from "@/lib/utils/resolveProjectMaterial";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DatabaseManager } from "@/components/features/database/DatabaseManager";
 import { AssemblyTemplate, DEFAULT_TEMPLATES } from "@/constants/defaultAssemblies";
@@ -31,8 +30,7 @@ import { ConfirmModal, Modal, useToast } from "@/components/ui";
 interface EstimateResultProps {
   assemblies: WallAssembly[];
   onReset: () => void;
-  materials: MaterialDefinition[];
-  onUpdateMaterials: (materials: MaterialDefinition[]) => void;
+  // materials/onUpdateMaterials removed 2026-06-22 — spec_database removed; will come from material_database (Phase 2+)
   onAnalyze: (file: File) => void;
   isAnalyzing: boolean;
   viewMode?: "project" | "report";
@@ -62,8 +60,6 @@ interface EstimateResultProps {
 export const EstimateResult: React.FC<EstimateResultProps> = ({
   assemblies: initialAssemblies,
   onReset,
-  materials,
-  onUpdateMaterials,
   onAnalyze,
   isAnalyzing,
   viewMode = "project",
@@ -85,12 +81,8 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   overrideMap = {},
   onOverrideMapChange,
 }) => {
-  // Merge global spec_database with project-specific overrides.
-  // resolvedMaterials is what every formula, cost calc, and UOM display should use.
-  const resolvedMaterials = useMemo(
-    () => resolveProjectMaterials(materials, overrideMap),
-    [materials, overrideMap],
-  );
+  // spec_database removed 2026-06-22 — materials will come from material_database (Phase 2+)
+  const resolvedMaterials: MaterialDefinition[] = [];
 
   const {
     assemblies,
@@ -386,7 +378,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   };
 
   const {
-    priceMap,
     filteredAssemblies,
     currentEditingAssembly,
     statsByHeight,
@@ -394,7 +385,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   } = useEstimateCalculations({
     assemblies,
     takeoffs,
-    resolvedMaterials,
     assemblySearch,
     editingAssemblyId,
     editingHeight,
@@ -411,7 +401,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         assemblies={assemblies}
         takeoffs={takeoffs}
         manualItems={manualItems}
-        materials={resolvedMaterials}
         materialCostingData={materialCostingData}
         onUnitCostChange={onUnitCostChange}
         displayUnit={displayUnit}
@@ -437,8 +426,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         setAssemblySearch={setAssemblySearch}
         filteredAssemblies={filteredAssemblies}
         takeoffs={takeoffs}
-        resolvedMaterials={resolvedMaterials}
-        priceMap={priceMap}
         setActiveAssemblyId={setActiveAssemblyId}
         setEditingAssemblyId={setEditingAssemblyId}
         setEditingHeight={setEditingHeight}
@@ -474,8 +461,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       <TakeoffTab
         filteredAssemblies={filteredAssemblies}
         takeoffs={takeoffs}
-        addInstance={addInstance}
-        activeAssemblyId={activeAssemblyId}
         updateInstance={updateInstance}
         deleteInstance={deleteInstance}
         openImportModal={openImportModal}
@@ -535,8 +520,8 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
       >
         <div className="h-full flex flex-col overflow-hidden">
           <DatabaseManager
-            materials={materials}
-            onUpdateMaterials={onUpdateMaterials}
+            materials={[]}
+            onUpdateMaterials={() => {}}
             onClose={() => setIsDatabaseOpen(false)}
           />
         </div>

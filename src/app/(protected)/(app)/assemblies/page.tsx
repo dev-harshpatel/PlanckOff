@@ -5,14 +5,14 @@ import { DefaultAssembliesManager } from "@/components/features/assemblies/Defau
 import { useApp } from "@/context/AppContext";
 
 export default function AssembliesPage() {
-  const { defaultAssemblies, setDefaultAssemblies, materials } = useApp();
+  const { defaultAssemblies, setDefaultAssemblies } = useApp();
 
   return (
     <RouteGuard path="/assemblies">
       <DefaultAssembliesManager
         templates={defaultAssemblies}
         onUpdateTemplates={setDefaultAssemblies}
-        materials={materials}
+        materials={[]}
       />
     </RouteGuard>
   );

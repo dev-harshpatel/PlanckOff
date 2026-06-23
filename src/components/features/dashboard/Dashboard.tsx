@@ -1,12 +1,26 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowUpRight, Briefcase, Check, Edit2, Grid, Hash, List as ListIcon, MapPin, Plus, Search, Trash2, User, Calendar, Loader2 } from 'lucide-react';
+import {
+  Archive, ArrowUpRight, Briefcase, CheckCircle2, Clock,
+  Edit2, Grid, List as ListIcon, MapPin, PauseCircle,
+  Plus, Search, Trash2, User, Calendar, Loader2,
+} from 'lucide-react';
 import { ProjectSummary } from '@/types';
 import { PROJECT_STATUSES } from '@/constants';
 import { getStatusColor } from '@/lib/utils/projectUtils';
 import { ProjectModal } from '@/components/features/project/ProjectModal';
-import { Button, ConfirmModal, FilterSelect, IconButton, SearchInput, Select, useToast } from '@/components/ui';
+import { Button, ConfirmModal, Select, useToast } from '@/components/ui';
+import { Input } from '@/components/shadcn/input';
+import { Skeleton } from '@/components/shadcn/skeleton';
+import {
+  Select as ShadSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/shadcn/select';
+import { cn } from '@/lib/cn';
 
 interface DashboardProps {
   onOpenProject: (project?: ProjectSummary) => void;
@@ -18,7 +32,51 @@ interface TeamMemberDropdownItem {
   role: string;
 }
 
-// --- Inline ProjectCard Component ---
+const STATUS_CONFIG = [
+  {
+    label: 'Working Project Progress' as const,
+    shortLabel: 'In Progress',
+    icon: Briefcase,
+    activeCls: 'bg-emerald-600 text-white',
+    inactiveCls: 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+    sectionIcon: 'text-emerald-600',
+  },
+  {
+    label: 'Under Review' as const,
+    shortLabel: 'Under Review',
+    icon: Clock,
+    activeCls: 'bg-amber-500 text-white',
+    inactiveCls: 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+    sectionIcon: 'text-amber-600',
+  },
+  {
+    label: 'Submitted' as const,
+    shortLabel: 'Submitted',
+    icon: CheckCircle2,
+    activeCls: 'bg-blue-600 text-white',
+    inactiveCls: 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+    sectionIcon: 'text-blue-600',
+  },
+  {
+    label: 'Hold' as const,
+    shortLabel: 'On Hold',
+    icon: PauseCircle,
+    activeCls: 'bg-slate-600 text-white',
+    inactiveCls: 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+    sectionIcon: 'text-slate-500',
+  },
+  {
+    label: 'Archive' as const,
+    shortLabel: 'Archive',
+    icon: Archive,
+    activeCls: 'bg-purple-600 text-white',
+    inactiveCls: 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+    sectionIcon: 'text-purple-600',
+  },
+] as const;
+
+// ─── Compact Project Card ─────────────────────────────────────────────────────
+
 const ProjectCard: React.FC<{
   project: ProjectSummary;
   teamMembers: TeamMemberDropdownItem[];
@@ -30,27 +88,28 @@ const ProjectCard: React.FC<{
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [isEditingAssignee, setIsEditingAssignee] = useState(false);
 
+  const statusShort = project.status === 'Working Project Progress' ? 'In Progress' : project.status;
+
   return (
     <div
       onClick={() => onOpen(project)}
-      className="group bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer relative animate-in fade-in duration-300"
+      className="group bg-white border border-slate-200 rounded-lg p-3.5 hover:border-emerald-400 hover:shadow-md transition-all cursor-pointer"
     >
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <h3 className="font-bold text-lg text-slate-900 leading-tight mb-1 group-hover:text-blue-700 transition-colors line-clamp-1">{project.name}</h3>
-          <p className="text-sm font-medium text-slate-500 line-clamp-1">{project.company}</p>
-        </div>
-
+      {/* Name + status badge */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <h3 className="font-semibold text-sm text-slate-900 leading-snug line-clamp-2 group-hover:text-emerald-700 flex-1 min-w-0">
+          {project.name}
+        </h3>
         {isEditingStatus ? (
-          <div onClick={e => e.stopPropagation()}>
+          <div onClick={e => e.stopPropagation()} className="shrink-0">
             <Select
               autoFocus
               containerClassName="w-auto"
-              options={PROJECT_STATUSES.map((status) => ({ value: status, label: status }))}
+              options={PROJECT_STATUSES.map(s => ({ value: s, label: s }))}
               size="xs"
               value={project.status}
-              onValueChange={(nextValue) => {
-                onUpdate({ ...project, status: nextValue as ProjectSummary['status'] });
+              onValueChange={v => {
+                onUpdate({ ...project, status: v as ProjectSummary['status'] });
                 setIsEditingStatus(false);
               }}
               onClose={() => setIsEditingStatus(false)}
@@ -60,23 +119,29 @@ const ProjectCard: React.FC<{
           </div>
         ) : (
           <span
-            onDoubleClick={(e) => { e.stopPropagation(); setIsEditingStatus(true); }}
-            title="Double click to change status"
-            className={`px-2.5 py-1 rounded-full text-xs font-semibold border cursor-pointer select-none ${getStatusColor(project.status)}`}
+            onDoubleClick={e => { e.stopPropagation(); setIsEditingStatus(true); }}
+            title="Double-click to change status"
+            className={cn(
+              'shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer select-none whitespace-nowrap',
+              getStatusColor(project.status),
+            )}
           >
-            {project.status}
+            {statusShort}
           </span>
         )}
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center text-sm text-slate-600 gap-2">
-          <div className="w-6 flex justify-center"><Calendar className="w-4 h-4 text-emerald-500" /></div>
-          <span className="font-medium">{project.dueDate || 'No due date'}</span>
-        </div>
+      {/* Company */}
+      <p className="text-xs text-slate-500 mb-3 line-clamp-1">{project.company || '—'}</p>
 
-        <div className="flex items-center text-sm text-slate-600 gap-2">
-          <div className="w-6 flex justify-center"><User className="w-4 h-4 text-slate-400" /></div>
+      {/* Date + assignee */}
+      <div className="flex items-center gap-3 text-[11px] text-slate-400 mb-3">
+        <span className="flex items-center gap-1 shrink-0">
+          <Calendar className="w-3 h-3" />
+          {project.dueDate || '—'}
+        </span>
+        <span className="flex items-center gap-1 min-w-0 flex-1 truncate">
+          <User className="w-3 h-3 shrink-0" />
           {isEditingAssignee ? (
             <div onClick={e => e.stopPropagation()} className="flex-1">
               <Select
@@ -84,13 +149,13 @@ const ProjectCard: React.FC<{
                 containerClassName="w-full"
                 options={[
                   { value: '', label: 'Unassigned' },
-                  ...teamMembers.map((m) => ({ value: m.id, label: m.name })),
+                  ...teamMembers.map(m => ({ value: m.id, label: m.name })),
                 ]}
                 size="xs"
                 value={teamMembers.find(m => m.name === project.assignedTo)?.id || ''}
-                onValueChange={(nextValue) => {
-                  const newMember = teamMembers.find(m => m.id === nextValue);
-                  onUpdate({ ...project, assignedTo: newMember?.name || 'Unassigned' });
+                onValueChange={v => {
+                  const member = teamMembers.find(m => m.id === v);
+                  onUpdate({ ...project, assignedTo: member?.name || 'Unassigned' });
                   setIsEditingAssignee(false);
                 }}
                 onClose={() => setIsEditingAssignee(false)}
@@ -100,43 +165,74 @@ const ProjectCard: React.FC<{
             </div>
           ) : (
             <span
-              onDoubleClick={(e) => { e.stopPropagation(); setIsEditingAssignee(true); }}
-              title="Double click to reassign"
-              className="text-slate-500 truncate cursor-pointer hover:text-emerald-600 select-none"
+              onDoubleClick={e => { e.stopPropagation(); setIsEditingAssignee(true); }}
+              title="Double-click to reassign"
+              className="truncate cursor-pointer hover:text-emerald-600 select-none"
             >
               {project.assignedTo || 'Unassigned'}
             </span>
           )}
-        </div>
-
-        <div className="flex items-center text-sm text-slate-600 gap-2">
-          <div className="w-6 flex justify-center"><ArrowUpRight className="w-4 h-4 text-slate-400" /></div>
-          <span className="text-slate-500">#{project.projectNumber}</span>
-        </div>
+        </span>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-        <button className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 group-hover:underline">
-          Open Project <ArrowUpRight className="w-4 h-4" />
-        </button>
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <IconButton
-            icon={Edit2}
+      {/* Footer: project number + action buttons */}
+      <div className="flex items-center justify-between pt-2.5 border-t border-slate-100">
+        <code className="text-[10px] text-slate-400 font-mono">#{project.projectNumber}</code>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
             onClick={onEdit}
-            variant="primary"
-            tooltip="Edit Project"
-          />
-          <IconButton
-            icon={Trash2}
+            className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+          >
+            <Edit2 className="w-3 h-3" />
+          </button>
+          <button
             onClick={onDelete}
-            variant="danger"
-            tooltip="Delete Project"
-          />
+            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
+function DashboardSkeleton() {
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-200 bg-white shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <Skeleton className="h-5 w-32 mb-1.5" />
+            <Skeleton className="h-3.5 w-48" />
+          </div>
+          <div className="flex gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-20 rounded-full" />
+            ))}
+          </div>
+          <Skeleton className="h-8 w-28 rounded-lg" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-64 rounded-md" />
+          <Skeleton className="h-8 w-36 rounded-md" />
+          <Skeleton className="h-8 w-8 rounded-md ml-auto" />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          {Array.from({ length: 16 }).map((_, i) => (
+            <Skeleton key={i} className="h-[138px] rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const toast = useToast();
@@ -149,24 +245,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal State
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
 
-  // Delete Confirmation State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<ProjectSummary | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Creating project loading state
   const [isCreatingProject, setIsCreatingProject] = useState(false);
 
-  // Fetch projects from API
   const fetchProjects = useCallback(async () => {
     try {
       const response = await fetch('/api/projects');
       const data = await response.json();
-
       if (data.success) {
         setProjects(data.projects || []);
         setError(null);
@@ -179,21 +270,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     }
   }, []);
 
-  // Fetch team members from API
   const fetchTeamMembers = useCallback(async () => {
     try {
       const response = await fetch('/api/team/dropdown');
       const data = await response.json();
-
-      if (data.success) {
-        setTeamMembers(data.members || []);
-      }
+      if (data.success) setTeamMembers(data.members || []);
     } catch (err) {
       console.error('Error fetching team members:', err);
     }
   }, []);
 
-  // Initial data fetch
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -203,31 +289,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     loadData();
   }, [fetchProjects, fetchTeamMembers]);
 
-  // Filter projects for display
-  const filteredProjects = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.projectNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.location && p.location.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
-    const matchesAssignee = assigneeFilter === 'all' ||
-      (assigneeFilter === 'unassigned' && !p.assignedTo) ||
-      teamMembers.find(m => m.id === assigneeFilter)?.name === p.assignedTo;
-    return matchesSearch && matchesStatus && matchesAssignee;
-  }).sort((a, b) => {
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-  });
+  const filteredProjects = projects
+    .filter(p => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        p.name.toLowerCase().includes(q) ||
+        p.company.toLowerCase().includes(q) ||
+        p.projectNumber.toLowerCase().includes(q) ||
+        (p.location && p.location.toLowerCase().includes(q));
+      const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
+      const matchesAssignee =
+        assigneeFilter === 'all' ||
+        (assigneeFilter === 'unassigned' && !p.assignedTo) ||
+        teamMembers.find(m => m.id === assigneeFilter)?.name === p.assignedTo;
+      return matchesSearch && matchesStatus && matchesAssignee;
+    })
+    .sort((a, b) => {
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
-  // Create or Update project
   const handleCreateOrUpdateProject = async (projectData: ProjectSummary) => {
-    // Close modal first
     setIsProjectModalOpen(false);
-
     try {
       if (editingProject) {
-        // Update existing project
         const response = await fetch(`/api/projects/${editingProject.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -244,7 +330,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
           }),
         });
         const data = await response.json();
-
         if (data.success) {
           setProjects(prev => prev.map(p => p.id === editingProject.id ? data.project : p));
           toast.success('Project Updated', 'Project has been updated successfully.');
@@ -252,10 +337,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
           toast.error('Update Failed', data.error || 'Failed to update project');
         }
       } else {
-        // Show loading overlay for new project creation
         setIsCreatingProject(true);
-
-        // Create new project
         const response = await fetch('/api/projects', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -272,10 +354,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
           }),
         });
         const data = await response.json();
-
         if (data.success) {
           setProjects(prev => [data.project, ...prev]);
-          // Navigate to the new project (loading overlay stays visible until navigation completes)
           onOpenProject(data.project);
         } else {
           setIsCreatingProject(false);
@@ -287,26 +367,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
       setIsCreatingProject(false);
       toast.error('Error', 'Failed to save project. Please try again.');
     }
-
     setEditingProject(null);
   };
 
-  // Quick update project (for inline status/assignee changes)
   const handleQuickUpdate = async (updated: ProjectSummary) => {
     try {
       const response = await fetch(`/api/projects/${updated.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: updated.status,
-          assignedTo: updated.assignedTo,
-        }),
+        body: JSON.stringify({ status: updated.status, assignedTo: updated.assignedTo }),
       });
       const data = await response.json();
-
-      if (data.success) {
-        setProjects(prev => prev.map(p => p.id === updated.id ? data.project : p));
-      }
+      if (data.success) setProjects(prev => prev.map(p => p.id === updated.id ? data.project : p));
     } catch (err) {
       console.error('Error updating project:', err);
     }
@@ -318,24 +390,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     setIsProjectModalOpen(true);
   };
 
-  // Open delete confirmation modal
   const openDeleteModal = (e: React.MouseEvent, project: ProjectSummary) => {
     e.stopPropagation();
     setProjectToDelete(project);
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm delete action
   const confirmDelete = async () => {
     if (!projectToDelete) return;
-
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/projects/${projectToDelete.id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(`/api/projects/${projectToDelete.id}`, { method: 'DELETE' });
       const data = await response.json();
-
       if (data.success) {
         setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
         toast.success('Project Deleted', `"${projectToDelete.name}" has been deleted.`);
@@ -352,7 +418,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     }
   };
 
-  // Calculate status counts from ALL projects (not filtered)
   const statusCounts = {
     'Working Project Progress': projects.filter(p => p.status === 'Working Project Progress').length,
     'Under Review': projects.filter(p => p.status === 'Under Review').length,
@@ -361,32 +426,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
     'Archive': projects.filter(p => p.status === 'Archive').length,
   };
 
-  // Build assignee dropdown options
   const assigneeOptions = [
     { value: 'all', label: 'All Members' },
     ...teamMembers.map(m => ({ value: m.id, label: m.name })),
     { value: 'unassigned', label: 'Unassigned' },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="w-full mx-auto p-6 flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-          <p className="text-slate-500">Loading projects...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <DashboardSkeleton />;
 
   if (error) {
     return (
-      <div className="w-full mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <p className="text-red-600">{error}</p>
+      <div className="h-full flex items-center justify-center p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-sm">
+          <p className="text-red-600 text-sm mb-3">{error}</p>
           <button
             onClick={() => { setError(null); fetchProjects(); }}
-            className="mt-2 text-sm text-red-700 underline hover:no-underline"
+            className="text-xs text-red-700 underline hover:no-underline"
           >
             Try again
           </button>
@@ -396,272 +451,257 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
   }
 
   return (
-    <div className="w-full mx-auto p-6 space-y-8">
+    <div className="h-full flex flex-col overflow-hidden">
 
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Projects Dashboard</h1>
-          <p className="text-slate-500 mt-1">Manage your estimates and proposals.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
-            variant="success"
-            icon={Plus}
-          >
-            New Project
-          </Button>
-        </div>
-      </div>
+      {/* ── Sticky header ───────────────────────────────────────────────────── */}
+      <div className="px-6 py-4 border-b border-slate-200 bg-white shrink-0">
 
-      {/* Chevron Status Bar - Uses ALL projects for counts */}
-      <div className="flex w-full overflow-x-auto pb-2 mb-4 scrollbar-thin">
-        <div className="flex w-full min-w-max bg-white rounded-lg border border-slate-200 shadow-sm divide-x divide-slate-100">
-          {[
-            { label: 'Working Project Progress', icon: Briefcase, color: 'text-emerald-600' },
-            { label: 'Under Review', icon: Search, color: 'text-amber-600' },
-            { label: 'Submitted', icon: Check, color: 'text-blue-600' },
-            { label: 'Hold', icon: Hash, color: 'text-slate-600' },
-            { label: 'Archive', icon: Trash2, color: 'text-purple-600' },
-          ].map((item, index, arr) => {
-            const isActive = statusFilter === item.label;
-            const count = statusCounts[item.label as keyof typeof statusCounts];
-            return (
-              <button
-                key={item.label}
-                onClick={() => setStatusFilter(isActive ? 'All' : item.label)}
-                className={`flex-1 flex items-center px-4 py-3 gap-3 group transition-all relative text-left
-                ${isActive ? 'bg-emerald-50/50 shadow-inner' : 'hover:bg-slate-50'}
-              `}
-              >
-                <div className={`p-2 rounded-lg transition-all ${isActive ? 'bg-white shadow-sm ring-2 ring-emerald-500/20' : 'bg-slate-50 border border-slate-100 group-hover:bg-white group-hover:shadow-sm'} ${item.color}`}>
-                  <item.icon className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className={`text-xs font-medium uppercase tracking-wide mb-0.5 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`}>{item.label}</div>
-                  <div className={`text-lg font-bold ${isActive ? 'text-emerald-900' : 'text-slate-800'}`}>{count}</div>
-                </div>
-                {index !== arr.length - 1 && (
-                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-white rotate-45 border-t border-r border-slate-200 hidden md:block"></div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Filters & Controls */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          <div className="w-full sm:w-64">
-            <SearchInput
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              placeholder="Search projects..."
-            />
+        {/* Row 1: title | status pills | new project */}
+        <div className="flex items-center gap-4 mb-3">
+          <div className="shrink-0">
+            <h1 className="text-lg font-bold text-slate-900">Projects</h1>
+            <p className="text-xs text-slate-500 mt-0.5">{projects.length} total</p>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <FilterSelect
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              options={[
-                { value: 'All', label: 'All Status' },
-                ...PROJECT_STATUSES.map(status => ({ value: status, label: status }))
-              ]}
-            />
-
-            <FilterSelect
-              value={assigneeFilter}
-              onValueChange={setAssigneeFilter}
-              options={assigneeOptions}
-              showIcon={false}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <Grid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <ListIcon className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Empty State - No projects at all */}
-      {projects.length === 0 && (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
-            <Briefcase className="w-8 h-8 text-slate-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-slate-700 mb-2">No projects yet</h3>
-          <p className="text-slate-500 mb-6">Get started by creating your first project.</p>
-          <Button
-            onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
-            variant="success"
-            icon={Plus}
-          >
-            Create Project
-          </Button>
-        </div>
-      )}
-
-      {/* Empty State - No projects match current filters */}
-      {projects.length > 0 && filteredProjects.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-slate-200">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">
-            <Search className="w-10 h-10 text-amber-400" />
-          </div>
-          <h3 className="text-xl font-semibold text-slate-800 mb-3">No projects found</h3>
-          <p className="text-slate-500 mb-8 max-w-md mx-auto px-4">
-            {statusFilter !== 'All'
-              ? `There are no projects with "${statusFilter}" status.`
-              : searchQuery
-                ? `No projects match your search "${searchQuery}".`
-                : 'No projects match your current filters.'}
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              onClick={() => { setStatusFilter('All'); setSearchQuery(''); setAssigneeFilter('all'); }}
-              variant="secondary"
+          {/* Status filter pills */}
+          <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+            <button
+              onClick={() => setStatusFilter('All')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                statusFilter === 'All'
+                  ? 'bg-slate-800 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+              )}
             >
-              Clear Filters
-            </Button>
-            <Button
-              onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
-              variant="success"
-              icon={Plus}
-            >
-              New Project
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Projects Grid View (Grouped) */}
-      {viewMode === 'grid' && filteredProjects.length > 0 && (
-        <div className="space-y-10">
-          {[
-            { title: 'Working Project Progress', statuses: ['Working Project Progress'], icon: <Briefcase className="w-5 h-5 text-blue-600" /> },
-            { title: 'Under Review', statuses: ['Under Review'], icon: <Search className="w-5 h-5 text-amber-600" /> },
-            { title: 'Submitted', statuses: ['Submitted'], icon: <Check className="w-5 h-5 text-blue-600" /> },
-            { title: 'Hold', statuses: ['Hold'], icon: <Hash className="w-5 h-5 text-slate-500" /> },
-            { title: 'Archive', statuses: ['Archive'], icon: <Trash2 className="w-5 h-5 text-purple-600" /> }
-          ].map((section) => {
-            const sectionProjects = filteredProjects.filter(p => section.statuses.includes(p.status));
-            if (sectionProjects.length === 0 && statusFilter !== 'All') return null;
-
-            return (
-              <div key={section.title}>
-                <div className="flex items-center gap-2 mb-4 border-b border-slate-200 pb-2">
-                  {section.icon}
-                  <h2 className="text-lg font-bold text-slate-800">{section.title}</h2>
-                  <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">{sectionProjects.length}</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sectionProjects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      teamMembers={teamMembers}
-                      onOpen={onOpenProject}
-                      onEdit={(e) => openEditModal(e, project)}
-                      onDelete={(e) => openDeleteModal(e, project)}
-                      onUpdate={handleQuickUpdate}
-                    />
-                  ))}
-                  {sectionProjects.length === 0 && (
-                    <div className="col-span-full py-8 text-center text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-                      No projects in {section.title}
-                    </div>
+              All
+              <span className="text-[10px] font-bold opacity-70">{projects.length}</span>
+            </button>
+            {STATUS_CONFIG.map(item => {
+              const count = statusCounts[item.label];
+              const isActive = statusFilter === item.label;
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => setStatusFilter(isActive ? 'All' : item.label)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                    isActive ? item.activeCls : item.inactiveCls,
                   )}
-                </div>
-              </div>
-            );
-          })
-          }
-        </div>
-      )}
-
-      {/* Projects List View */}
-      {viewMode === 'list' && filteredProjects.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 font-semibold text-slate-700">Project Name</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Client</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Location</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Status</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Assigned To</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Due Date</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredProjects.map((project) => (
-                <tr
-                  key={project.id}
-                  onClick={() => onOpenProject(project)}
-                  className="hover:bg-slate-50 cursor-pointer transition-colors group"
                 >
-                  <td className="px-6 py-4 font-medium text-slate-900">
-                    {project.name}
-                    <div className="text-xs text-slate-400 font-normal mt-0.5">#{project.projectNumber}</div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{project.company}</td>
-                  <td className="px-6 py-4 text-slate-600">
-                    <div className="flex items-center gap-1.5">
-                      {project.location && <MapPin className="w-3.5 h-3.5 text-slate-400" />}
-                      {project.location || '-'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(project.status)}`}>
-                      {project.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
-                      {project.assignedTo || 'Unassigned'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{project.dueDate || '-'}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <IconButton
-                        icon={Edit2}
-                        onClick={(e) => openEditModal(e, project)}
-                        variant="success"
-                        tooltip="Edit Project"
-                      />
-                      <IconButton
-                        icon={Trash2}
-                        onClick={(e) => openDeleteModal(e, project)}
-                        variant="danger"
-                        tooltip="Delete Project"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  <item.icon className="w-3 h-3" />
+                  {item.shortLabel}
+                  <span className="text-[10px] font-bold opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Project Create/Edit Modal */}
+          <button
+            onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shrink-0 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Project
+          </button>
+        </div>
+
+        {/* Row 2: search | assignee filter | result count | view toggle */}
+        <div className="flex items-center gap-2">
+          <div className="relative max-w-xs flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Search name, company, number..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+
+          <ShadSelect value={assigneeFilter} onValueChange={setAssigneeFilter}>
+            <SelectTrigger className="h-8 text-xs w-36">
+              <SelectValue placeholder="All Members" />
+            </SelectTrigger>
+            <SelectContent>
+              {assigneeOptions.map(o => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </ShadSelect>
+
+          <span className="text-xs text-slate-400 shrink-0">
+            {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}
+          </span>
+
+          <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-md ml-auto">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn('p-1.5 rounded transition-all', viewMode === 'grid' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700')}
+            >
+              <Grid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn('p-1.5 rounded transition-all', viewMode === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700')}
+            >
+              <ListIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Scrollable content ───────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto p-6">
+
+        {/* Empty: no projects at all */}
+        {projects.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+              <Briefcase className="w-7 h-7 text-slate-400" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-700 mb-1">No projects yet</h3>
+            <p className="text-sm text-slate-500 mb-6">Get started by creating your first project.</p>
+            <button
+              onClick={() => { setEditingProject(null); setIsProjectModalOpen(true); }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Project
+            </button>
+          </div>
+        )}
+
+        {/* Empty: filters match nothing */}
+        {projects.length > 0 && filteredProjects.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-slate-200 rounded-xl">
+            <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+              <Search className="w-7 h-7 text-amber-400" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-700 mb-1">No results found</h3>
+            <p className="text-sm text-slate-500 mb-6 text-center max-w-xs">
+              {statusFilter !== 'All'
+                ? `No projects with "${statusFilter}" status.`
+                : searchQuery
+                  ? `Nothing matches "${searchQuery}".`
+                  : 'No projects match the current filters.'}
+            </p>
+            <button
+              onClick={() => { setStatusFilter('All'); setSearchQuery(''); setAssigneeFilter('all'); }}
+              className="px-3 py-1.5 text-sm font-medium border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {/* ── Grid view ─────────────────────────────────────────────────────── */}
+        {viewMode === 'grid' && filteredProjects.length > 0 && (
+          <div className="space-y-8">
+            {STATUS_CONFIG.map(cfg => {
+              const sectionProjects = filteredProjects.filter(p => p.status === cfg.label);
+              if (sectionProjects.length === 0) return null;
+              return (
+                <div key={cfg.label}>
+                  {/* Section header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <cfg.icon className={cn('w-4 h-4', cfg.sectionIcon)} />
+                    <h2 className="text-sm font-semibold text-slate-700">
+                      {cfg.label === 'Working Project Progress' ? 'In Progress' : cfg.label}
+                    </h2>
+                    <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
+                      {sectionProjects.length}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    {sectionProjects.map(project => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        teamMembers={teamMembers}
+                        onOpen={onOpenProject}
+                        onEdit={e => openEditModal(e, project)}
+                        onDelete={e => openDeleteModal(e, project)}
+                        onUpdate={handleQuickUpdate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── List view ─────────────────────────────────────────────────────── */}
+        {viewMode === 'list' && filteredProjects.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Project</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Client</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Due</th>
+                  <th className="px-4 py-3 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredProjects.map(project => (
+                  <tr
+                    key={project.id}
+                    onClick={() => onOpenProject(project)}
+                    className="hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900 text-sm leading-snug">{project.name}</div>
+                      <code className="text-[10px] text-slate-400 font-mono">#{project.projectNumber}</code>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{project.company || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-500">
+                      <div className="flex items-center gap-1">
+                        {project.location && <MapPin className="w-3 h-3 text-slate-400 shrink-0" />}
+                        {project.location || '—'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', getStatusColor(project.status))}>
+                        {project.status === 'Working Project Progress' ? 'In Progress' : project.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-500">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                        {project.assignedTo || 'Unassigned'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-500 tabular-nums">{project.dueDate || '—'}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={e => openEditModal(e, project)}
+                          className="p-1.5 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={e => openDeleteModal(e, project)}
+                          className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <ProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingProject(null); }}
@@ -670,7 +710,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         teamMembers={teamMembers}
       />
 
-      {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => { setIsDeleteModalOpen(false); setProjectToDelete(null); }}
@@ -683,23 +722,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenProject }) => {
         isLoading={isDeleting}
       />
 
-      {/* Creating Project Loading Overlay */}
       {isCreatingProject && (
         <div className="fixed inset-0 z-[9999] bg-white/90 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-white shadow-xl border border-slate-200">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-              </div>
+            <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center">
+              <Loader2 className="w-7 h-7 text-emerald-600 animate-spin" />
             </div>
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-slate-900 mb-1">Creating Project</h3>
+              <h3 className="text-base font-semibold text-slate-900 mb-1">Creating Project</h3>
               <p className="text-sm text-slate-500">Setting up your new project...</p>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

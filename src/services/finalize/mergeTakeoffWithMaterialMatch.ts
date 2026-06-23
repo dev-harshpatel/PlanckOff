@@ -6,12 +6,9 @@
 import type {
   MaterialItem,
   MaterialsCostingItem,
-  MatchedLabor,
   MatchedMaterial,
 } from "@/types/assembly";
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
-import { getHeightSegments } from "@/lib/utils/laborHeightSplit";
-import type { HeightSegment } from "@/lib/utils/laborHeightSplit";
 
 /** Material match assembly (from match step) — has assembly_id and materials_costing; may have extra fields */
 export interface MaterialMatchAssembly {
@@ -86,133 +83,6 @@ const getHeightCategory = (heightFt: number): string => {
     if (heightFt < max) return label;
   }
   return HEIGHT_CATEGORIES[HEIGHT_CATEGORIES.length - 1].label;
-};
-
-// ─── Height Segmentation ───────────────────────────────────────────────────────
-// getHeightSegments and HeightSegment imported from @/lib/utils/laborHeightSplit
-
-/** Keywords in DB labor descriptions that identify each height segment */
-const SEGMENT_KEYWORDS: Record<string, string> = {
-  "(Walls < 12 ft)": "< 12ft",
-  "(High 12 ft to 24 ft)": "12ft to 24",
-  "(High Above 24 ft)": "> 24",
-};
-
-const matchesSegment = (description: string | undefined, category: string): boolean => {
-  if (!description) return false;
-  const keyword = SEGMENT_KEYWORDS[category];
-  return !!keyword && description.includes(keyword);
-};
-
-/**
- * A labor item is height-segmentable if its description contains "< 12ft"
- * (meaning the DB has height variants for it).
- */
-const isHeightSegmentedLabor = (description: string | undefined): boolean =>
-  !!description && description.includes("< 12ft");
-
-// ─── Material DB Index ─────────────────────────────────────────────────────────
-
-interface DbLaborEntry {
-  code: string;
-  laborCostCode: string;
-  description: string;
-  section: string;
-  per: string;
-  matCost: string | number;
-  category: string;
-}
-
-interface LaborIndex {
-  byCode: Map<string, DbLaborEntry>;
-  byLaborCostCode: Map<string, DbLaborEntry[]>;
-}
-
-const buildLaborIndex = (db: unknown[]): LaborIndex => {
-  const byCode = new Map<string, DbLaborEntry>();
-  const byLaborCostCode = new Map<string, DbLaborEntry[]>();
-
-  for (const entry of db) {
-    const e = entry as Record<string, unknown>;
-    if (e.category !== "Labor") continue;
-    const row: DbLaborEntry = {
-      code: String(e.code ?? ""),
-      laborCostCode: String(e.laborCostCode ?? ""),
-      description: String(e.description ?? ""),
-      section: String(e.section ?? ""),
-      per: String(e.per ?? ""),
-      matCost: e.matCost as string | number,
-      category: "Labor",
-    };
-    byCode.set(row.code, row);
-    const siblings = byLaborCostCode.get(row.laborCostCode) ?? [];
-    siblings.push(row);
-    byLaborCostCode.set(row.laborCostCode, siblings);
-  }
-
-  return { byCode, byLaborCostCode };
-};
-
-/**
- * Expand a single matched_labor entry into one entry per height segment.
- * If the labor is not height-segmentable, returns it unchanged (single entry).
- */
-const expandLaborForHeight = (
-  labor: MatchedLabor,
-  segments: HeightSegment[],
-  laborIndex: LaborIndex,
-): MatchedLabor[] => {
-  // Not height-based labor OR only one segment → keep as-is
-  if (!isHeightSegmentedLabor(labor.description) || segments.length === 1) {
-    return [
-      {
-        ...labor,
-        height_ft: segments[0].height_ft,
-        height_category: segments[0].category,
-      },
-    ];
-  }
-
-  // Look up the DB entry to get laborCostCode
-  const dbEntry = laborIndex.byCode.get(labor.code);
-  if (!dbEntry) {
-    // Not in DB — can't find variants, return with first segment info
-    return [
-      {
-        ...labor,
-        height_ft: segments[0].height_ft,
-        height_category: segments[0].category,
-      },
-    ];
-  }
-
-  const variants = laborIndex.byLaborCostCode.get(dbEntry.laborCostCode) ?? [];
-
-  return segments.map((segment) => {
-    const variant = variants.find((v) =>
-      matchesSegment(v.description, segment.category),
-    );
-    if (variant) {
-      return {
-        code: variant.code,
-        section: variant.section,
-        description: variant.description,
-        unit: variant.per,
-        unit_cost:
-          typeof variant.matCost === "string"
-            ? parseFloat(variant.matCost)
-            : variant.matCost,
-        height_ft: segment.height_ft,
-        height_category: segment.category,
-      };
-    }
-    // No variant found for segment — fall back to original code with segment tags
-    return {
-      ...labor,
-      height_ft: segment.height_ft,
-      height_category: segment.category,
-    };
-  });
 };
 
 // ─── Steel Framing Gauge Filter ────────────────────────────────────────────────
@@ -385,22 +255,17 @@ const aggregateTakeoff = (
 // ─── Enrich Materials Costing ──────────────────────────────────────────────────
 
 /**
- * Deep clone materials_costing, enrich extracted_material with takeoff fields,
- * and apply height segmentation to labor (walls only).
+ * Deep clone materials_costing and enrich extracted_material with takeoff fields.
  */
 const enrichMaterialsCosting = (
   materialsCosting: MaterialsCostingItem[],
   takeoff: AggregatedTakeoffGroup,
-  laborIndex: LaborIndex,
 ): MaterialsCostingItem[] => {
   const items = Array.isArray(materialsCosting) ? materialsCosting : [];
-  const segments = takeoff.is_ceiling
-    ? []
-    : getHeightSegments(takeoff.height_ft);
 
   return items.map((item) => {
     const ext = item.extracted_material;
-    if (!ext) return item; // AI occasionally returns null extracted_material — skip enrichment
+    if (!ext) return item;
 
     const enriched: MaterialItem = {
       ...ext,
@@ -411,21 +276,7 @@ const enrichMaterialsCosting = (
       total_length: takeoff.is_ceiling ? undefined : takeoff.total_length,
     };
 
-    // Expand labor for height segments (walls only)
-    const matchedLabor = Array.isArray(item.matched_labor)
-      ? (item.matched_labor as MatchedLabor[]).map((labor) => ({ ...labor }))
-      : [];
-    let expandedLabor: MatchedLabor[];
-    if (takeoff.is_ceiling || segments.length === 0) {
-      expandedLabor = [...(matchedLabor as MatchedLabor[])];
-    } else {
-      expandedLabor = (matchedLabor as MatchedLabor[]).flatMap((labor) =>
-        expandLaborForHeight(labor, segments, laborIndex),
-      );
-    }
-
-    // Apply gauge filtering for steel framing items (walls only) so that stale
-    // match data with multiple gauge variants is reduced to one stud + one track.
+    // Apply gauge filtering for steel framing items (walls only)
     const rawMatchedMaterials = Array.isArray(item.matched_materials)
       ? (item.matched_materials as MatchedMaterial[]).map((m) => ({ ...m }))
       : [];
@@ -442,7 +293,9 @@ const enrichMaterialsCosting = (
     return {
       extracted_material: enriched,
       matched_materials: filteredMaterials,
-      matched_labor: expandedLabor,
+      matched_labor: Array.isArray(item.matched_labor)
+        ? item.matched_labor.map((l) => ({ ...l }))
+        : [],
     };
   });
 };
@@ -466,10 +319,7 @@ export const mergeTakeoffWithMaterialMatch = (
   materialMatch: MaterialMatchInput,
   takeoffRows: TakeoffRawRecord[],
   projectContext?: ProjectContext,
-  materialDb?: unknown[],
 ): FinalOutputResult => {
-  const laborIndex = buildLaborIndex(materialDb ?? []);
-
   const matchById = new Map<string, MaterialMatchAssembly>();
   for (const a of materialMatch.assemblies) {
     if (a.assembly_id) matchById.set(String(a.assembly_id).trim(), a);
@@ -512,7 +362,6 @@ export const mergeTakeoffWithMaterialMatch = (
     const materials_costing = enrichMaterialsCosting(
       Array.isArray(rawMaterialsCosting) ? rawMaterialsCosting : [],
       group,
-      laborIndex,
     );
     const assembly_type = group.assembly_type ? String(group.assembly_type) : "wall";
 

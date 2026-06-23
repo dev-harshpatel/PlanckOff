@@ -362,6 +362,15 @@ export const ComponentsList = ({
                                 onUpdateComp(assembly.id, comp.id, field, nextValue);
                             };
 
+                            // Detect if this component came from the new rule-based databases
+                            const isFromNewDb = !!materialCostingData?.materials_costing?.some(
+                                (item) =>
+                                    [
+                                        ...(item.matched_materials ?? []),
+                                        ...(item.matched_labor ?? []),
+                                    ].some((m) => m.code === comp.materialCode && m._fromNewDb),
+                            );
+
                             // Code cell
                             const CodeCell = () => {
                                 if (comp.materialCode) {
@@ -395,7 +404,9 @@ export const ComponentsList = ({
                                     className={`transition-colors h-7 cursor-pointer ${
                                         comp.muted
                                             ? "opacity-40 bg-slate-50/80 pointer-events-none"
-                                            : "hover:bg-blue-50/20"
+                                            : isFromNewDb
+                                                ? "bg-emerald-50/40 hover:bg-emerald-50/70"
+                                                : "hover:bg-blue-50/20"
                                     }`}
                                 >
                                     <td className="border-r border-slate-200 text-center bg-slate-50 text-[10px]">
@@ -414,11 +425,16 @@ export const ComponentsList = ({
                                     {/* Description */}
                                     <td className="border-r border-slate-200 relative p-0">
                                         <div
-                                            className="w-full h-full px-2 flex items-center cursor-pointer hover:bg-emerald-50/40 transition-colors group/desc"
+                                            className="w-full h-full px-2 flex items-center gap-1.5 cursor-pointer hover:bg-emerald-50/40 transition-colors group/desc"
                                             onClick={() => onOpenDetail(comp, false)}
                                         >
                                             <span className="truncate">{comp.materialName}</span>
-                                            <Settings2 className="w-3 h-3 text-slate-300 shrink-0 ml-1 opacity-0 group-hover/desc:opacity-100 transition-opacity" />
+                                            {isFromNewDb && (
+                                                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 border border-emerald-300 rounded px-1 py-0.5 leading-none">
+                                                    NEW DB
+                                                </span>
+                                            )}
+                                            <Settings2 className="w-3 h-3 text-slate-300 shrink-0 ml-auto opacity-0 group-hover/desc:opacity-100 transition-opacity" />
                                         </div>
                                     </td>
 

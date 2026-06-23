@@ -1,10 +1,10 @@
 /**
- * Finalize assemblies: combine material match output with takeoff data
- * using the unified prompt to produce QuickBid-style final JSON
+ * AI fallback finalization: used only when no takeoff Excel is provided.
+ * Primary path is mergeTakeoffWithMaterialMatch (code-only, no AI).
  */
 
-import { readFile } from "fs/promises";
-import path from "path";
+import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
+import { getResolvedAIPrompt, AI_PROMPT_KEYS } from "@/lib/db/aiPrompts";
 import { repairJSONForUnifiedOutput, stripMarkdownAndTrim } from "@/lib/utils/jsonRepair";
 
 export interface FinalizeInput {
@@ -22,7 +22,6 @@ export interface FinalizeResult {
   [key: string]: unknown;
 }
 
-// Reduced batch size for faster per-batch completion (Strategy 2: Optimization)
 const BATCH_SIZE = 10;
 const MAX_RETRIES = 2;
 
@@ -52,27 +51,23 @@ ${JSON.stringify(materialDb, null, 2)}
 
 Output exactly ${takeoffBatch.length} assemblies in {"assemblies": [...]}. One per takeoff row. Match wall_type to assembly_id. Return valid JSON only.`;
 
-  const response = await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        // model: "openai/gpt-4o-mini",
-        max_tokens: 32768,
-        messages: [
-          { role: "system", content: promptRaw },
-          { role: "user", content: userMessage },
-        ],
-        temperature: 0.1,
-        response_format: { type: "json_object" },
-      }),
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      max_tokens: 32768,
+      messages: [
+        { role: "system", content: promptRaw },
+        { role: "user", content: userMessage },
+      ],
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+    }),
+  });
 
   if (!response.ok) {
     const err = await response.text();
@@ -91,13 +86,8 @@ Output exactly ${takeoffBatch.length} assemblies in {"assemblies": [...]}. One p
   } catch (firstErr) {
     try {
       parsed = JSON.parse(repairJSONForUnifiedOutput(cleaned, "[finalize]")) as { assemblies?: unknown[] };
-    } catch (repairErr) {
-      console.error(
-        "[finalize] JSON parse failed. Response length:",
-        cleaned.length,
-        "Last 200 chars:",
-        cleaned.slice(-200),
-      );
+    } catch {
+      console.error("[finalize] JSON parse failed. Last 200 chars:", cleaned.slice(-200));
       throw new Error(
         `Failed to parse AI response: ${firstErr instanceof Error ? firstErr.message : firstErr}`,
       );
@@ -113,36 +103,15 @@ export const finalizeAssembliesWithTakeoff = async (
   takeoffData?: unknown[],
   projectContext?: ProjectContext,
 ): Promise<FinalizeResult> => {
-  const dataDir = path.join(process.cwd(), "data");
-  const promptPath = path.join(process.cwd(), "prompt", "prompt.txt");
+  const rows = Array.isArray(takeoffData) && takeoffData.length > 0 ? takeoffData : [];
 
-  // Strategy 1: Use provided takeoff data or fall back to file (for backwards compatibility)
-  let takeoffRows: unknown[] = [];
-  if (takeoffData && Array.isArray(takeoffData)) {
-    takeoffRows = takeoffData;
-  } else {
-    // Fallback: read from file (for legacy calls)
-    const takeoffRaw = await readFile(
-      path.join(dataDir, "take_off_data.json"),
-      "utf-8",
-    );
-    takeoffRows = JSON.parse(takeoffRaw) as unknown[];
-  }
-
-  const [materialDbRaw, promptRaw] = await Promise.all([
-    readFile(path.join(dataDir, "material-database.json"), "utf-8"),
-    readFile(promptPath, "utf-8"),
+  const [materialDb, promptRaw] = await Promise.all([
+    getMaterialDatabase(),
+    getResolvedAIPrompt(AI_PROMPT_KEYS.MATERIAL_MATCH),
   ]);
-
-  const materialDb = JSON.parse(materialDbRaw) as unknown;
-  const rows = Array.isArray(takeoffRows) ? takeoffRows : [];
 
   const allAssemblies: unknown[] = [];
   const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
-
-  console.log(
-    `[finalize] Processing ${rows.length} takeoff rows in ${totalBatches} batch(es)`,
-  );
 
   for (let i = 0; i < totalBatches; i++) {
     const batch = rows.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
@@ -160,20 +129,12 @@ export const finalizeAssembliesWithTakeoff = async (
         break;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(
-          `[finalize] Batch ${i + 1}/${totalBatches} attempt ${attempt}/${MAX_RETRIES} failed:`,
-          msg,
-        );
+        console.warn(`[finalize] Batch ${i + 1}/${totalBatches} attempt ${attempt}/${MAX_RETRIES} failed:`, msg);
         if (attempt >= MAX_RETRIES) throw err;
       }
     }
     allAssemblies.push(...batchAssemblies);
-    console.log(
-      `[finalize] Batch ${i + 1}/${totalBatches} — ${batchAssemblies.length} assemblies`,
-    );
   }
-
-  console.log(`[finalize] Total produced: ${allAssemblies.length} assemblies`);
 
   return { assemblies: allAssemblies };
 };

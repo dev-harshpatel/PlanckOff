@@ -73,6 +73,8 @@ export interface MatchedMaterial {
   oc_spacing_override?: string;
   /** User-overridden length (ft) for this line item */
   length_ft_override?: number;
+  /** True when this row was matched from material_database (new rule-based system) */
+  _fromNewDb?: boolean;
 }
 
 export interface MatchedLabor {
@@ -92,6 +94,8 @@ export interface MatchedLabor {
   waste_percent?: number;
   /** UI mute state for labor rows that are irrelevant for selected material height */
   muted?: boolean;
+  /** True when this row was matched from labour_database (new rule-based system) */
+  _fromNewDb?: boolean;
 }
 
 export interface MaterialsCostingItem {

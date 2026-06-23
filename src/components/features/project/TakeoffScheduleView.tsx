@@ -2,14 +2,12 @@
 
 import React, { useMemo, useState } from 'react';
 import { WallAssembly, TakeoffInstance } from '@/types';
-import { Plus, Trash2, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Trash2, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
 import { ConfirmModal, Select } from '@/components/ui';
 
 interface TakeoffScheduleViewProps {
     assemblies: WallAssembly[];
     takeoffs: Record<string, TakeoffInstance[]>;
-    onAddInstance: (assemblyId: string | null) => void;
-    selectedAssemblyId: string | null;
     onUpdateInstance?: (assemblyId: string, instanceId: string, field: string, value: any) => void;
     onDeleteInstance?: (assemblyId: string, instanceId: string) => void;
 }
@@ -17,17 +15,9 @@ interface TakeoffScheduleViewProps {
 export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
     assemblies,
     takeoffs,
-    onAddInstance,
-    selectedAssemblyId,
     onUpdateInstance,
     onDeleteInstance
 }) => {
-
-    const handleAddManual = () => {
-        // If no assembly selected, pass null to trigger auto-creation
-        onAddInstance(selectedAssemblyId);
-    };
-
     // Filter State
     const [filterType, setFilterType] = useState('All');
     const [filterLevel, setFilterLevel] = useState('All');
@@ -202,15 +192,6 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                         )}
                     </div>
                 </div>
-
-                <button
-                    onClick={handleAddManual}
-                    className="flex items-center justify-center gap-1.5 px-2 @[500px]:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded shadow-sm transition-colors shrink-0"
-                    title="Add Manual Item"
-                >
-                    <Plus className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden @[500px]:inline whitespace-nowrap">Add Manual Item</span>
-                </button>
             </div>
 
             {/* HEADER */}

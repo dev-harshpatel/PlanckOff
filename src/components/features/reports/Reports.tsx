@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { WallAssembly, TakeoffInstance, CalculatedMaterial, MaterialDefinition, ProposalConfig } from '@/types';
+import { WallAssembly, TakeoffInstance, CalculatedMaterial, ProposalConfig } from '@/types';
 import type { MaterialCosting } from "@/types/assembly";
 import { FileText, Settings } from 'lucide-react';
 import { Select, EmptyState } from '@/components/ui';
@@ -11,7 +11,6 @@ import { MarkupsView } from '@/components/features/reports/Markups';
 import { MaterialsView, ExtendedLineItem } from '@/components/features/reports/MaterialsView';
 import { MatLabView } from '@/components/features/reports/MatLabView';
 import { getCSISection } from '@/constants/csiSections';
-import { buildProjectPriceMap } from '@/lib/utils/projectPricing';
 import { aggregateMaterialsFromCosting } from '@/lib/utils/aggregateMaterialsFromCosting';
 
 // Maps CSI division prefix (first 8 chars) → human-readable section name for the Summary Report
@@ -46,7 +45,6 @@ interface ReportsProps {
     assemblies: WallAssembly[];
     takeoffs: Record<string, TakeoffInstance[]>;
     manualItems: CalculatedMaterial[];
-    materials: MaterialDefinition[];
     materialCostingData?: MaterialCosting[];
     onUnitCostChange?: (code: string, newCost: number, type: 'material' | 'labor', unit?: string) => void;
     displayUnit: 'imperial' | 'metric';
@@ -60,7 +58,6 @@ export const Reports: React.FC<ReportsProps> = ({
     assemblies,
     takeoffs,
     manualItems,
-    materials,
     materialCostingData = [],
     onUnitCostChange,
     displayUnit,
@@ -101,11 +98,6 @@ export const Reports: React.FC<ReportsProps> = ({
         [safeAssemblies],
     );
 
-    // Price Map Calculation
-    const priceMap = useMemo(() => {
-        return buildProjectPriceMap(materials || []);
-    }, [materials]);
-
     const reportCalculations = useMemo(() => {
         const proposalItems: CalculatedMaterial[] = [];
         const reportLineItems: ExtendedLineItem[] = [];
@@ -137,19 +129,7 @@ export const Reports: React.FC<ReportsProps> = ({
             if (!m) return;
 
             // Cost Logic
-            let pricing = priceMap[m.item];
-            if (!pricing && m.item.includes('@')) pricing = priceMap[m.item.split('@')[0].trim()];
-            if (m.overridePrice !== undefined) pricing = { cost: m.overridePrice, per: 1 };
-
-            let totalCost = 0;
-            if (pricing) {
-                let pricingQty = m.quantity || 0;
-                // Simple unit conversion fallback logic could go here
-                // For now assuming direct match except for sheets
-                if (m.unit.includes('sheet')) pricingQty = (m.quantity || 0) * 48; // Estimate
-
-                totalCost = pricingQty * (pricing.cost / (pricing.per || 1));
-            }
+            const totalCost = m.overridePrice != null ? (m.quantity || 0) * m.overridePrice : 0;
 
             const csi = getCSISection(m.category, m.item);
             if (!csiGroups[csi]) csiGroups[csi] = [];
@@ -171,14 +151,14 @@ export const Reports: React.FC<ReportsProps> = ({
             subtotal,
             allMats: reportCalculations.proposalItems,
         };
-    }, [priceMap, reportCalculations]);
+    }, [reportCalculations]);
 
     // ─── Pipeline-driven proposal data (Summary Report format) ─────────────────
     const pipelineProposalData = useMemo(() => {
         if (!materialCostingData.length) return null;
 
         // Aggregate materials by section display name
-        const materialRows = aggregateMaterialsFromCosting(materialCostingData, materials || [], priceMap);
+        const materialRows = aggregateMaterialsFromCosting(materialCostingData);
 
         // Aggregate labor by code+description+unit across all assemblies
         const laborMap = new Map<string, {
@@ -228,7 +208,7 @@ export const Reports: React.FC<ReportsProps> = ({
             laborTotal,
             grandTotal: materialTotal + laborTotal,
         };
-    }, [materialCostingData, materials, priceMap]);
+    }, [materialCostingData]);
 
     // Financial Totals — uses pipeline data when available.
     // Markup chain: escalation (on direct costs) → tax (material only) → burden (labour only) → overhead → profit.
@@ -435,23 +415,18 @@ export const Reports: React.FC<ReportsProps> = ({
                     <MaterialsView
                         items={materialReportLineItems}
                         materialCostingData={materialCostingData}
-                        materials={materials}
-                        priceMap={priceMap}
                         filterStorageKey={`${reportFilterScope}:materials`}
                         onUnitCostChange={onUnitCostChange ? (code, newCost, unit) => onUnitCostChange(code, newCost, 'material', unit) : undefined}
                     />
                 ) : activeReport === 'matlab' ? (
                     <MatLabView
                         materialCostingData={materialCostingData}
-                        priceMap={priceMap}
                         filterStorageKey={`${reportFilterScope}:matlab`}
                     />
                 ) : activeReport === 'labor' ? (
                     <LaborView
                         items={laborReportLineItems}
                         materialCostingData={materialCostingData}
-                        priceMap={priceMap}
-                        materials={materials}
                         filterStorageKey={`${reportFilterScope}:labor`}
                         onUnitCostChange={onUnitCostChange ? (code, newCost) => onUnitCostChange(code, newCost, 'labor') : undefined}
                     />

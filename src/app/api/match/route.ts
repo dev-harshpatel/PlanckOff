@@ -1,153 +1,158 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getMaterialDatabase } from "@/lib/cache/materialDbCache";
-import { saveMaterialMatch } from "@/lib/db/assemblyData";
-import { AI_PROMPT_KEYS, getResolvedAIPrompt } from "@/lib/db/aiPrompts";
-import {
-  updatePipelineRunStep,
-  failPipelineRun,
-} from "@/lib/db/pipelineRuns";
-import { matchMaterialsToDatabase } from "@/services/openrouter/matchMaterials";
-import { withAuth } from "@/lib/auth/api-helpers";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { NextRequest, NextResponse } from 'next/server';
+import { saveMaterialMatch } from '@/lib/db/assemblyData';
+import { updatePipelineRunStep, failPipelineRun } from '@/lib/db/pipelineRuns';
+import { getMatcherMaterials, getMatcherLabour, getMatcherAssemblyBunches } from '@/lib/cache/matcherDbCache';
+import { matchAllAssemblies } from '@/services/matching';
+import type { MatchAllResult } from '@/services/matching';
+import { withAuth } from '@/lib/auth/api-helpers';
+import { writeDebugJson } from '@/lib/utils/localJsonStorage';
+import type { AssemblyData } from '@/types/assembly';
 
-// Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s. Without Fluid Compute, Pro max 300s.
-export const maxDuration = 300;
+// Rule-based matching is CPU-only — no external API calls. 60s is generous.
+export const maxDuration = 60;
 
 export const POST = withAuth(async (req: NextRequest) => {
-  console.log("\n" + "-".repeat(70));
-  console.log("[match] POST request received — Sequential Pipeline Step 2/3");
-  console.log("-".repeat(70));
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    console.error("[match] OPENROUTER_API_KEY is not configured");
-    return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is not configured" },
-      { status: 500 },
-    );
-  }
+  console.log('\n' + '-'.repeat(70));
+  console.log('[match] POST — Rule-Based Pipeline Step 2/3');
+  console.log('-'.repeat(70));
 
   const totalStart = Date.now();
-  const logElapsed = (label: string) =>
-    console.log(`[match] ${label} (elapsed ${((Date.now() - totalStart) / 1000).toFixed(2)}s)`);
+  const elapsed = () => `${((Date.now() - totalStart) / 1000).toFixed(2)}s`;
 
   try {
-    console.log(`[match] START at ${new Date().toISOString()} (Vercel maxDuration: ${maxDuration}s)`);
-
+    // ── Parse body ────────────────────────────────────────────────────────────
     let body: {
       extraction?: { assemblies?: unknown[] };
       extractionId?: string;
       projectId?: string;
       runId?: string;
     };
+
     try {
       body = await req.json();
-    } catch (parseErr) {
-      const msg = parseErr instanceof Error ? parseErr.message : "Invalid JSON body";
-      console.error("[match] Failed to parse request body:", msg);
-      return NextResponse.json(
-        { error: `Invalid request body: ${msg}` },
-        { status: 400 },
-      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Invalid JSON body';
+      console.error('[match] Body parse error:', msg);
+      return NextResponse.json({ error: `Invalid request body: ${msg}` }, { status: 400 });
     }
-    logElapsed("Request body parsed");
 
     const { extraction, extractionId, projectId, runId } = body;
-    if (!extraction?.assemblies) {
-      console.error("[match] No extraction.assemblies in body");
-      return NextResponse.json(
-        { error: "No extraction data provided" },
-        { status: 400 },
-      );
+
+    if (!extraction?.assemblies?.length) {
+      return NextResponse.json({ error: 'No extraction.assemblies in body' }, { status: 400 });
     }
 
-    // Mark step 2 as in-progress in the run record
-    if (runId) {
-      await updatePipelineRunStep(runId, 2);
-    }
+    if (runId) await updatePipelineRunStep(runId, 2);
 
-    let dbLoadMs = 0;
+    console.log(`[match] ${extraction.assemblies.length} assemblies received (elapsed ${elapsed()})`);
 
-    let database: Awaited<ReturnType<typeof getMaterialDatabase>>;
+    // ── Load databases (memory/Redis/Supabase — cached) ──────────────────────
+    let materialRows:  Awaited<ReturnType<typeof getMatcherMaterials>>;
+    let labourRows:    Awaited<ReturnType<typeof getMatcherLabour>>;
+    let bunchBranches: Awaited<ReturnType<typeof getMatcherAssemblyBunches>>;
+
     try {
-      const dbLoadStart = Date.now();
-      database = await getMaterialDatabase();
-      dbLoadMs = Date.now() - dbLoadStart;
-      console.log(`[match] Loaded material database: ${database.length} entries — ${(dbLoadMs / 1000).toFixed(2)}s`);
-      logElapsed("Material DB load complete");
-    } catch (readErr) {
-      const msg = readErr instanceof Error ? readErr.message : "Unknown error";
-      console.error("[match] Failed to load material database:", msg);
-      if (runId) await failPipelineRun(runId, 2, `Material database not available: ${msg}`);
-      return NextResponse.json(
-        { error: `Material database not available: ${msg}` },
-        { status: 500 },
+      const dbStart = Date.now();
+      [materialRows, labourRows, bunchBranches] = await Promise.all([
+        getMatcherMaterials(),
+        getMatcherLabour(),
+        getMatcherAssemblyBunches(),
+      ]);
+      console.log(
+        `[match] DB loaded — ${materialRows.length} materials, ${labourRows.length} labour rows,` +
+        ` ${bunchBranches.length} branches` +
+        ` (${((Date.now() - dbStart) / 1000).toFixed(2)}s, elapsed ${elapsed()})`,
       );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'DB load failed';
+      console.error('[match] DB load error:', msg);
+      if (runId) await failPipelineRun(runId, 2, msg);
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
 
-    console.log(`[match] Starting material matching for ${extraction.assemblies.length} assemblies, extractionId: ${extractionId ?? "none"}`);
-    logElapsed("About to call matchMaterialsToDatabase (OpenRouter batches)");
+    // ── Pre-filter: drop items with no usable text (mirrors old AI pre-clean) ─
+    const cleanedAssemblies = (extraction.assemblies as AssemblyData[]).map(assembly => {
+      if (!assembly.materials) return assembly;
+      const cleaned = { ...assembly, materials: { ...assembly.materials } };
+      for (const group of Object.keys(cleaned.materials) as Array<keyof typeof cleaned.materials>) {
+        const items = cleaned.materials[group];
+        if (Array.isArray(items)) {
+          cleaned.materials[group] = items.filter(
+            item => item.raw_text != null && String(item.raw_text).trim() !== '',
+          ) as typeof items;
+        }
+      }
+      return cleaned;
+    });
+
+    // ── Run rule-based matcher ────────────────────────────────────────────────
     const matchStart = Date.now();
-    const promptText = await getResolvedAIPrompt(AI_PROMPT_KEYS.MATERIAL_MATCH);
-    const result = await matchMaterialsToDatabase(
-      { assemblies: extraction.assemblies },
-      database,
-      apiKey,
-      promptText,
-      totalStart,
+    const { assemblies: matched, stats, debugItems }: MatchAllResult = matchAllAssemblies(
+      { assemblies: cleanedAssemblies },
+      materialRows,
+      labourRows,
+      bunchBranches,
     );
     const matchMs = Date.now() - matchStart;
-    console.log(`[match] Matched ${result.assemblies.length} assemblies — ${(matchMs / 1000).toFixed(2)}s`);
-    logElapsed("matchMaterialsToDatabase returned");
 
-    const timestamp = Date.now();
-    const filename = `material-match-${timestamp}.json`;
-    const extractionIdStr = extractionId ?? "";
+    console.log(
+      `[match] Matching complete in ${(matchMs / 1000).toFixed(2)}s (elapsed ${elapsed()})` +
+      ` — ${stats.itemsMatched}/${stats.itemsTotal} items matched` +
+      ` (${stats.itemsLowConfidence} low-confidence, ${stats.itemsUnmatched} unmatched)`,
+    );
 
-    logElapsed("About to save material match to DB");
+    // ── Save to DB ────────────────────────────────────────────────────────────
+    const filename       = `material-match-${Date.now()}.json`;
+    const extractionIdStr = extractionId ?? '';
+
     const { data: savedData, error: saveError } = await saveMaterialMatch(
-      { assemblies: result.assemblies },
+      { assemblies: matched },
       filename,
       extractionIdStr,
       projectId,
     );
+
     if (saveError) {
-      const msg = `Failed to save to database: ${JSON.stringify(saveError)}`;
-      console.error("[match] DB save error:", saveError);
+      const msg = `DB save failed: ${JSON.stringify(saveError)}`;
+      console.error('[match] DB save error:', saveError);
       if (runId) await failPipelineRun(runId, 2, msg);
       throw new Error(msg);
     }
 
-    // Record matchId in run so step 3 can be retried
     if (runId && savedData?.id) {
       await updatePipelineRunStep(runId, 2, { matchId: savedData.id });
     }
 
-    if (process.env.NODE_ENV === "development") {
-      void writeJsonToLocal("material_match", { assemblies: result.assemblies }).then((p) => {
-        if (p) console.log(`[match] Local file written: ${p}`);
+    // ── Dev local files ───────────────────────────────────────────────────────
+    if (process.env.NODE_ENV === 'development') {
+      const ts = Date.now();
+      const pid = projectId ?? 'unknown';
+      // Full match result
+      void writeDebugJson('match', pid, `match_result-${ts}.json`, { assemblies: matched }).then(p => {
+        if (p) console.log(`[match] Debug file: ${p}`);
+      });
+      // Per-item scoring breakdown — normalized input, top candidates, rule scores
+      void writeDebugJson('match', pid, `match_scored-${ts}.json`, debugItems).then(p => {
+        if (p) console.log(`[match] Debug scored: ${p}`);
       });
     }
-    console.log(`[match] DB: ${savedData?.id} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
 
     const totalMs = Date.now() - totalStart;
-    console.log("-".repeat(70));
-    console.log(`[match] ✅ Success. DB load: ${(dbLoadMs / 1000).toFixed(2)}s, matching: ${(matchMs / 1000).toFixed(2)}s, total: ${(totalMs / 1000).toFixed(2)}s`);
-    console.log(`[match] Matched ${result.assemblies.length} assemblies`);
-    console.log("-".repeat(70) + "\n");
+    console.log('-'.repeat(70));
+    console.log(`[match] ✅ Done in ${(totalMs / 1000).toFixed(2)}s — matchId: ${savedData?.id}`);
+    console.log('-'.repeat(70) + '\n');
 
     return NextResponse.json({
-      success: true,
-      result: { assemblies: result.assemblies },
-      matchId: savedData?.id,
+      success:      true,
+      result:       { assemblies: matched },
+      matchId:      savedData?.id,
       filename,
-      matchedCount: result.assemblies.length,
+      matchedCount: matched.length,
+      stats,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    const stack = e instanceof Error ? e.stack : undefined;
-    console.error(`[match] Error at elapsed ${((Date.now() - totalStart) / 1000).toFixed(2)}s:`, message);
-    if (stack) console.error("[match] Stack:", stack);
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    console.error(`[match] Unhandled error at ${elapsed()}:`, message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 });

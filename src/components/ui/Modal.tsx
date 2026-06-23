@@ -61,7 +61,7 @@ export const Modal: React.FC<ModalProps> = ({
       onClick={handleOverlayClick}
     >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${sizeStyles[size]} ${size === "full" ? "h-[95vh]" : "max-h-[90vh] overflow-y-auto"} overflow-hidden animate-in fade-in zoom-in duration-200`}
+        className={`bg-white rounded-xl shadow-2xl w-full flex flex-col ${sizeStyles[size]} ${size === "full" ? "h-[95vh]" : "max-h-[90vh]"} overflow-hidden animate-in fade-in zoom-in duration-200`}
       >
         {title && (
           <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
@@ -91,7 +91,7 @@ interface ModalBodyProps {
 }
 
 export const ModalBody: React.FC<ModalBodyProps> = ({ children, className = '' }) => (
-    <div className={`p-6 ${className}`}>
+    <div className={`p-6 flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-300 ${className}`}>
         {children}
     </div>
 );

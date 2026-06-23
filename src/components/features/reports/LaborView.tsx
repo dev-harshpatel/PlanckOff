@@ -18,15 +18,11 @@ import type {
   MaterialCosting,
   MatchedLabor,
 } from "@/types/assembly";
-import type { MaterialDefinition } from "@/types";
-
 const LOG_LABOR_QTY_VERIFICATION = process.env.NEXT_PUBLIC_LOG_LABOR_QTY === 'true';
 
 interface LaborViewProps {
   items: ExtendedLineItem[];
   materialCostingData?: MaterialCosting[];
-  priceMap: Record<string, { cost: number; per: number }>;
-  materials?: MaterialDefinition[];
   filterStorageKey?: string;
   onUnitCostChange?: (code: string, newCost: number) => void;
 }
@@ -113,8 +109,6 @@ const TableHeader = ({
 export const LaborView = ({
   items,
   materialCostingData = [],
-  priceMap,
-  materials = [],
   filterStorageKey = 'project-report:labor',
   onUnitCostChange,
 }: LaborViewProps) => {
@@ -180,11 +174,7 @@ export const LaborView = ({
     'Hang Drywall (Walls < 12ft)',
     'Install Metal Studs (Walls < 12ft)',
   ] as const;
-  const matCostCodeMap = useMemo(() => {
-    const map = new Map<string, string>();
-    materials.forEach((m) => { if (m.code) map.set(m.code, m.matCostCode ?? ''); });
-    return map;
-  }, [materials]);
+  const matCostCodeMap = useMemo(() => new Map<string, string>(), []);
 
   const costingBaseData = useMemo(() => {
     if (!useCostingData) return null;
@@ -249,7 +239,6 @@ export const LaborView = ({
 
   const fallbackBaseData = useMemo(() => ({
     contributions: items.map((item) => {
-      const price = priceMap[item.item] || { cost: 0, per: 1 };
       const parsedLevels = parseLevels(item.area ?? 'Unknown');
       return {
         rowKey: `${item.item}|${item.unit}|${item.code ?? ''}|${item.area ?? 'Unknown'}`,
@@ -261,7 +250,7 @@ export const LaborView = ({
         secQuantity: null,
         unit: item.unit === 'EA' ? 'Hrs' : item.unit,
         secUnit: null,
-        unitCost: price.per ? price.cost / price.per : price.cost,
+        unitCost: 0,
         areas: parsedLevels.length > 0 ? parsedLevels : ['Unknown'],
         dimensions: { totalLength: 0, heightFt: 0, ceilingArea: 0 },
       } satisfies LaborContribution;
@@ -273,7 +262,7 @@ export const LaborView = ({
       ).filter((level) => level && level !== 'Unknown')
     ),
     availableCostCodes: Array.from(new Set(items.map((item) => item.costCode).filter(Boolean))).sort(),
-  }), [items, priceMap]);
+  }), [items]);
 
   const { aggregatedItems, totalCost, availableLevels, availableItems, availableCostCodes } = useMemo(() => {
     const source = useCostingData && costingBaseData ? costingBaseData.contributions : fallbackBaseData.contributions;

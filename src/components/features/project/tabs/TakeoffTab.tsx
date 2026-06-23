@@ -10,8 +10,6 @@ import { Button } from '@/components/ui';
 interface TakeoffTabProps {
   filteredAssemblies: WallAssembly[];
   takeoffs: Record<string, TakeoffInstance[]>;
-  addInstance: (assemblyId: string | null) => void;
-  activeAssemblyId: string | null;
   updateInstance: (assemblyId: string, instanceId: string, field: string, value: any) => void;
   deleteInstance: (assemblyId: string, instanceId: string) => void;
   openImportModal: (projectId: string | undefined, onComplete?: (data: PipelineCompleteData) => void) => void;
@@ -22,8 +20,6 @@ interface TakeoffTabProps {
 export const TakeoffTab = ({
   filteredAssemblies,
   takeoffs,
-  addInstance,
-  activeAssemblyId,
   updateInstance,
   deleteInstance,
   openImportModal,
@@ -54,8 +50,6 @@ export const TakeoffTab = ({
       <TakeoffScheduleView
         assemblies={filteredAssemblies}
         takeoffs={takeoffs}
-        onAddInstance={addInstance}
-        selectedAssemblyId={activeAssemblyId}
         onUpdateInstance={updateInstance}
         onDeleteInstance={deleteInstance}
       />

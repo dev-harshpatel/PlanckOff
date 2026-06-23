@@ -224,6 +224,7 @@ export interface ProjectSummary {
   country?: string;
   province?: string;
   pricingConfig?: ProposalConfig;
+  createdAt?: string;
 }
 
 export interface TeamMember {

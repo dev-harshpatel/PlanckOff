@@ -7,7 +7,7 @@ import {
 } from "@/lib/db/pipelineRuns";
 import { extractAssembliesFromPDF } from "@/services/openrouter/extractAssemblies";
 import { withAuth } from "@/lib/auth/api-helpers";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { writeDebugJson } from "@/lib/utils/localJsonStorage";
 
 // Vercel: with Fluid Compute, Hobby max 300s, Pro max 800s.
 export const maxDuration = 300;
@@ -83,11 +83,11 @@ export const POST = withAuth(async (req: NextRequest) => {
     }
 
     if (process.env.NODE_ENV === "development") {
-      void writeJsonToLocal("assembly", { assemblies: result.assemblies }, filename).then((p) => {
-        if (p) console.log(`[extract] Local file written: ${p}`);
+      void writeDebugJson("extract", projectId ?? "unknown", filename, { assemblies: result.assemblies }).then((p) => {
+        if (p) console.log(`[extract] Debug file: ${p}`);
       });
     }
-    console.log(`[extract] DB: ${savedData?.id} | Local: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
+    console.log(`[extract] DB: ${savedData?.id} | Debug: ${process.env.NODE_ENV === "development" ? "enabled" : "disabled"}`);
 
     const totalMs = Date.now() - totalStart;
     console.log("-".repeat(70));

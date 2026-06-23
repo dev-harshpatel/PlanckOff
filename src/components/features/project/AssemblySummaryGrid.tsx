@@ -1,18 +1,13 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { WallAssembly, TakeoffInstance, MaterialDefinition } from "@/types";
+import { WallAssembly, TakeoffInstance } from "@/types";
 import { ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui";
 
 interface AssemblySummaryGridProps {
   assemblies: WallAssembly[];
   takeoffs: Record<string, TakeoffInstance[]>;
-  materials: MaterialDefinition[];
-  priceMap: Record<
-    string,
-    { cost: number; per?: string; waste?: number; supplier?: string }
-  >;
   onSelectAssembly: (id: string, height?: number) => void;
   onEditAssembly?: (id: string, height?: number) => void;
   selectedAssemblyId?: string | null;
@@ -36,7 +31,6 @@ interface SummaryRow {
 export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
   assemblies,
   takeoffs,
-  priceMap,
   onSelectAssembly,
   onEditAssembly,
   selectedAssemblyId,
@@ -167,7 +161,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
       });
     });
     return rows;
-  }, [assemblies, takeoffs, priceMap]);
+  }, [assemblies, takeoffs]);
 
   // Grouping
   const groupedRows = useMemo(() => {

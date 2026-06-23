@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Download } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ExportModal } from '@/components/features/reports/ExportModal';
 import type { ExportColumnDef, ExportRow } from '@/lib/utils/exportUtils';
@@ -20,7 +20,6 @@ import type {
 
 interface MatLabViewProps {
   materialCostingData: MaterialCosting[];
-  priceMap: Record<string, { cost: number; per: number }>;
   filterStorageKey?: string;
 }
 
@@ -110,35 +109,11 @@ const getQuantityFromExtracted = (
   return totalLength * heightFt;
 };
 
-const getMatUnitCost = (
-  mat: MatchedMaterial,
-  priceMap: Record<string, { cost: number; per: number }>
-): number => {
-  // Prefer final_output (project-specific) over priceMap (global spec_database)
-  if (mat.unit_cost != null) {
-    return mat.unit_cost;
-  }
-  const pricing = priceMap[mat.description];
-  if (pricing && pricing.per > 0) return pricing.cost / pricing.per;
-  return 0;
-};
-
-const getLabUnitCost = (
-  lab: MatchedLabor,
-  priceMap: Record<string, { cost: number; per: number }>
-): number => {
-  // Prefer final_output (project-specific) over priceMap (global spec_database)
-  if (lab.unit_cost != null) {
-    return lab.unit_cost;
-  }
-  const pricing = priceMap[lab.description];
-  if (pricing && pricing.per > 0) return pricing.cost / pricing.per;
-  return 0;
-};
+const getMatUnitCost = (mat: MatchedMaterial): number => mat.unit_cost ?? 0;
+const getLabUnitCost = (lab: MatchedLabor): number => lab.unit_cost ?? 0;
 
 export const MatLabView = ({
   materialCostingData,
-  priceMap,
   filterStorageKey = 'project-report:matlab',
 }: MatLabViewProps) => {
   const createDefaultFilterState = useCallback((): MaterialsFilterState => ({
@@ -184,7 +159,7 @@ export const MatLabView = ({
             mat.quantity != null && typeof mat.quantity === 'number'
               ? mat.quantity
               : getQuantityFromExtracted(extracted_material, mat.unit);
-          const unitCost = getMatUnitCost(mat, priceMap);
+          const unitCost = getMatUnitCost(mat);
           materialContributions.push({
             code: mat.code,
             item: mat.description,
@@ -204,7 +179,7 @@ export const MatLabView = ({
             lab.quantity != null && typeof lab.quantity === 'number'
               ? lab.quantity
               : getQuantityFromExtracted(extracted_material, lab.unit);
-          const unitCost = getLabUnitCost(lab, priceMap);
+          const unitCost = getLabUnitCost(lab);
           laborContributions.push({
             code: lab.code,
             item: lab.description,
@@ -228,7 +203,7 @@ export const MatLabView = ({
       availableSections: Array.from(allSectionsSet).filter(Boolean).sort(),
       availableCostCodes: Array.from(allSectionsSet).filter(Boolean).sort(),
     };
-  }, [materialCostingData, priceMap]);
+  }, [materialCostingData]);
 
   const { groups, totalCost, availableItems, availableLevels, availableSections, availableCostCodes } =
     useMemo(() => {
@@ -489,6 +464,23 @@ export const MatLabView = ({
     filterState.selectedSections.size > 0 ||
     filterState.selectedCostCodes.size > 0;
 
+  // Collect extracted items that produced zero matches — shown as warnings so user can review
+  const unmatchedItems = useMemo(() => {
+    const items: Array<{ assemblyId: string; rawText: string }> = [];
+    for (const assembly of materialCostingData) {
+      const assemblyId = (assembly as { assembly_id?: string }).assembly_id ?? '?';
+      for (const costingItem of assembly.materials_costing ?? []) {
+        if ((costingItem.matched_materials?.length ?? 0) === 0) {
+          const rawText = costingItem.extracted_material?.raw_text ?? costingItem.extracted_material?.description ?? 'Unknown item';
+          items.push({ assemblyId, rawText });
+        }
+      }
+    }
+    return items;
+  }, [materialCostingData]);
+
+  const [showUnmatched, setShowUnmatched] = useState(true);
+
   const showLevelCol = filterState.selectedLevels.size > 0;
   const colSpan = showLevelCol ? 9 : 8;
 
@@ -536,6 +528,41 @@ export const MatLabView = ({
         summaryRows={summaryRows}
         filtersActive={filtersActive}
       />
+
+      {/* Unmatched items warning panel */}
+      {unmatchedItems.length > 0 && (
+        <div className="mx-4 mt-4 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowUnmatched(prev => !prev)}
+            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-amber-100/60 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="text-amber-600 shrink-0" />
+              <span className="text-sm font-semibold text-amber-800">
+                {unmatchedItems.length} item{unmatchedItems.length !== 1 ? 's' : ''} could not be matched
+              </span>
+              <span className="text-xs text-amber-600">— review and assign manually</span>
+            </div>
+            <ChevronDown
+              size={14}
+              className={`text-amber-600 transition-transform ${showUnmatched ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {showUnmatched && (
+            <div className="border-t border-amber-200 divide-y divide-amber-100">
+              {unmatchedItems.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 px-4 py-2">
+                  <span className="shrink-0 text-[10px] font-bold text-amber-700 bg-amber-200 rounded px-1.5 py-0.5 mt-0.5 uppercase tracking-wide">
+                    {item.assemblyId}
+                  </span>
+                  <span className="text-xs text-amber-900 font-medium">{item.rawText}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Table */}
       <div className="flex-1 overflow-auto">

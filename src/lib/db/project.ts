@@ -34,6 +34,7 @@ export async function getAllProjects(): Promise<{
     location: project.location,
     country: project.country,
     province: project.province,
+    createdAt: project.created_at,
   })) as ProjectSummary[];
 
   return { data: transformedData || null, error };
@@ -64,6 +65,7 @@ export async function getProjectById(id: string): Promise<{
         location: data.location,
         country: data.country,
         province: data.province,
+        createdAt: data.created_at,
       }
     : null;
 
@@ -117,6 +119,7 @@ export async function createProject(params: {
         location: data.location,
         country: data.country,
         province: data.province,
+        createdAt: data.created_at,
       }
     : null;
 
@@ -174,6 +177,7 @@ export async function updateProject(
         location: data.location,
         country: data.country,
         province: data.province,
+        createdAt: data.created_at,
       }
     : null;
 
@@ -218,6 +222,7 @@ export async function getProjectsByStatus(status: ProjectSummary['status']): Pro
     location: project.location,
     country: project.country,
     province: project.province,
+    createdAt: project.created_at,
   })) as ProjectSummary[];
 
   return { data: transformedData || null, error };
@@ -247,6 +252,7 @@ export async function getProjectsByAssignee(assignedTo: string): Promise<{
     location: project.location,
     country: project.country,
     province: project.province,
+    createdAt: project.created_at,
   })) as ProjectSummary[];
 
   return { data: transformedData || null, error };

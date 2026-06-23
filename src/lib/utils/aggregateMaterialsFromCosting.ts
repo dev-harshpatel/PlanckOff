@@ -11,7 +11,6 @@ import type {
   MaterialsCostingItem,
   MatchedMaterial,
 } from "@/types/assembly";
-import type { MaterialDefinition } from "@/types";
 import {
   computeQuantityFromExtracted,
   computeSecQuantityFromExtracted,
@@ -34,42 +33,27 @@ export interface AggregatedMaterialRow {
 const getQuantity = (
   ext: MaterialsCostingItem["extracted_material"],
   mat: MatchedMaterial,
-  materials: MaterialDefinition[],
 ): number => {
   if (mat.quantity != null && typeof mat.quantity === "number") {
     return mat.quantity;
   }
-  return computeQuantityFromExtracted(ext, mat.unit, mat, materials);
+  return computeQuantityFromExtracted(ext, mat.unit, mat, []);
 };
 
 /** Use stored sec_quantity when present, else compute. */
 const getSecQuantity = (
   ext: MaterialsCostingItem["extracted_material"],
-  matDef: MaterialDefinition | undefined,
   mat: MatchedMaterial,
   qty: number,
 ): number | null => {
   if (mat.sec_quantity != null && typeof mat.sec_quantity === "number") {
     return mat.sec_quantity;
   }
-  return computeSecQuantityFromExtracted(ext, matDef, mat, qty);
-};
-
-/**
- * Unit cost from the project-specific final output — stored directly (no ×1000 trick).
- */
-const getUnitCost = (
-  mat: MatchedMaterial,
-  _priceMap: Record<string, { cost: number; per: number }>,
-  _materials: MaterialDefinition[]
-): number => {
-  return mat.unit_cost;
+  return computeSecQuantityFromExtracted(ext, undefined, mat, qty);
 };
 
 export const aggregateMaterialsFromCosting = (
   materialCostingData: MaterialCosting[],
-  materials: MaterialDefinition[],
-  priceMap: Record<string, { cost: number; per: number }>
 ): AggregatedMaterialRow[] => {
   const aggMap = new Map<
     string,
@@ -98,24 +82,19 @@ export const aggregateMaterialsFromCosting = (
       const { extracted_material, matched_materials } = costingItem;
 
       matched_materials.forEach((mat: MatchedMaterial) => {
-        const qty = getQuantity(extracted_material, mat, materials);
+        const qty = getQuantity(extracted_material, mat);
         asmTotal += qty;
         byMaterial[mat.description] = (byMaterial[mat.description] ?? 0) + qty;
-        const matDef = materials.find(
-          (m) => m.code === mat.code || m.description === mat.description,
-        );
         const secQty = getSecQuantity(
           extracted_material,
-          matDef,
           mat,
           qty,
         );
-        const unitCost = getUnitCost(mat, priceMap, materials);
+        const unitCost = mat.unit_cost ?? 0;
         const rowTotal = qty * unitCost;
 
         const key = `${mat.code}|${mat.description}|${mat.unit}`;
-        const secUnit =
-          mat.sec_unit ?? matDef?.mouWallSec ?? (mat.unit === "SF" ? "EA" : mat.unit);
+        const secUnit = mat.sec_unit ?? (mat.unit === "SF" ? "EA" : mat.unit);
 
         if (aggMap.has(key)) {
           const existing = aggMap.get(key)!;
@@ -130,7 +109,7 @@ export const aggregateMaterialsFromCosting = (
             code: mat.code,
             item: mat.description,
             section: mat.section ?? '—',
-            matCostCode: matDef?.matCostCode ?? '',
+            matCostCode: '',
             quantity: qty,
             unit: mat.unit,
             secQuantity: secQty ?? 0,

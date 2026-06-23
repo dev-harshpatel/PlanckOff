@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavLink } from "@/components/ui/NavLink";
 import {
   Bot,
   Database,
@@ -82,31 +82,31 @@ export function Navbar() {
     <header className="sticky top-0 bg-white border-b border-slate-200 flex-none z-50">
       <div className="w-full px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="flex items-center">
+          <NavLink href="/dashboard" className="flex items-center">
             <img
               src="/images/logo.svg"
               alt="PlanckOff"
               className="h-20 w-auto object-contain"
             />
-          </Link>
+          </NavLink>
 
           <nav className="flex items-center gap-1">
             {visibleNavItems.map((item) => {
               const Icon = item.icon;
               return (
-                <Link
+                <NavLink
                   key={item.href}
                   href={item.href}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
                     ${
                       isActive(item.href)
-                        ? "text-blue-700 bg-blue-50"
+                        ? "text-emerald-700 bg-emerald-50"
                         : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                 >
                   <Icon className="w-4 h-4" />
                   {item.label}
-                </Link>
+                </NavLink>
               );
             })}
           </nav>

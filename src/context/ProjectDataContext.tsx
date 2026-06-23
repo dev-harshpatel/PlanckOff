@@ -7,7 +7,6 @@ import type { ProjectOverrideMap, OverrideableField } from '@/types/core/project
 import { aggregateProjectCosts, type ProjectCosts } from '@/lib/utils/projectCosting';
 import { syncProjectOverrides } from '@/lib/utils/projectOverrideSync';
 import type { ProjectDataState } from '@/hooks/useProjectData';
-import { useApp } from '@/context/AppContext';
 
 export interface ProjectDataContextValue {
   projectId: string;
@@ -50,8 +49,6 @@ interface ProjectDataProviderProps {
  * Computes projectCosts once — all child tabs consume via useProjectDataContext().
  */
 export function ProjectDataProvider({ projectId, data, children }: ProjectDataProviderProps) {
-  const { materials } = useApp();
-
   /**
    * projectCosts is the canonical cost object.
    * It recomputes automatically when materialCostingData or overrideMap changes.
@@ -67,18 +64,9 @@ export function ProjectDataProvider({ projectId, data, children }: ProjectDataPr
    * After setOverrideMap fires, projectCosts recomputes automatically via useMemo.
    * No full data refetch needed — override is applied instantaneously.
    */
+  // spec_database removed 2026-06-22 — baseline values come from material_database (Phase 2+)
   const updateOverride = useCallback(
     async (code: string, field: OverrideableField, value: number) => {
-      const baselineMaterial = materials.find((m) => m.code === code);
-      const baselineValue =
-        field === 'hourlyRate'
-          ? baselineMaterial?.hourlyRate
-          : field === 'productivity'
-            ? baselineMaterial?.productivity
-            : field === 'wastePercent'
-              ? undefined  // No baseline for wastePercent — always treat as override
-              : undefined;
-
       await syncProjectOverrides({
         projectId,
         items: [
@@ -86,14 +74,14 @@ export function ProjectDataProvider({ projectId, data, children }: ProjectDataPr
             materialCode: code,
             field: field as 'productivity' | 'hourlyRate' | 'wastePercent',
             value,
-            baselineValue,
+            baselineValue: undefined,
             existingValue: data.overrideMap[code]?.[field] as number | undefined,
           },
         ],
         onOverrideMapChange: data.setOverrideMap,
       });
     },
-    [projectId, materials, data.overrideMap, data.setOverrideMap],
+    [projectId, data.overrideMap, data.setOverrideMap],
   );
 
   const value = useMemo<ProjectDataContextValue>(

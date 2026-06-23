@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { CalculatedMaterial, MaterialDefinition } from '@/types';
+import { CalculatedMaterial } from '@/types';
 import { Check, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { ExportModal } from '@/components/features/reports/ExportModal';
@@ -13,14 +13,13 @@ import {
 import { useReportFilters } from '@/hooks/useReportFilters';
 import { useProjectDataContext } from '@/context/ProjectDataContext';
 import { aggregateMaterialsFromCosting } from '@/lib/utils/aggregateMaterialsFromCosting';
+
 import { pruneSelectedFilterValues } from '@/lib/utils/reportFilterState';
 import type { MaterialCosting } from "@/types/assembly";
 
 interface MaterialsViewProps {
   items: ExtendedLineItem[];
   materialCostingData?: MaterialCosting[];
-  materials?: MaterialDefinition[];
-  priceMap: Record<string, { cost: number; per: number }>;
   filterStorageKey?: string;
   onUnitCostChange?: (code: string, newCost: number, unit: string) => void;
 }
@@ -100,8 +99,6 @@ const TableHeader = () => (
 export const MaterialsView = ({
   items,
   materialCostingData = [],
-  materials = [],
-  priceMap,
   filterStorageKey = 'project-report:materials',
   onUnitCostChange,
 }: MaterialsViewProps) => {
@@ -170,7 +167,7 @@ export const MaterialsView = ({
       const levelStr = (assembly as { level?: string }).level ?? 'Unknown';
       const levels = parseLevels(levelStr).filter((level) => level && level !== 'Unknown');
       const assemblyLevels = levels.length > 0 ? levels : ['Unknown'];
-      const rows = aggregateMaterialsFromCosting([assembly], materials, priceMap);
+      const rows = aggregateMaterialsFromCosting([assembly]);
 
       rows.forEach((row) => {
         contributions.push({
@@ -202,7 +199,7 @@ export const MaterialsView = ({
       availableSections: Array.from(availableSections).sort(),
       availableCostCodes: Array.from(availableCostCodes).sort(),
     };
-  }, [materialCostingData, materials, priceMap, useCostingData]);
+  }, [materialCostingData, useCostingData]);
 
   const fallbackBaseData = useMemo(() => ({
     contributions: items,
@@ -347,12 +344,7 @@ export const MaterialsView = ({
 
       const aggItems: AggregatedItem[] = Array.from(aggMap.entries()).map(
         ([, v]) => {
-          const unitCost =
-            v.overridePrice ??
-            (() => {
-              const pricing = priceMap[v.item] || { cost: 0, per: 1 };
-              return pricing.per > 0 ? pricing.cost / pricing.per : 0;
-            })();
+          const unitCost = v.overridePrice ?? 0;
           const totalCost = v.quantity * unitCost;
           return { ...v, unitCost, totalCost };
         }
@@ -370,7 +362,6 @@ export const MaterialsView = ({
     }, [
       costingBaseData,
       fallbackBaseData,
-      priceMap,
       filterState,
       useCostingData,
     ]);

@@ -7,18 +7,14 @@
  * Saves to database (local folder backup can be re-enabled via writeJsonToLocal).
  */
 
-import { readFile } from "fs/promises";
-import path from "path";
 import { getLatestMaterialMatch } from "@/lib/db/assemblyData";
-import { getAllMaterials } from "@/lib/db/materials";
 import {
   getLatestTakeoffOutput,
   getTakeoffOutputById,
   saveFinalOutput,
 } from "@/lib/db/pipelineOutputs";
 import { getProjectById } from "@/lib/db/project";
-import { enrichFinalOutputWithQuantities } from "@/lib/utils/enrichFinalOutputWithQuantities";
-import { writeJsonToLocal } from "@/lib/utils/localJsonStorage";
+import { writeDebugJson } from "@/lib/utils/localJsonStorage";
 import {
   type MaterialMatchInput,
   type ProjectContext,
@@ -178,19 +174,10 @@ export const POST = withAuth(async (req: NextRequest) => {
       console.log(
         `[finalize] Code merge: ${materialMatchData.assemblies.length} match assemblies, ${takeoffRows.length} takeoff rows`,
       );
-      // Load material DB for height-segmented labor lookup
-      let materialDb: unknown[] = [];
-      try {
-        const dbRaw = await readFile(path.join(process.cwd(), "data", "material-database.json"), "utf-8");
-        materialDb = JSON.parse(dbRaw) as unknown[];
-      } catch {
-        console.warn("[finalize] Could not load material-database.json for labor index — height segmentation will use fallback");
-      }
       result = mergeTakeoffWithMaterialMatch(
         { assemblies: materialMatchData.assemblies } as MaterialMatchInput,
         takeoffRows,
         projectContext,
-        materialDb,
       );
     } else {
       const apiKey = process.env.OPENROUTER_API_KEY;
@@ -226,14 +213,9 @@ export const POST = withAuth(async (req: NextRequest) => {
       });
     }
 
-    // Enrich with computed quantities (single source of truth for Materials/MatLab tabs)
-    const { data: materials } = await getAllMaterials();
-    if (materials && materials.length > 0) {
-      enrichFinalOutputWithQuantities(result, materials);
-      console.log("[finalize] Enriched assemblies with stored quantities");
-    } else {
-      console.warn("[finalize] No materials in DB — skipping quantity enrichment");
-    }
+    // quantity enrichment via spec_database removed 2026-06-22
+    // quantities are now set by mergeTakeoffWithMaterialMatch in the code-merge path
+    // and will be set by the rule-based matcher (Phase 2-4) in the new pipeline
 
     const filename = `final_output-${Date.now()}.json`;
     const { data: dbSaved } = await saveFinalOutput(
@@ -244,8 +226,8 @@ export const POST = withAuth(async (req: NextRequest) => {
       resolvedTakeoffOutputId,
     );
     if (process.env.NODE_ENV === "development") {
-      void writeJsonToLocal("final_output", result, filename).then((p) => {
-        if (p) console.log(`[finalize] Local file written: ${p}`);
+      void writeDebugJson("final", projectId ?? "unknown", filename, result).then((p) => {
+        if (p) console.log(`[finalize] Debug file: ${p}`);
       });
     }
     if (runId && dbSaved?.id) {

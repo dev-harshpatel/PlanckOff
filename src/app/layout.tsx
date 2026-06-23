@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
+import { RouteTransitionIndicator } from '@/components/layout/RouteTransitionIndicator';
 import { AuthProvider } from '@/context/AuthContext';
+import { NavigationLoadingProvider } from '@/context/NavigationLoadingContext';
 import { ToastProvider } from '@/components/ui';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -22,13 +24,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-slate-50 min-h-screen`}>
-        <AuthProvider>
-          <ToastProvider>
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </ToastProvider>
-        </AuthProvider>
+        <NavigationLoadingProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </ToastProvider>
+          </AuthProvider>
+          <RouteTransitionIndicator />
+        </NavigationLoadingProvider>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -1,13 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { CalculatedMaterial, MaterialDefinition, TakeoffInstance, WallAssembly } from '@/types';
-import { getEffectiveProjectUnitCost } from '@/lib/utils/projectPricing';
+import type { CalculatedMaterial, TakeoffInstance, WallAssembly } from '@/types';
 
 interface UseEstimateCalculationsParams {
   assemblies: WallAssembly[];
   takeoffs: Record<string, TakeoffInstance[]>;
-  resolvedMaterials: MaterialDefinition[];
   assemblySearch: string;
   editingAssemblyId: string | null;
   editingHeight: number | null;
@@ -16,26 +14,10 @@ interface UseEstimateCalculationsParams {
 export function useEstimateCalculations({
   assemblies,
   takeoffs,
-  resolvedMaterials,
   assemblySearch,
   editingAssemblyId,
   editingHeight,
 }: UseEstimateCalculationsParams) {
-  const priceMap = useMemo(() => {
-    const map: Record<
-      string,
-      { cost: number; per?: string; waste?: number; supplier?: string }
-    > = {};
-
-    resolvedMaterials.forEach((material) => {
-      map[material.description] = {
-        cost: getEffectiveProjectUnitCost(material),
-        per: material.per,
-      };
-    });
-
-    return map;
-  }, [resolvedMaterials]);
 
   const filteredAssemblies = useMemo(() => {
     const search = assemblySearch.toLowerCase();
@@ -103,7 +85,6 @@ export function useEstimateCalculations({
   }, [currentEditingAssembly, editingHeight, takeoffs]);
 
   return {
-    priceMap,
     filteredAssemblies,
     currentEditingAssembly,
     statsByHeight: editingAssemblyMetrics.statsByHeight,

@@ -1,4 +1,3 @@
-import type { MaterialDefinition } from "@/types";
 import type { MaterialCosting } from "@/types/assembly";
 import type { ProjectOverrideMap } from "@/types/core/projectOverrides";
 import {
@@ -6,35 +5,8 @@ import {
   applyProjectWasteOverrides,
 } from "@/lib/utils/projectWasteOverrides";
 
-export interface ProjectPriceMapEntry {
-  cost: number;
-  per: number;
-}
-
-export function getEffectiveProjectUnitCost(material: MaterialDefinition): number {
-  // Guard: treat NaN and non-finite values as absent (same as undefined/null for ?? purposes)
-  const safe = (v: number | undefined | null): number | undefined =>
-    v != null && Number.isFinite(v) ? v : undefined;
-
-  if (String(material.category).toLowerCase() === "labor") {
-    return safe(material.hourlyRate) ?? safe(material.matCost) ?? 65;
-  }
-  return safe(material.matCost) ?? 0;
-}
-
-export function buildProjectPriceMap(
-  materials: MaterialDefinition[],
-): Record<string, ProjectPriceMapEntry> {
-  const map: Record<string, ProjectPriceMapEntry> = {};
-  materials.forEach((material) => {
-    if (!material.description) return;
-    map[material.description] = {
-      cost: getEffectiveProjectUnitCost(material),
-      per: 1,
-    };
-  });
-  return map;
-}
+// spec_database removed — unit costs come from pipeline output (mat.unit_cost / lab.unit_cost)
+// buildProjectPriceMap and getEffectiveProjectUnitCost deleted 2026-06-22
 
 export function applyProjectCostingOverrides(
   costingData: MaterialCosting[],

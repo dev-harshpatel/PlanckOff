@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Database, Layers, LayoutTemplate, Plus, Upload } from 'lucide-react';
-import type { MaterialDefinition, TakeoffInstance, WallAssembly } from '@/types';
+import type { TakeoffInstance, WallAssembly } from '@/types';
 import type { AssemblyTemplate } from '@/constants/defaultAssemblies';
 import type { PipelineCompleteData } from '@/context/PipelineContext';
 import { AssemblySummaryGrid } from '@/components/features/project/AssemblySummaryGrid';
@@ -24,8 +24,6 @@ interface AssemblySummaryTabProps {
   setAssemblySearch: React.Dispatch<React.SetStateAction<string>>;
   filteredAssemblies: WallAssembly[];
   takeoffs: Record<string, TakeoffInstance[]>;
-  resolvedMaterials: MaterialDefinition[];
-  priceMap: Record<string, { cost: number; per?: string; waste?: number; supplier?: string }>;
   setActiveAssemblyId: React.Dispatch<React.SetStateAction<string | null>>;
   setEditingAssemblyId: React.Dispatch<React.SetStateAction<string | null>>;
   setEditingHeight: React.Dispatch<React.SetStateAction<number | null>>;
@@ -49,8 +47,6 @@ export const AssemblySummaryTab = ({
   setAssemblySearch,
   filteredAssemblies,
   takeoffs,
-  resolvedMaterials,
-  priceMap,
   setActiveAssemblyId,
   setEditingAssemblyId,
   setEditingHeight,
@@ -133,8 +129,6 @@ export const AssemblySummaryTab = ({
           <AssemblySummaryGrid
             assemblies={filteredAssemblies}
             takeoffs={takeoffs}
-            materials={resolvedMaterials}
-            priceMap={priceMap}
             onSelectAssembly={(id, height) => {
               setActiveAssemblyId(id);
               setEditingAssemblyId(id);

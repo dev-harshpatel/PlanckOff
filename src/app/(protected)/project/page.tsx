@@ -12,7 +12,6 @@ import {
   LogOut,
   Percent,
   Users,
-  Loader2,
 } from "lucide-react";
 import { AppState, ProjectSummary } from "@/types";
 import { MaterialCosting } from "@/types/assembly";
@@ -20,10 +19,10 @@ import { applyProjectCostingOverrides } from "@/lib/utils/projectPricing";
 import { syncProjectOverrides } from "@/lib/utils/projectOverrideSync";
 import { EstimateResult } from "@/components/features/project/EstimateResult";
 import { identifyWallAssemblies } from "@/services/gemini/client";
-import { useApp } from "@/context/AppContext";
 import { mapFinalOutputToWallAssemblies } from "@/lib/utils/assemblyJsonMapper";
 import { useProjectData } from "@/hooks/useProjectData";
 import { ProjectDataProvider } from "@/context/ProjectDataContext";
+import { ProjectPageSkeleton } from "@/components/features/project/ProjectPageSkeleton";
 
 const REPORT_TABS = ["materials", "matlab", "labor", "markups", "proposal", "bidding"] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
@@ -37,8 +36,6 @@ function ProjectContent() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get("id");
   const tabFromUrl = searchParams.get("tab");
-
-  const { materials, setMaterials } = useApp();
 
   const [state, setState] = useState<AppState>(AppState.ESTIMATING);
   const [error, setError] = useState<string | null>(null);
@@ -144,26 +141,12 @@ function ProjectContent() {
     fetchProject();
   }, [projectId]);
 
-  // Load materials (spec_database) when on project page so Unit Cost lookups in assembly modal have data
-  useEffect(() => {
-    const loadMaterials = async () => {
-      if (materials.length > 0) return;
-      try {
-        const response = await fetch("/api/materials", { credentials: "include" });
-        const data = await response.json();
-        if (data.success && Array.isArray(data.materials)) {
-          setMaterials(data.materials);
-        }
-      } catch (err) {
-        console.error("[Project] Failed to load materials:", err);
-      }
-    };
-    loadMaterials();
-  }, [materials.length, setMaterials]);
+  // spec_database loading removed 2026-06-22 — materials will come from material_database (Phase 2+)
 
   // Data loading is now handled by useProjectData() above.
   // Override reactivity is now handled by effectiveCostingData useMemo above.
 
+  // spec_database removed 2026-06-22 — baseline comes from material_database (Phase 2+)
   const syncProjectUnitCostOverride = async (
     code: string,
     newCost: number,
@@ -172,9 +155,6 @@ function ProjectContent() {
     if (!projectId) return;
 
     const field = type === "labor" ? "hourlyRate" : "productivity";
-    const baselineMaterial = materials.find((material) => material.code === code);
-    const baselineValue =
-      field === "hourlyRate" ? baselineMaterial?.hourlyRate : baselineMaterial?.productivity;
     await syncProjectOverrides({
       projectId,
       items: [
@@ -182,7 +162,7 @@ function ProjectContent() {
           materialCode: code,
           field,
           value: newCost,
-          baselineValue,
+          baselineValue: undefined,
           existingValue: overrideMap[code]?.[field] as number | undefined,
         },
       ],
@@ -205,7 +185,7 @@ function ProjectContent() {
           const detectedAssemblies = await identifyWallAssemblies(
             base64String,
             mimeType,
-            materials,
+            [],
           );
           setAssemblies((prev) => [...prev, ...detectedAssemblies]);
           setState(AppState.ESTIMATING);
@@ -340,6 +320,10 @@ function ProjectContent() {
     router.push("/dashboard");
   };
 
+  if (isLoadingProject && isLoadingAssemblyData) {
+    return <ProjectPageSkeleton />;
+  }
+
   return (
     <ProjectDataProvider projectId={projectId ?? ''} data={projectData}>
     <div className="h-full flex flex-col">
@@ -356,11 +340,9 @@ function ProjectContent() {
             <div className="h-6 w-px bg-slate-200" />
             <div>
               {isLoadingProject ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
-                  <span className="text-sm text-slate-400">
-                    Loading project...
-                  </span>
+                <div className="flex flex-col gap-1.5">
+                  <div className="h-3.5 w-32 rounded bg-slate-200 animate-pulse" />
+                  <div className="h-2.5 w-20 rounded bg-slate-100 animate-pulse" />
                 </div>
               ) : (
                 <>
@@ -514,8 +496,6 @@ function ProjectContent() {
         <EstimateResult
           assemblies={assemblies}
           onReset={handleReset}
-          materials={materials}
-          onUpdateMaterials={setMaterials}
           onAnalyze={handleAnalyze}
           isAnalyzing={state === AppState.ANALYZING}
           viewMode={showReport ? "report" : "project"}
@@ -541,17 +521,9 @@ function ProjectContent() {
   );
 }
 
-function ProjectLoading() {
-  return (
-    <div className="h-screen bg-slate-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
-    </div>
-  );
-}
-
 export default function ProjectPage() {
   return (
-    <Suspense fallback={<ProjectLoading />}>
+    <Suspense fallback={<ProjectPageSkeleton />}>
       <ProjectContent />
     </Suspense>
   );

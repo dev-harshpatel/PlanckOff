@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { CalculatedMaterial, MaterialDefinition, TakeoffInstance, WallAssembly } from '@/types';
+import type { CalculatedMaterial, TakeoffInstance, WallAssembly } from '@/types';
 import type { MaterialCosting } from '@/types/assembly';
 import { Reports } from '@/components/features/reports/Reports';
 
@@ -10,7 +10,6 @@ interface ReportsTabProps {
   assemblies: WallAssembly[];
   takeoffs: Record<string, TakeoffInstance[]>;
   manualItems: CalculatedMaterial[];
-  materials: MaterialDefinition[];
   materialCostingData: MaterialCosting[];
   onUnitCostChange?: (code: string, newCost: number, type: 'material' | 'labor', unit?: string) => void;
   displayUnit: 'imperial' | 'metric';
@@ -28,7 +27,6 @@ export const ReportsTab = ({
   assemblies,
   takeoffs,
   manualItems,
-  materials,
   materialCostingData,
   onUnitCostChange,
   displayUnit,
@@ -46,7 +44,6 @@ export const ReportsTab = ({
         assemblies={assemblies}
         takeoffs={takeoffs}
         manualItems={manualItems}
-        materials={materials}
         materialCostingData={materialCostingData}
         onUnitCostChange={onUnitCostChange}
         displayUnit={displayUnit}

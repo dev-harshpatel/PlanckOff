@@ -4,7 +4,18 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(npx tsc:*)",
       "Bash(grep -v 'exportUtils\\\\|reportExport\\\\|Reports.tsx.*$$typeof\\\\|jspdf')",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(node -e \"require\\('xlsx'\\); console.log\\('xlsx available'\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(rm -f src/lib/utils/projectPricing.ts src/lib/utils/reportFilterState.ts src/constants/formulas.ts src/services/takeoff/parseOSTSheet.ts src/services/gemini/client.ts src/app/api/gemini/route.ts prompt/new_prompt.txt prompt/prompt_backup_25_02_2026.txt)",
+      "Bash(rmdir \"src/services/gemini\")",
+      "Bash(rm -f \"src/app/api/process-pipeline/route.ts\" \"src/services/openrouter/processWithUnifiedPrompt.ts\" \"prompt/prompt.txt\")",
+      "Bash(rmdir \"src/app/api/process-pipeline\")",
+      "Bash(git restore *)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Get-ChildItem \"D:\\\\Projects\\\\learning-projects\\\\PlanckOff\\\\data\\\\json\\\\\" | Select-Object Name, @{N='Size KB';E={[math]::Round\\($_.Length/1KB, 1\\)}})",
+      "PowerShell(ls \"D:\\\\Projects\\\\learning-projects\\\\PlanckOff\\\\supabase\\\\migrations\" | Select-Object -Last 5 | ForEach-Object { $_.Name })",
+      "Bash(node *)"
     ]
   }
 }

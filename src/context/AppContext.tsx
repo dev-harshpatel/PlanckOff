@@ -1,8 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, ReactNode, useState } from "react";
+import React, { createContext, useContext, ReactNode } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { MaterialDefinition, UserRole, AppSettings } from "@/types";
+import { UserRole, AppSettings } from "@/types";
 import { DEFAULT_ROLE_PERMISSIONS } from "@/constants/project";
 import {
   AssemblyTemplate,
@@ -10,14 +10,6 @@ import {
 } from "@/constants/defaultAssemblies";
 
 interface AppContextValue {
-  // Materials Database
-  materials: MaterialDefinition[];
-  setMaterials: (
-    value:
-      | MaterialDefinition[]
-      | ((prev: MaterialDefinition[]) => MaterialDefinition[]),
-  ) => void;
-
   // Role Permissions
   rolePermissions: Record<UserRole, string[]>;
   setRolePermissions: (
@@ -48,9 +40,6 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
-  // Materials Database - now loaded from database instead of localStorage
-  const [materials, setMaterials] = useState<MaterialDefinition[]>([]);
-
   // Persistent Role Permissions
   const [rolePermissions, setRolePermissions] = useLocalStorage<
     Record<UserRole, string[]>
@@ -68,8 +57,6 @@ export function AppProvider({ children }: AppProviderProps) {
   );
 
   const value: AppContextValue = {
-    materials,
-    setMaterials,
     rolePermissions,
     setRolePermissions,
     defaultAssemblies,
@@ -90,11 +77,6 @@ export function useApp() {
 }
 
 // Convenience hooks for specific parts of the context
-export function useMaterials() {
-  const { materials, setMaterials } = useApp();
-  return [materials, setMaterials] as const;
-}
-
 export function useRolePermissions() {
   const { rolePermissions, setRolePermissions } = useApp();
   return [rolePermissions, setRolePermissions] as const;

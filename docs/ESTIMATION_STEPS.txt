@@ -1,0 +1,82 @@
+PLANCKOFF — HOW A WALL IS ESTIMATED (6 STEPS)
+===============================================
+
+STEP 1 — READ THE DRAWING (AI)
+The system reads the uploaded PDF drawing and extracts every wall type
+description as raw text.
+
+Example (Wall Type P1):
+  16 mm GYPSUM WALLBOARD TYPE 'X'
+  92 mm STEEL STUDS AT 400 mm O.C.
+  92 mm BATT INSULATION
+  16 mm GYPSUM WALLBOARD TYPE 'X'
+
+-----------------------------------------------
+
+STEP 2 — UNDERSTAND THE SPECIFICATION (Rules)
+The system reads the raw text and extracts key facts using conversion
+tables and keyword matching. No AI involved.
+
+  Location      : Wall
+  Board thickness: 16 mm → 5/8"
+  Board type    : Type X
+  Stud size     : 92 mm → 3-5/8"
+  Layers        : 1 (single) — no "2 LAYERS" or "DOUBLE" found
+  Insulation    : Yes, 92 mm batt
+
+-----------------------------------------------
+
+STEP 3 — PICK THE RIGHT RECIPES (Assembly Classification)
+Using those facts, the system selects which assembly templates apply.
+
+  FR-WALL      (Steel Framing — Wall)          ← steel studs detected
+  DW-SGL-WALL  (Single Layer Drywall — Wall)   ← board + single layer
+  INS-WALL     (Insulation — Wall)             ← batt insulation detected
+
+A double-layer wall would have selected DW-DBL-WALL instead.
+
+-----------------------------------------------
+
+STEP 4 — EXPAND THE RECIPES INTO A FULL MATERIAL LIST
+Each template is opened and every item inside it is listed.
+
+  FR-WALL (7 items)
+    - 3-5/8" Steel Studs
+    - 3-5/8" Steel Track
+    - 3-5/8" Slotted Track
+    - Framing Screws
+    - CRC Bridging
+    - Gas Nails
+    - Layout Labour
+
+  DW-SGL-WALL (6 items)
+    - 5/8" Type X Drywall Board
+    - Drywall Screws
+    - Paper Tape
+    - Joint Compound
+    - Sound Caulk
+    - Fire Caulk
+
+  INS-WALL (1 item)
+    - 3-5/8" Batt Insulation
+
+  Total for Wall Type P1: ~14 material line items
+
+-----------------------------------------------
+
+STEP 5 — ATTACH PRICES AND LABOUR
+For each material item the system looks up unit price, labour task,
+and labour rate (adjusted for wall height).
+
+  Steel Studs      → Install Framing    (rate changes above 12/16/20/24 ft)
+  Drywall Board    → Drywall Hanging    (rate changes above 12/16/20/24 ft)
+  Tape + Compound  → Drywall Finishing  (rate changes above 12 ft)
+  Batt Insulation  → Install Insulation (standard rate)
+  Screws/Fasteners → no direct labour   (included in framing/hanging)
+
+-----------------------------------------------
+
+STEP 6 — MULTIPLY BY QUANTITIES FROM THE TAKEOFF SHEET
+The takeoff sheet provides linear feet and wall height per floor.
+Formulas are applied to each material to produce final quantities
+and costs (e.g. board area = length × height × 2 sides).

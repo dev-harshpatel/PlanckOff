@@ -1,15 +1,12 @@
-"use client";
+'use client';
 
-import { RouteGuard } from "@/components/auth";
-import { DatabaseManager } from "@/components/features/database/DatabaseManager";
-import { useApp } from "@/context/AppContext";
+import { RouteGuard } from '@/components/auth';
+import { DatabasePage } from '@/components/features/database/new/DatabasePage';
 
-export default function DatabasePage() {
-  const { materials, setMaterials } = useApp();
-
+export default function DatabasePageRoute() {
   return (
     <RouteGuard path="/database">
-      <DatabaseManager materials={materials} onUpdateMaterials={setMaterials} />
+      <DatabasePage />
     </RouteGuard>
   );
 }
