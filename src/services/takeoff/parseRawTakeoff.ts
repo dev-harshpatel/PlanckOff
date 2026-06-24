@@ -9,7 +9,6 @@ export interface TakeoffRawRecord {
   assembly_type: string | number | null;
   ceiling_area?: number;
   description?: string | null;
-  height: number | string | null;
   level: string | number | null;
   no?: number | string | null;
   unit?: string | number | null;
@@ -23,7 +22,7 @@ export interface TakeoffRawRecord {
 
 export interface TakeoffParserIssue {
   excelRow: number;
-  field: "height" | "wall_length_ceiling_area" | "area_parementer" | "qty_3";
+  field: "wall_length_ceiling_area" | "area_parementer" | "qty_3";
   rawValue: string;
   reason: string;
 }
@@ -68,7 +67,6 @@ const COLUMN_PATTERNS: Record<string, string[]> = {
   level: ["level"],
   assemblyType: ["assembly type", "assemblytype"],
   wallType: ["wall type", "walltype", "wall type"],
-  height: ["height"],
   wallLengthCeilingArea: [
     "wall length/ ceiling area",
     "wall length/ceiling area",
@@ -98,11 +96,8 @@ const findHeaderRow = (
     const hasAssemblyType = normalized.some((header) =>
       COLUMN_PATTERNS.assemblyType.some((pattern) => header === pattern || header.includes(pattern)),
     );
-    const hasHeight = normalized.some((header) =>
-      COLUMN_PATTERNS.height.some((pattern) => header === pattern || header.includes(pattern)),
-    );
 
-    if (hasWallType && hasAssemblyType && hasHeight) {
+    if (hasWallType && hasAssemblyType) {
       return { headerRowIndex: i, headers };
     }
   }
@@ -174,12 +169,11 @@ export const parseRawTakeoffSheetDetailed = (buffer: ArrayBuffer): {
   const hasRequired =
     colIdx.assemblyType !== undefined &&
     colIdx.wallType !== undefined &&
-    colIdx.height !== undefined &&
     colIdx.wallLengthCeilingArea !== undefined;
 
   if (!hasRequired) {
     throw new Error(
-      `Missing required columns: Assembly type, Wall Type, Height, wall Length/ Ceiling area. Found headers: [${headers.join(", ")}]`,
+      `Missing required columns: Assembly type, Wall Type, wall Length/ Ceiling area. Found headers: [${headers.join(", ")}]`,
     );
   }
 
@@ -196,7 +190,6 @@ export const parseRawTakeoffSheetDetailed = (buffer: ArrayBuffer): {
 
     const assemblyTypeRaw = get("assemblyType");
     const wallTypeRaw = get("wallType");
-    const heightRaw = get("height");
     const wallLengthRaw = get("wallLengthCeilingArea");
 
     if (
@@ -206,9 +199,6 @@ export const parseRawTakeoffSheetDetailed = (buffer: ArrayBuffer): {
       wallTypeRaw === undefined ||
       wallTypeRaw === null ||
       String(wallTypeRaw).trim() === "" ||
-      heightRaw === undefined ||
-      heightRaw === null ||
-      (String(heightRaw).trim() === "" && Number.isNaN(Number(heightRaw))) ||
       wallLengthRaw === undefined ||
       wallLengthRaw === null
     ) {
@@ -218,20 +208,9 @@ export const parseRawTakeoffSheetDetailed = (buffer: ArrayBuffer): {
 
     const assemblyType = cleanValue(assemblyTypeRaw) as string | null;
     const valueKey = getValueKeyForAssemblyType(assemblyType);
-    const heightNumeric = parseOptionalNumericCell(heightRaw);
     const wallLengthNumeric = parseOptionalNumericCell(wallLengthRaw);
     const areaNumeric = parseOptionalNumericCell(get("areaParementer"));
     const qty3Numeric = parseOptionalNumericCell(get("qty3"));
-
-    if (!heightNumeric.isValid) {
-      malformedRows.push({
-        excelRow: r + 1,
-        field: "height",
-        rawValue: String(heightRaw),
-        reason: "Height is not numeric",
-      });
-      continue;
-    }
 
     if (!wallLengthNumeric.isValid) {
       malformedRows.push({
@@ -273,7 +252,6 @@ export const parseRawTakeoffSheetDetailed = (buffer: ArrayBuffer): {
       level: cleanValue(get("level")),
       assembly_type: assemblyType,
       wall_type: cleanValue(wallTypeRaw),
-      height: cleanValue(heightNumeric.value ?? heightRaw),
       [valueKey]: numVal,
     } as TakeoffRawRecord;
 

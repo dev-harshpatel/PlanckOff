@@ -7,7 +7,6 @@ import {
   Database,
   LayoutDashboard,
   LayoutTemplate,
-  Shield,
   Users,
   LucideIcon,
 } from "lucide-react";
@@ -40,11 +39,11 @@ const NAV_ITEMS: NavItem[] = [
     label: "Team Management",
     icon: Users,
   },
-  {
-    href: "/admin/roles",
-    label: "Role Management",
-    icon: Shield,
-  },
+  // {
+  //   href: "/admin/roles",
+  //   label: "Role Management",
+  //   icon: Shield,
+  // },
   {
     href: "/database",
     label: "Database",
@@ -80,39 +79,45 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 bg-white border-b border-slate-200 flex-none z-50">
-      <div className="w-full px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-8">
+      <div className="w-full px-6 h-20 grid grid-cols-3 items-center">
+
+        {/* Left — Logo: h-20 container clips the h-[7rem] SVG to show the brand content */}
+        <div className="h-20 overflow-hidden flex items-center">
           <NavLink href="/dashboard" className="flex items-center">
             <img
               src="/images/logo.svg"
               alt="PlanckOff"
-              className="h-20 w-auto object-contain"
+              className="h-[7rem] w-auto"
             />
           </NavLink>
-
-          <nav className="flex items-center gap-1">
-            {visibleNavItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.href}
-                  href={item.href}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
-                    ${
-                      isActive(item.href)
-                        ? "text-emerald-700 bg-emerald-50"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                    }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </NavLink>
-              );
-            })}
-          </nav>
         </div>
 
-        <ProfileDropdown />
+        {/* Center — Nav items, truly centered via grid */}
+        <nav className="flex items-center justify-center gap-0.5">
+          {visibleNavItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                  isActive(item.href)
+                    ? "text-emerald-700 bg-emerald-50"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* Right — Profile */}
+        <div className="flex justify-end">
+          <ProfileDropdown />
+        </div>
+
       </div>
     </header>
   );

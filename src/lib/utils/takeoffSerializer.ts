@@ -30,8 +30,7 @@ export const serializeTakeoffsToRawRows = (
     instances.forEach((instance) => {
       const assemblyType = String(assembly.assemblyType || "Interior Walls").trim();
       const isCeiling = assemblyType.toLowerCase().includes("ceiling");
-      const height = normalizeTakeoffNumber(instance.height);
-      if (!assembly.code || height == null) return;
+      if (!assembly.code) return;
 
       const length = normalizeTakeoffNumber(instance.length) ?? 0;
       const ceilingArea = normalizeTakeoffNumber(instance.ceilingArea) ?? 0;
@@ -42,7 +41,6 @@ export const serializeTakeoffsToRawRows = (
         description: instance.description || null,
         assembly_type: assemblyType,
         wall_type: assembly.code,
-        height,
         wall_length: isCeiling ? undefined : length,
         ceiling_area: isCeiling ? ceilingArea : undefined,
         area_parementer: perimeter,

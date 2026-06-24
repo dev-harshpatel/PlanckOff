@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Database, Layers, LayoutTemplate, Plus, Upload } from 'lucide-react';
+import { Layers, LayoutTemplate, Plus, Upload } from 'lucide-react';
 import type { TakeoffInstance, WallAssembly } from '@/types';
 import type { AssemblyTemplate } from '@/constants/defaultAssemblies';
 import type { PipelineCompleteData } from '@/context/PipelineContext';
@@ -15,7 +15,6 @@ interface AssemblySummaryTabProps {
   setIsTemplateMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   templates: AssemblyTemplate[];
   handleAddFromTemplate: (template: AssemblyTemplate) => void;
-  setIsDatabaseOpen: React.Dispatch<React.SetStateAction<boolean>>;
   openImportModal: (projectId: string | undefined, onComplete?: (data: PipelineCompleteData) => void) => void;
   projectId?: string | null;
   handleImportComplete: (data: PipelineCompleteData) => void;
@@ -38,7 +37,6 @@ export const AssemblySummaryTab = ({
   setIsTemplateMenuOpen,
   templates,
   handleAddFromTemplate,
-  setIsDatabaseOpen,
   openImportModal,
   projectId,
   handleImportComplete,
@@ -98,12 +96,6 @@ export const AssemblySummaryTab = ({
                   </div>
                 )}
               </div>
-              <IconButton
-                icon={Database}
-                variant="default"
-                onClick={() => setIsDatabaseOpen(true)}
-                tooltip="Database"
-              />
               <IconButton
                 icon={Upload}
                 variant="default"

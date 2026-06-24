@@ -208,19 +208,12 @@ export const useAssemblySave = ({
       );
       const assemblyToSave = latestAssembly ?? savedAssembly;
 
-      // Parse assembly_id and height_ft from composite id ("P1@9.7")
-      const lastAt = assemblyToSave.id.lastIndexOf("@");
-      const assemblyCode =
-        lastAt >= 0 ? assemblyToSave.id.slice(0, lastAt) : assemblyToSave.id;
-      const heightFt =
-        lastAt >= 0 ? parseFloat(assemblyToSave.id.slice(lastAt + 1)) : null;
-
       const overrideMaps = buildAssemblyOverrideMaps(assemblyToSave);
 
       const updatedCostingData = applyOverridesToCostingData(
         materialCostingDataRef.current,
-        assemblyCode,
-        heightFt,
+        assemblyToSave.id,
+        null,
         overrideMaps,
       );
 

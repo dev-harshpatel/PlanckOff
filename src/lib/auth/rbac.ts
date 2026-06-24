@@ -101,11 +101,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     minRole: 'Estimator',
     description: 'Profile settings',
   },
-  {
-    path: '/admin/roles',
-    allowedRoles: ['Administrator'],
-    description: 'Role management',
-  },
+  // {
+  //   path: '/admin/roles',
+  //   allowedRoles: ['Administrator'],
+  //   description: 'Role management',
+  // },
 ];
 
 /**

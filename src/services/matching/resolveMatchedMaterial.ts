@@ -5,9 +5,7 @@ import type { MatchedMaterial } from '@/types/assembly';
  * Converts a matched material_database row into the MatchedMaterial shape
  * consumed by the finalize step and the reports layer.
  *
- * unit_cost comes from row.unitPrice (the DB price).
- * unit prefers the wall UOM (uom1); the finalize step picks qty formulas.
- * qty1Formula is stored so the finalize step can evaluate it against takeoff dims.
+ * unit falls back to the first size entry's containerUnit when uom1 is absent.
  */
 export function resolveMatchedMaterial(row: MaterialDatabaseRow): MatchedMaterial {
   return {
@@ -15,7 +13,7 @@ export function resolveMatchedMaterial(row: MaterialDatabaseRow): MatchedMateria
     section:      row.section || undefined,
     description:  row.description,
     manufacturer: '',
-    unit:         row.uom1 || row.containerUnit || 'EA',
+    unit:         row.uom1 || row.sizes?.[0]?.containerUnit || 'EA',
     unit_cost:    row.unitPrice,
     _fromNewDb:   true,
   };

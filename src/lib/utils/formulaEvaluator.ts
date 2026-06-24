@@ -196,12 +196,9 @@ function aggregateInstances(
     instances.forEach(inst => {
         const qty = inst.quantity || 1;
         const isCeilingInst = (inst.ceilingArea || 0) > 0;
-        // For wall instances with missing height (0), fall back to the assembly's default height
-        // so that LF-based formulas (e.g. fire safing) still compute correctly.
-        const rawH = inst.height || 0;
-        const h = (!isCeilingInst && rawH === 0 && assembly.defaultHeight)
+        const h = (!isCeilingInst && assembly.defaultHeight)
             ? assembly.defaultHeight
-            : rawH;
+            : 0;
         const effectiveH = Math.max(0, Math.min(hMax, h) - hMin);
         totalCeilingArea += (inst.ceilingArea || 0) * qty;
         if (isCeilingInst) {

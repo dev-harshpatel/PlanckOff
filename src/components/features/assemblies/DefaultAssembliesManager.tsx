@@ -64,7 +64,6 @@ export const DefaultAssembliesManager: React.FC<DefaultAssembliesManagerProps> =
             description: 'Standard Example',
             quantity: 1,
             length: 100,
-            height: 10,
             ceilingArea: 1000,
             perimeter: 130
         }]);

@@ -4,12 +4,13 @@ import { useNavigationLoading } from '@/context/NavigationLoadingContext';
 
 const formatTargetLabel = (href: string | null) => {
   if (!href) return 'Loading...';
-  if (href === '/') return 'Opening dashboard...';
+  if (href === '/' || href.includes('/dashboard')) return 'Opening dashboard...';
   if (href.includes('/reports')) return 'Opening report...';
   if (href.includes('/project/')) return 'Opening project...';
   if (href.includes('/database')) return 'Opening database...';
   if (href.includes('/team')) return 'Opening team page...';
   if (href.includes('/settings')) return 'Opening settings...';
+  if (href.includes('/profile')) return 'Opening profile...';
   return 'Loading...';
 };
 

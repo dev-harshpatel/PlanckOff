@@ -37,9 +37,11 @@ const HT_BAND_COLOR: Record<string, 'default' | 'success' | 'warning' | 'info' |
 };
 
 export function LabourDetailSheet({ labour, onClose }: LabourDetailSheetProps) {
+  const band = labour?.labourBands[0];
+
   return (
     <Sheet open={!!labour} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg flex flex-col p-0 gap-0">
+      <SheetContent size="xl" className="w-full flex flex-col p-0 gap-0">
         {labour && (
           <>
             {/* Header */}
@@ -54,15 +56,15 @@ export function LabourDetailSheet({ labour, onClose }: LabourDetailSheetProps) {
                   </SheetTitle>
                   <SheetDescription className="text-slate-400 text-xs mt-1">
                     <code className="font-mono bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded text-[11px] mr-2">
-                      {labour.labourCode}
+                      {band?.labourCode}
                     </code>
                     {labour.category}
                   </SheetDescription>
                 </SheetHeader>
                 <div className="flex items-center gap-2 mt-3">
                   <Badge variant="info">{labour.parentSection}</Badge>
-                  <Badge variant={HT_BAND_COLOR[labour.htBand] ?? 'outline'}>
-                    {labour.htBand || 'All Heights'}
+                  <Badge variant={HT_BAND_COLOR[band?.htBand ?? 'All'] ?? 'outline'}>
+                    {band?.htBand || 'All Heights'}
                   </Badge>
                 </div>
               </div>
@@ -78,13 +80,13 @@ export function LabourDetailSheet({ labour, onClose }: LabourDetailSheetProps) {
                     <p className="text-xs font-semibold text-foreground">Details</p>
                   </div>
                   <div className="bg-muted/40 rounded-lg px-3 divide-y divide-border">
-                    <DetailRow label="Labour Code" value={labour.labourCode} />
-                    <DetailRow label="Band Code" value={labour.code} />
+                    <DetailRow label="Labour Code" value={band?.labourCode} />
+                    <DetailRow label="Band Code" value={band?.code} />
                     <DetailRow label="Category" value={labour.category} />
                     <DetailRow label="Section" value={labour.parentSection} />
-                    <DetailRow label="Height Band" value={labour.htBand || 'All'} />
-                    <DetailRow label="Min Height (ft)" value={labour.htMinFt} />
-                    <DetailRow label="Max Height (ft)" value={labour.htMaxFt || '—'} />
+                    <DetailRow label="Height Band" value={band?.htBand || 'All'} />
+                    <DetailRow label="Min Height (ft)" value={band?.htMinFt} />
+                    <DetailRow label="Max Height (ft)" value={band && band.htMaxFt < 99 ? band.htMaxFt : '—'} />
                   </div>
                 </div>
 
@@ -97,9 +99,9 @@ export function LabourDetailSheet({ labour, onClose }: LabourDetailSheetProps) {
                   <div className="bg-muted/40 rounded-lg px-3 divide-y divide-border">
                     <DetailRow
                       label="Rate per UOM"
-                      value={labour.ratePerUom === 0 ? '—' : `$${labour.ratePerUom.toFixed(4)}`}
+                      value={!band?.ratePerUom ? '—' : `$${band.ratePerUom.toFixed(4)}`}
                     />
-                    <DetailRow label="UOM" value={labour.uom} />
+                    <DetailRow label="UOM" value={band?.uom} />
                   </div>
                 </div>
 

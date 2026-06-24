@@ -213,17 +213,8 @@ export const mapJsonToWallAssemblies = (
 };
 
 /**
- * Build a stable composite id for final output assemblies (one per height).
- * e.g. "P1@9.7", "P1@10", "WEF1@15".
- */
-export const getFinalOutputAssemblyKey = (
-  assemblyId: string,
-  heightFt: number,
-): string => `${assemblyId}@${Number(heightFt)}`;
-
-/**
- * Maps final_output assemblies to WallAssembly[] (one per assembly per height).
- * Use when materialData is from final output (each entry has height_ft, total_length).
+ * Maps final_output assemblies to WallAssembly[] (one per assembly).
+ * Use when materialData is from final output (each entry has total_length).
  */
 export const mapFinalOutputToWallAssemblies = (
   costingData: (MaterialCosting | FinalOutputAssembly)[],
@@ -232,14 +223,12 @@ export const mapFinalOutputToWallAssemblies = (
 
   costingData.forEach((costing) => {
     const ext = costing as FinalOutputAssembly;
-    const hasFinalFormat =
-      typeof ext.height_ft === "number" && typeof ext.total_length === "number";
+    const hasFinalFormat = typeof ext.total_length === "number" && ext.assembly_id != null;
     if (!hasFinalFormat) return;
 
     const assemblyId = ext.assembly_id;
-    const heightFt = ext.height_ft as number;
     const totalLength = ext.total_length as number;
-    const compositeId = getFinalOutputAssemblyKey(assemblyId, heightFt);
+    const compositeId = assemblyId;
 
     const components: AssemblyComponent[] = [];
     let componentIdx = 0;
@@ -281,7 +270,6 @@ export const mapFinalOutputToWallAssemblies = (
       (matched_materials ?? []).forEach((material) => {
         const category = inferCategoryFromMaterial(rawText, material.code);
         const savedUsage = material.usage_override ?? usage;
-        const savedHeight = material.height_ft_override ?? heightFt;
         const savedLayers = material.layers_override ?? layers ?? undefined;
         const savedOc =
           material.oc_spacing_override ?? (spacingDisplay || undefined);
@@ -299,7 +287,6 @@ export const mapFinalOutputToWallAssemblies = (
           materialCost: normalizeUnitCost(material.unit_cost),
           overrideMatCost: normalizeUnitCost(material.unit_cost),
           overrideLayers: savedLayers,
-          overrideHeight: savedHeight,
           lengthOverride: savedLength,
           materialCode: material.code,
           sectionCode: material.section ?? "",
@@ -313,9 +300,6 @@ export const mapFinalOutputToWallAssemblies = (
       });
 
       (matched_labor ?? []).forEach((labor) => {
-        const laborHeightFt = (labor as { height_ft?: number }).height_ft;
-        const displayHeight =
-          typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
         const laborHeightCategory = (labor as { height_category?: string })
           .height_category;
         const laborMuted = (labor as { muted?: boolean }).muted ?? false;
@@ -329,7 +313,6 @@ export const mapFinalOutputToWallAssemblies = (
           materialCost: normalizeUnitCost(labor.unit_cost),
           overrideMatCost: normalizeUnitCost(labor.unit_cost),
           overrideLayers: undefined,
-          overrideHeight: displayHeight,
           heightCategory: laborHeightCategory ?? undefined,
           muted: laborMuted,
           materialCode: labor.code,
@@ -345,31 +328,13 @@ export const mapFinalOutputToWallAssemblies = (
       assemblyId,
     );
 
-    // Derive the effective assembly height from per-material height_ft_override values.
-    // Only consider overrides that DIFFER from the original takeoff heightFt — materials
-    // saved with height_ft_override === heightFt are "unchanged" and should not prevent
-    // a real override from being recognised.
-    // e.g. user changes one component from 9.7 → 12; the rest stay at 9.7 (the default).
-    // Without this filter, uniqueOverrideHeights would be {12, 9.7} → size 2 → falls back to 9.7.
-    // With this filter, we only see {12} → effectiveDefaultHeight = 12 ✓
-    const allDifferentOverrides = (ext.materials_costing ?? [])
-      .flatMap((item) => item.matched_materials ?? [])
-      .map((m) => m.height_ft_override)
-      .filter((h): h is number => typeof h === 'number' && Math.abs(h - heightFt) > 0.001);
-    const uniqueOverrideHeights = new Set(allDifferentOverrides);
-    const effectiveDefaultHeight =
-      uniqueOverrideHeights.size === 1
-        ? [...uniqueOverrideHeights][0]
-        : heightFt;
-
     assemblies.push({
       id: compositeId,
       code: compositeId,
-      description: `Assembly ${assemblyId} (${effectiveDefaultHeight}' : ${totalLength} LF)`,
+      description: `Assembly ${assemblyId} (${totalLength} LF)`,
       components,
       assemblyType,
       defaultLength: totalLength,
-      defaultHeight: effectiveDefaultHeight,
     });
   });
 
@@ -378,7 +343,6 @@ export const mapFinalOutputToWallAssemblies = (
 
 /**
  * Maps final_output assemblies to TakeoffInstance records for the Takeoff Schedule.
- * Keys by composite id (e.g. P1@9.7) when height_ft is present so each assembly-height has its own takeoffs.
  */
 export const mapFinalOutputToTakeoffs = (
   assemblies: (MaterialCosting | FinalOutputAssembly)[],
@@ -387,14 +351,11 @@ export const mapFinalOutputToTakeoffs = (
 
   assemblies.forEach((asm) => {
     const ext = asm as FinalOutputAssembly;
-    const hasFinalFormat =
-      typeof ext.height_ft === "number" && typeof ext.total_length === "number";
+    const hasFinalFormat = typeof ext.total_length === "number" && ext.assembly_id != null;
 
     if (!hasFinalFormat) return;
 
     const assemblyId = ext.assembly_id;
-    const heightFt = ext.height_ft ?? 0;
-    const compositeKey = getFinalOutputAssemblyKey(assemblyId, heightFt);
     const level = ext.level ?? "";
     const description = `Assembly ${assemblyId}`;
     const length = ext.total_length ?? 0;
@@ -402,20 +363,19 @@ export const mapFinalOutputToTakeoffs = (
     const perimeter = ext.area_parementer ?? undefined;
 
     const instance: TakeoffInstance = {
-      id: `fo-${compositeKey}`,
+      id: `fo-${assemblyId}`,
       level,
       description,
       quantity: 1,
       length,
-      height: heightFt,
       ceilingArea,
       perimeter,
       lengthUnit: "LF",
       areaUnit: "SF",
     };
 
-    if (!result[compositeKey]) result[compositeKey] = [];
-    result[compositeKey].push(instance);
+    if (!result[assemblyId]) result[assemblyId] = [];
+    result[assemblyId].push(instance);
   });
 
   return result;
@@ -430,14 +390,10 @@ export const mapRawTakeoffToInstances = (
   rawRows: TakeoffRawRecord[],
   assemblies: (MaterialCosting | FinalOutputAssembly)[],
 ): Record<string, TakeoffInstance[]> => {
-  const keyMap = new Map<string, string>();
+  const knownIds = new Set<string>();
   assemblies.forEach((asm) => {
     const ext = asm as FinalOutputAssembly;
-    if (typeof ext.height_ft === "number" && ext.assembly_id) {
-      const heightFt = Number(ext.height_ft);
-      const k = `${String(ext.assembly_id).trim()}|${heightFt}`;
-      keyMap.set(k, getFinalOutputAssemblyKey(ext.assembly_id, heightFt));
-    }
+    if (ext.assembly_id) knownIds.add(String(ext.assembly_id).trim());
   });
 
   const result: Record<string, TakeoffInstance[]> = {};
@@ -445,10 +401,7 @@ export const mapRawTakeoffToInstances = (
   rawRows.forEach((row, idx) => {
     if (!row.wall_type) return;
     const assemblyId = String(row.wall_type).trim();
-    const heightFt = parseFloat(String(row.height ?? 0)) || 0;
-    const k = `${assemblyId}|${heightFt}`;
-    const compositeKey = keyMap.get(k);
-    if (!compositeKey) return;
+    if (!knownIds.has(assemblyId)) return;
 
     const isCeiling =
       String(row.assembly_type ?? "").trim().toLowerCase() === "ceiling";
@@ -460,9 +413,9 @@ export const mapRawTakeoffToInstances = (
         ? parseFloat(String(row.area_parementer)) || undefined
         : undefined;
 
-    if (!result[compositeKey]) result[compositeKey] = [];
-    result[compositeKey].push({
-      id: `raw-${compositeKey}-${idx}`,
+    if (!result[assemblyId]) result[assemblyId] = [];
+    result[assemblyId].push({
+      id: `raw-${assemblyId}-${idx}`,
       level,
       description:
         row.description != null && String(row.description).trim() !== ""
@@ -470,7 +423,6 @@ export const mapRawTakeoffToInstances = (
           : `Assembly ${assemblyId}`,
       quantity: 1,
       length,
-      height: heightFt,
       ceilingArea,
       perimeter,
       lengthUnit: isCeiling ? "SF" : "LF",

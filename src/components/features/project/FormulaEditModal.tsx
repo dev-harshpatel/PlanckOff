@@ -83,9 +83,8 @@ function buildContextVarMap(
         instances.forEach(inst => {
             const qty = inst.quantity || 1;
             const isCeilingInst = (inst.ceilingArea || 0) > 0;
-            const rawH = inst.height || 0;
-            const h = (!isCeilingInst && rawH === 0 && assembly.defaultHeight)
-                ? assembly.defaultHeight : rawH;
+            const h = (!isCeilingInst && assembly.defaultHeight)
+                ? assembly.defaultHeight : 0;
             const effectiveH = Math.max(0, Math.min(hMax, h) - hMin);
             totalCeilingArea += (inst.ceilingArea || 0) * qty;
             if (isCeilingInst) totalPerimeter += (inst.perimeter || inst.length || 0) * qty;

@@ -247,7 +247,6 @@ export const Reports: React.FC<ReportsProps> = ({
                 const qty = inst.quantity || 1;
                 const isCeiling = asm.assemblyType === 'Ceiling';
                 const len = (inst.length || 0) * qty;
-                const h = inst.height || 0;
 
                 rows.push({
                     level: lvl,
@@ -255,8 +254,7 @@ export const Reports: React.FC<ReportsProps> = ({
                     desc: asm.description,
                     type: asm.assemblyType || 'Wall',
                     length: len,
-                    height: h,
-                    area: len * h,
+                    area: (inst.ceilingArea || 0) * qty,
                     ceilArea: (inst.ceilingArea || 0) * qty,
                     perimeter: isCeiling ? ((inst.perimeter || inst.length || 0) * qty) : 0
                 });
@@ -381,7 +379,6 @@ export const Reports: React.FC<ReportsProps> = ({
                                         <th className="text-left px-2 py-2">Floor</th>
                                         <th className="text-left px-2 py-2">Assembly</th>
                                         <th className="text-left px-2 py-2">Type</th>
-                                        <th className="text-right px-2 py-2">Height</th>
                                         <th className="text-right px-2 py-2">Length (LF)</th>
                                         <th className="text-right px-2 py-2">Wall Area (SF)</th>
                                         <th className="text-right px-2 py-2">Ceiling (SF)</th>
@@ -397,7 +394,6 @@ export const Reports: React.FC<ReportsProps> = ({
                                                 <div className="text-xs text-slate-500 truncate max-w-[200px]">{row.desc}</div>
                                             </td>
                                             <td className="px-2 py-1.5 text-slate-500 text-xs uppercase">{row.type}</td>
-                                            <td className="px-2 py-1.5 text-right font-mono text-slate-600">{row.height > 0 ? `${row.height}'` : '-'}</td>
                                             <td className="px-2 py-1.5 text-right font-mono">{row.length > 0 ? row.length.toFixed(1) : '-'}</td>
                                             <td className="px-2 py-1.5 text-right font-mono">{row.area > 0 ? Math.round(row.area) : '-'}</td>
                                             <td className="px-2 py-1.5 text-right font-mono font-medium text-blue-700">{row.ceilArea > 0 ? Math.round(row.ceilArea) : '-'}</td>

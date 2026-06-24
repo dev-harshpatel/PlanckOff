@@ -2,7 +2,6 @@ import * as XLSX from 'xlsx';
 import {
   TakeoffEntry,
   AggregatedTakeoff,
-  HeightVariant,
   ParsedTakeoffResult,
 } from '@/types/takeoff';
 
@@ -40,9 +39,6 @@ const COLUMN_PATTERNS = {
   areaParameter: [
     'area parementer', 'area parameter', 'area paremeter',
     'area paremeneter', 'area',
-  ],
-  height: [
-    'height', 'hgt', 'ht', 'wall height', 'wall_height', 'wallheight'
   ],
 };
 
@@ -118,11 +114,8 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
     const hasWallType = rowStrings.some(h =>
       COLUMN_PATTERNS.wallType.some(p => h.includes(p))
     );
-    const hasHeight = rowStrings.some(h =>
-      COLUMN_PATTERNS.height.some(p => h === p || h.includes(p))
-    );
 
-    if (hasWallType || hasHeight) {
+    if (hasWallType) {
       headerRowIndex = i;
       headers = row.map(cell => (cell || '').toString().trim());
       break;
@@ -142,7 +135,6 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
     wallType: findColumnIndex(headers, COLUMN_PATTERNS.wallType),
     wallLengthCeilingArea: findColumnIndex(headers, COLUMN_PATTERNS.wallLengthCeilingArea),
     areaParameter: findColumnIndex(headers, COLUMN_PATTERNS.areaParameter),
-    height: findColumnIndex(headers, COLUMN_PATTERNS.height),
   };
 
   // The "Unit" columns are the column RIGHT AFTER the value columns
@@ -152,11 +144,6 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
   if (colIdx.wallType === -1) {
     throw new Error(
       `Could not find "Wall Type" column. Found headers: [${headers.join(', ')}]`
-    );
-  }
-  if (colIdx.height === -1) {
-    throw new Error(
-      `Could not find "Height" column. Found headers: [${headers.join(', ')}]`
     );
   }
   if (colIdx.wallLengthCeilingArea === -1) {
@@ -175,7 +162,6 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
     const wallType = parseString(row[colIdx.wallType]);
     if (!wallType) continue; // Skip empty rows
 
-    const height = parseNumeric(row[colIdx.height]);
     const wallLengthValue = parseNumeric(row[colIdx.wallLengthCeilingArea]);
     const wallLengthUnit = wallLengthUnitIdx >= 0 ? parseString(row[wallLengthUnitIdx]).toUpperCase() : '';
     const areaParameterValue = colIdx.areaParameter >= 0 ? parseNumeric(row[colIdx.areaParameter]) : 0;
@@ -184,7 +170,7 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
     const assemblyType = colIdx.assemblyType >= 0 ? parseString(row[colIdx.assemblyType]) : '';
 
     // Skip rows with no usable data
-    if (height === 0 && wallLengthValue === 0 && areaParameterValue === 0) continue;
+    if (wallLengthValue === 0 && areaParameterValue === 0) continue;
 
     // Determine what wallLength/ceilingArea means based on the Unit column
     // If Unit is "SF" -> it's ceiling area, wallLength stays 0
@@ -213,7 +199,6 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
 
     entries.push({
       assemblyCode: wallType,
-      height,
       wallLength,
       ceilingArea: ceilingArea || undefined,
       level: level || undefined,
@@ -234,7 +219,6 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
     totalAssemblies: aggregated.length,
     columnMapping: {
       assemblyCode: headers[colIdx.wallType] || 'Wall Type',
-      height: headers[colIdx.height] || 'Height',
       wallLength: headers[colIdx.wallLengthCeilingArea] || 'wall Length/ Ceiling area',
       ceilingArea: colIdx.areaParameter >= 0 ? headers[colIdx.areaParameter] : undefined,
       level: colIdx.level >= 0 ? headers[colIdx.level] : undefined,
@@ -244,57 +228,30 @@ export function parseOSTSheet(buffer: ArrayBuffer): ParsedTakeoffResult {
 }
 
 /**
- * Group entries by assembly code, then by height, summing wall lengths
+ * Group entries by assembly code, summing wall lengths and ceiling areas.
  */
 function aggregateEntries(entries: TakeoffEntry[]): AggregatedTakeoff[] {
-  const grouped = new Map<string, Map<number, { totalLF: number; totalCeilingArea: number; count: number }>>();
+  const grouped = new Map<string, { totalLF: number; totalCeilingArea: number }>();
 
   for (const entry of entries) {
-    if (!grouped.has(entry.assemblyCode)) {
-      grouped.set(entry.assemblyCode, new Map());
+    const existing = grouped.get(entry.assemblyCode);
+    if (existing) {
+      existing.totalLF += entry.wallLength;
+      existing.totalCeilingArea += entry.ceilingArea || 0;
+    } else {
+      grouped.set(entry.assemblyCode, {
+        totalLF: entry.wallLength,
+        totalCeilingArea: entry.ceilingArea || 0,
+      });
     }
-
-    const heightMap = grouped.get(entry.assemblyCode)!;
-    const height = entry.height;
-
-    if (!heightMap.has(height)) {
-      heightMap.set(height, { totalLF: 0, totalCeilingArea: 0, count: 0 });
-    }
-
-    const existing = heightMap.get(height)!;
-    existing.totalLF += entry.wallLength;
-    existing.totalCeilingArea += entry.ceilingArea || 0;
-    existing.count += 1;
   }
 
   const result: AggregatedTakeoff[] = [];
 
-  for (const [assemblyCode, heightMap] of grouped) {
-    const heightVariants: HeightVariant[] = [];
-    let totalLF = 0;
-    let totalSF = 0;
-
-    const sortedHeights = Array.from(heightMap.entries()).sort((a, b) => a[0] - b[0]);
-
-    for (const [height, data] of sortedHeights) {
-      // SF: if we have ceiling area use that, otherwise height * LF
-      const sf = data.totalCeilingArea > 0 ? data.totalCeilingArea : height * data.totalLF;
-      heightVariants.push({
-        height,
-        totalLF: Math.round(data.totalLF * 100) / 100,
-        totalSF: Math.round(sf * 100) / 100,
-        count: data.count,
-      });
-      totalLF += data.totalLF;
-      totalSF += sf;
-    }
-
-    result.push({
-      assemblyCode,
-      heightVariants,
-      totalLF: Math.round(totalLF * 100) / 100,
-      totalSF: Math.round(totalSF * 100) / 100,
-    });
+  for (const [assemblyCode, data] of grouped) {
+    const totalLF = Math.round(data.totalLF * 100) / 100;
+    const totalSF = Math.round(data.totalCeilingArea * 100) / 100;
+    result.push({ assemblyCode, totalLF, totalSF });
   }
 
   result.sort((a, b) => a.assemblyCode.localeCompare(b.assemblyCode));

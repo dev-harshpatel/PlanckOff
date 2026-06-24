@@ -62,7 +62,7 @@ function buildDetail(
     case 'size':
       return fraction === 1.0
         ? `size: ${normalized.sizeMM ?? normalized.sizeImperial} exact (${earned}/${weight})`
-        : `size: ~${normalized.sizeMM}mm ≈ ${row.sizeMm}mm tolerance (${earned}/${weight})`;
+        : `size: ~${normalized.sizeMM}mm ≈ ${row.sizes?.[0]?.sizeMm ?? '?'}mm tolerance (${earned}/${weight})`;
 
     case 'keyword': {
       const rowSet   = new Set(row.searchKeywords.map(k => k.toLowerCase()));

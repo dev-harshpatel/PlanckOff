@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/shadcn/input';
 import { Button } from '@/components/shadcn/button';
 import { Skeleton } from '@/components/shadcn/skeleton';
@@ -21,11 +21,13 @@ import {
   TableRow,
 } from '@/components/shadcn/table';
 import { MaterialDetailSheet } from './MaterialDetailSheet';
+import { ItemFormSheet } from './ItemFormSheet';
+import { ConfirmModal } from '@/components/ui';
 import type { MaterialDatabaseRow, PaginatedResponse } from '@/types';
 import { cn } from '@/lib/cn';
 
 const PAGE_SIZE = 50;
-const COL_COUNT = 26;
+const COL_COUNT = 22;
 
 // ─── Cell helpers ─────────────────────────────────────────────────────────────
 
@@ -66,22 +68,6 @@ function PriceCell({ value }: { value: number }) {
   );
 }
 
-function KeywordsCell({ keywords }: { keywords: string[] }) {
-  if (!keywords?.length) return <span className="text-muted-foreground text-xs">—</span>;
-  return (
-    <span className="flex flex-wrap gap-0.5">
-      {keywords.map((k) => (
-        <span
-          key={k}
-          className="text-[9px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded font-mono"
-        >
-          {k}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 function TextCell({ value, className }: { value: string | number | null | undefined; className?: string }) {
   if (value == null || value === '') return <span className="text-muted-foreground text-xs">—</span>;
   return <span className={cn('text-xs', className)}>{value}</span>;
@@ -100,10 +86,8 @@ const COLUMNS: { label: string; minWidth: number }[] = [
   { label: 'Type',             minWidth: 88  },
   { label: 'Description',      minWidth: 220 },
   { label: 'Section',          minWidth: 88  },
-  { label: 'Size',             minWidth: 72  },
-  { label: 'Size Num',         minWidth: 72  },
+  { label: 'Sizes',            minWidth: 80  },
   { label: 'Unit Price',       minWidth: 88  },
-  { label: 'Container',        minWidth: 88  },
   { label: 'QTY1 Formula',     minWidth: 248 },
   { label: 'UOM1',             minWidth: 64  },
   { label: 'QTY2 Formula',     minWidth: 248 },
@@ -113,9 +97,7 @@ const COLUMNS: { label: string; minWidth: number }[] = [
   { label: 'QTY2 Ceiling',     minWidth: 248 },
   { label: 'UOM2 Ceiling',     minWidth: 80  },
   { label: 'Notes',            minWidth: 160 },
-  { label: 'Keywords',         minWidth: 180 },
-  { label: 'Size MM',          minWidth: 72  },
-  { label: 'Size Imperial',    minWidth: 88  },
+  { label: 'Actions',          minWidth: 88  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -128,6 +110,9 @@ export function MaterialDatabaseTab() {
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<MaterialDatabaseRow | null>(null);
+  const [editing, setEditing] = useState<MaterialDatabaseRow | null>(null);
+  const [deleting, setDeleting] = useState<MaterialDatabaseRow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -172,6 +157,22 @@ export function MaterialDatabaseTab() {
   const totalPages = result?.totalPages ?? 1;
   const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to = Math.min(page * PAGE_SIZE, total);
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/material-database/${deleting.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        if (selected?.id === deleting.id) setSelected(null);
+        setDeleting(null);
+        load(page, search, category);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -319,24 +320,20 @@ export function MaterialDatabaseTab() {
                       </code>
                     </TableCell>
 
-                    {/* Size */}
-                    <TableCell className="border-r border-slate-100">
-                      <TextCell value={row.size} className="text-muted-foreground" />
-                    </TableCell>
-
-                    {/* Size Num */}
+                    {/* Sizes */}
                     <TableCell className="border-r border-slate-100 text-center">
-                      <TextCell value={row.sizeNum || null} className="tabular-nums text-muted-foreground" />
+                      {row.sizes.length > 0 ? (
+                        <span className="inline-block text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded tabular-nums">
+                          {row.sizes.length} size{row.sizes.length !== 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </TableCell>
 
                     {/* Unit Price */}
                     <TableCell className="border-r border-slate-100">
                       <PriceCell value={row.unitPrice} />
-                    </TableCell>
-
-                    {/* Container Unit */}
-                    <TableCell className="border-r border-slate-100">
-                      <TextCell value={row.containerUnit} className="text-muted-foreground" />
                     </TableCell>
 
                     {/* QTY1 Formula (wall) */}
@@ -386,19 +383,28 @@ export function MaterialDatabaseTab() {
                       </span>
                     </TableCell>
 
-                    {/* Keywords */}
-                    <TableCell className="border-r border-slate-100">
-                      <KeywordsCell keywords={row.searchKeywords} />
-                    </TableCell>
-
-                    {/* Size MM */}
-                    <TableCell className="border-r border-slate-100 text-center">
-                      <TextCell value={row.sizeMm} className="tabular-nums text-muted-foreground" />
-                    </TableCell>
-
-                    {/* Size Imperial */}
-                    <TableCell>
-                      <TextCell value={row.sizeImperial} className="tabular-nums text-muted-foreground" />
+                    {/* Actions */}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setEditing(row)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setDeleting(row)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                   );
@@ -440,7 +446,36 @@ export function MaterialDatabaseTab() {
         </div>
       </div>
 
-      <MaterialDetailSheet material={selected} onClose={() => setSelected(null)} />
+      <MaterialDetailSheet
+        material={selected}
+        onClose={() => setSelected(null)}
+        onUpdated={(updated) => {
+          setSelected(updated);
+          setResult((prev) => prev && {
+            ...prev,
+            data: prev.data.map((r) => (r.id === updated.id ? updated : r)),
+          });
+        }}
+      />
+
+      <ItemFormSheet
+        activeTab="materials"
+        isOpen={!!editing}
+        editItem={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(page, search, category); }}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={handleDelete}
+        title="Delete material?"
+        message={`"${deleting?.code}" will be moved to trash and permanently deleted after 30 days.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

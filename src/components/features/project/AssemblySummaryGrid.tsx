@@ -25,7 +25,6 @@ interface SummaryRow {
   unitCost: number;
   totalCost: number;
   instanceCount: number;
-  height?: number; // specific height variant
 }
 
 export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
@@ -118,46 +117,29 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
         return;
       }
 
-      // Group instances by height
-      const byHeight = new Map<
-        number,
-        { instances: TakeoffInstance[]; cost: number; qty: number; perim: number }
-      >();
+      // Aggregate all instances for this assembly
+      let totalQty = 0;
+      let totalPerimeter = 0;
       instances.forEach((inst) => {
-        const h = inst.height || 0;
-        if (!byHeight.has(h)) {
-          byHeight.set(h, { instances: [], cost: 0, qty: 0, perim: 0 });
-        }
-        const entry = byHeight.get(h)!;
-        entry.instances.push(inst);
-        // Cost is computed from pipeline output (materialCostingData) via the parent — not calculated here.
-
         if (asm.assemblyType === "Ceiling") {
-          entry.qty += inst.ceilingArea || 0;
-          entry.perim += inst.perimeter || 0;
+          totalQty += inst.ceilingArea || 0;
+          totalPerimeter += inst.perimeter || 0;
         } else {
-          entry.qty += (inst.length || 0) * (inst.quantity || 1);
+          totalQty += (inst.length || 0) * (inst.quantity || 1);
         }
       });
 
-      // Create one row per height variant
-      const sortedHeights = Array.from(byHeight.entries()).sort(
-        (a, b) => a[0] - b[0],
-      );
-      sortedHeights.forEach(([height, data]) => {
-        rows.push({
-          id: asm.id,
-          code: asm.code,
-          name: asm.description,
-          type: displayType,
-          totalQty: data.qty,
-          totalPerimeter: data.perim,
-          unit: asm.assemblyType === "Ceiling" ? "SF" : "LF",
-          unitCost: data.qty > 0 ? data.cost / data.qty : 0,
-          totalCost: data.cost,
-          instanceCount: data.instances.length,
-          height,
-        });
+      rows.push({
+        id: asm.id,
+        code: asm.code,
+        name: asm.description,
+        type: displayType,
+        totalQty,
+        totalPerimeter,
+        unit: asm.assemblyType === "Ceiling" ? "SF" : "LF",
+        unitCost: 0,
+        totalCost: 0,
+        instanceCount: instances.length,
       });
     });
     return rows;
@@ -223,7 +205,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
 
               {expandedGroups[group] &&
                 groupRows.map((row) => {
-                  const rowKey = row.height != null ? `${row.id}-${row.height}` : row.id;
+                  const rowKey = row.id;
                   const isSelected = selectedAssemblyId === row.id;
                   const isCeiling =
                     row.type === "ACT Ceiling" ||
@@ -234,8 +216,8 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                   return (
                     <div
                       key={rowKey}
-                      onClick={() => onSelectAssembly(row.id, row.height)}
-                      onDoubleClick={() => onEditAssembly && onEditAssembly(row.id, row.height)}
+                      onClick={() => onSelectAssembly(row.id)}
+                      onDoubleClick={() => onEditAssembly && onEditAssembly(row.id)}
                       className={`flex items-center px-3 py-2 border-b border-slate-100 cursor-pointer transition-colors group
                         ${isSelected ? "bg-blue-600 text-white" : "hover:bg-blue-50 text-slate-700"}
                       `}
@@ -253,7 +235,7 @@ export const AssemblySummaryGrid: React.FC<AssemblySummaryGridProps> = ({
                           </span>
                         </div>
                         <div className={`truncate text-[11px] font-medium leading-tight ${isSelected ? "text-white" : "text-slate-700"}`}>
-                          {row.height != null ? `${row.name} @ ${row.height}'` : row.name}
+                          {row.name}
                         </div>
                       </div>
 

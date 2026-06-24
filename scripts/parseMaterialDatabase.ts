@@ -11,7 +11,7 @@ import * as path from 'path';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-const INPUT_FILE = path.resolve('data', 'Drywall Database (6-18-2026).xlsx');
+const INPUT_FILE = path.resolve('data', 'Drywall Database (6-24-2026).xlsx');
 const OUTPUT_FILE = path.resolve('data', 'json', 'material_database.json');
 // Try these sheet names in order — use whichever exists
 const SHEET_NAME_CANDIDATES = ['Material Data', 'Sheet1', 'Sheet 1', 'Materials'];
@@ -126,14 +126,24 @@ function run() {
     return -1;
   };
 
-  // Locate the two formula group headers in row 0 (case-insensitive match)
-  // Wall_FORMULA spans: wfBase+0=CONTAINER_UNIT, +1=QTY1, +2=UOM1, +3=QTY2, +4=UOM2
-  // Ceiling_FORMULA spans: cfBase+1=QTY1, +2=UOM1, +3=QTY2, +4=UOM2, +5=NOTES
-  const wfBase = colMap['WALL_FORMULA'] ?? -1;
-  const cfBase = colMap['CEILING_FORMULA'] ?? -1;
+  // The Wall_FORMULA / Ceiling_FORMULA group labels in row 0 sit on a merged
+  // cell whose text lands ONE COLUMN to the right of where the group's actual
+  // sub-columns start in row 1 (a quirk of how XLSX reports merged-cell
+  // labels). Anchoring on colMap['WALL_FORMULA'] is therefore off-by-one.
+  // Instead, anchor directly on the sub-header row (row 1), which has a
+  // unique, unambiguous label: CONTAINER_UNIT. Everything else in both the
+  // wall and ceiling formula blocks is a fixed offset from that anchor:
+  //   cuIdx+0 CONTAINER_UNIT        cuIdx+5 QTY1_FORMULA_CEILING
+  //   cuIdx+1 QTY1_FORMULA          cuIdx+6 UOM1_CEILING
+  //   cuIdx+2 UOM1                  cuIdx+7 QTY2_FORMULA_CEILING
+  //   cuIdx+3 QTY2_FORMULA          cuIdx+8 UOM2_CEILING
+  //   cuIdx+4 UOM2                  cuIdx+9 NOTES
+  const subHeaderRow = (allRows[headerRowIdx + 1] as string[]) ?? [];
+  const subUpper = subHeaderRow.map(c => String(c).trim().toUpperCase().replace(/\s+/g, '_'));
+  const cuIdx = subUpper.indexOf('CONTAINER_UNIT');
 
-  if (wfBase === -1 || cfBase === -1) {
-    console.warn('WARNING: Could not find Wall_FORMULA / Ceiling_FORMULA group headers — formula columns will be empty.');
+  if (cuIdx === -1) {
+    console.warn('WARNING: Could not find CONTAINER_UNIT sub-header — formula columns will be empty.');
   }
 
   const COL = {
@@ -150,24 +160,38 @@ function run() {
     SIZE:                 col('SIZE'),
     SIZE_NUM:             col('SIZE_NUM'),
     UNIT_PRICE:           col('UNIT_PRICE'),
-    // Wall formula sub-columns (relative to wfBase)
-    CONTAINER_UNIT:       wfBase >= 0 ? wfBase     : -1,
-    QTY1_FORMULA:         wfBase >= 0 ? wfBase + 1 : -1,
-    UOM1:                 wfBase >= 0 ? wfBase + 2 : -1,
-    QTY2_FORMULA:         wfBase >= 0 ? wfBase + 3 : -1,
-    UOM2:                 wfBase >= 0 ? wfBase + 4 : -1,
-    // Ceiling formula sub-columns (relative to cfBase)
-    QTY1_FORMULA_CEILING: cfBase >= 0 ? cfBase + 1 : -1,
-    UOM1_CEILING:         cfBase >= 0 ? cfBase + 2 : -1,
-    QTY2_FORMULA_CEILING: cfBase >= 0 ? cfBase + 3 : -1,
-    UOM2_CEILING:         cfBase >= 0 ? cfBase + 4 : -1,
-    NOTES:                cfBase >= 0 ? cfBase + 5 : -1,
+    // Wall formula sub-columns (relative to cuIdx)
+    CONTAINER_UNIT:       cuIdx >= 0 ? cuIdx     : -1,
+    QTY1_FORMULA:         cuIdx >= 0 ? cuIdx + 1 : -1,
+    UOM1:                 cuIdx >= 0 ? cuIdx + 2 : -1,
+    QTY2_FORMULA:         cuIdx >= 0 ? cuIdx + 3 : -1,
+    UOM2:                 cuIdx >= 0 ? cuIdx + 4 : -1,
+    // Ceiling formula sub-columns (relative to cuIdx)
+    QTY1_FORMULA_CEILING: cuIdx >= 0 ? cuIdx + 5 : -1,
+    UOM1_CEILING:         cuIdx >= 0 ? cuIdx + 6 : -1,
+    QTY2_FORMULA_CEILING: cuIdx >= 0 ? cuIdx + 7 : -1,
+    UOM2_CEILING:         cuIdx >= 0 ? cuIdx + 8 : -1,
+    NOTES:                cuIdx >= 0 ? cuIdx + 9 : -1,
   };
 
   const str  = (row: unknown[], idx: number) => idx >= 0 ? String(row[idx] ?? '').trim() : '';
   const num  = (row: unknown[], idx: number) => idx >= 0 ? (parseFloat(String(row[idx])) || 0) : 0;
 
   // ── Parse data rows ───────────────────────────────────────────────────────
+  // Rows sharing the same CODE collapse into one record with multiple
+  // sizes_data entries (e.g. insulation with multiple R-values/sizes).
+  interface SizeEntry {
+    size: string;
+    sizeNum: number;
+    containerUnit: string;
+    sizeMm: number | null;
+    sizeImperial: string | null;
+  }
+
+  // Every Excel row is its own unique material_database row — sizes_data is
+  // always a single-entry array on parse. Additional size entries are only
+  // ever added later by a user via the "Add Size" button in the edit sidebar
+  // (ItemFormSheet.tsx) — the importer must never merge rows by code.
   const records = [];
   let skippedSectionHeaders = 0;
   let skippedEmptyCode = 0;
@@ -196,6 +220,14 @@ function run() {
     const ceilingLabourCode    = str(row, COL.CEILING_LABOUR_CODE);
     const bulkheadLabourCode   = str(row, COL.BULKHEAD_LABOUR_CODE);
 
+    const sizeEntry: SizeEntry = {
+      size:          sizeStr,
+      sizeNum:       num(row, COL.SIZE_NUM),
+      containerUnit: str(row, COL.CONTAINER_UNIT),
+      sizeMm:        sizeMM,
+      sizeImperial,
+    };
+
     const searchKeywords = computeKeywords([
       category, type, description,
       sizeImperial, sizeMM !== null ? String(sizeMM) + 'mm' : null,
@@ -214,10 +246,8 @@ function run() {
       type,
       description,
       section:                str(row, COL.SECTION),
-      size:                   sizeStr,
-      size_num:               num(row, COL.SIZE_NUM),
+      sizes_data:             [sizeEntry],
       unit_price:             num(row, COL.UNIT_PRICE),
-      container_unit:         str(row, COL.CONTAINER_UNIT),
       qty1_formula:           str(row, COL.QTY1_FORMULA),
       uom1:                   str(row, COL.UOM1),
       qty2_formula:           str(row, COL.QTY2_FORMULA),
@@ -228,8 +258,6 @@ function run() {
       uom2_ceiling:           str(row, COL.UOM2_CEILING),
       notes:                  str(row, COL.NOTES),
       search_keywords:        searchKeywords,
-      size_mm:                sizeMM,
-      size_imperial:          sizeImperial,
     });
   }
 

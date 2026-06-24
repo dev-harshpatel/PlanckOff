@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { Admin, AuthState, LoginCredentials, LoginResponse, SessionResponse } from '@/types/auth';
 
 interface AuthContextValue extends AuthState {
@@ -15,11 +15,21 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Minimum ms between background re-validations (focus/visibility).
+// The initial mount call and manual refreshSession() bypasses this.
+const PASSIVE_REVALIDATE_COOLDOWN_MS = 60_000;
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<Admin | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isValidatingRef = useRef(false);
+  const lastPassiveValidationRef = useRef(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const validateSession = useCallback(async (showLoading = false) => {
+    if (isValidatingRef.current) return;
+    isValidatingRef.current = true;
+
     if (showLoading) {
       setIsLoading(true);
     }
@@ -35,14 +45,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (response.ok && data.valid && data.user) {
         setUser(data.user);
+      } else if (response.status >= 500) {
+        // Server error (e.g. during hot reload) — keep the current user state
+        // rather than logging out. The cookie is still valid.
       } else {
         setUser(null);
       }
     } catch (error) {
+      // Network failure — keep current state, don't log out
       console.error('Session validation error:', error);
-      setUser(null);
     } finally {
       setIsLoading(false);
+      isValidatingRef.current = false;
     }
   }, []);
 
@@ -51,22 +65,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [validateSession]);
 
   useEffect(() => {
-    const refreshSession = () => {
-      void validateSession(false);
+    // Debounced passive refresh — deduplicates focus + visibilitychange firing together,
+    // and enforces a cooldown so rapid tab switches don't hammer the endpoint.
+    const schedulePassiveRefresh = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+      debounceTimerRef.current = setTimeout(() => {
+        const now = Date.now();
+        if (now - lastPassiveValidationRef.current < PASSIVE_REVALIDATE_COOLDOWN_MS) return;
+        lastPassiveValidationRef.current = now;
+        void validateSession(false);
+      }, 300);
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        refreshSession();
+        schedulePassiveRefresh();
       }
     };
 
-    window.addEventListener('focus', refreshSession);
+    window.addEventListener('focus', schedulePassiveRefresh);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('focus', refreshSession);
+      window.removeEventListener('focus', schedulePassiveRefresh);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, [validateSession]);
 

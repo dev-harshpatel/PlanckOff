@@ -34,13 +34,26 @@ const sheetVariants = cva(
         top: 'inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
         bottom:
           'inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
-        left: 'inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm',
+        left: 'inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left',
         right:
-          'inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-lg',
+          'inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right',
+      },
+      // Width cap on top of the w-3/4 mobile default. Pick the smallest size
+      // that comfortably fits the content — wide sheets with tables/forms
+      // (e.g. MaterialDetailSheet's per-link Labour Band sections) need xl/2xl.
+      size: {
+        sm: 'sm:max-w-sm',
+        md: 'sm:max-w-md',
+        lg: 'sm:max-w-lg',
+        xl: 'sm:max-w-xl',
+        '2xl': 'sm:max-w-2xl',
+        '3xl': 'sm:max-w-3xl',
+        full: 'sm:max-w-full',
       },
     },
     defaultVariants: {
       side: 'right',
+      size: 'lg',
     },
   },
 );
@@ -52,15 +65,32 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, ...props }, ref) => (
+>(({ side = 'right', size, className, children, onPointerDownOutside, onInteractOutside, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cn(sheetVariants({ side, size }), className)}
+      onPointerDownOutside={(e) => {
+        // If any Radix popper (Select, Combobox, Popover…) is currently open,
+        // swallow the event — the popper will close itself and the sheet stays open.
+        if (document.querySelector('[data-radix-popper-content-wrapper]')) {
+          e.preventDefault();
+          return;
+        }
+        onPointerDownOutside?.(e);
+      }}
+      onInteractOutside={(e) => {
+        // Same guard for the interact-outside path.
+        if (document.querySelector('[data-radix-popper-content-wrapper]')) {
+          e.preventDefault();
+          return;
+        }
+        onInteractOutside?.(e);
+      }}
       {...props}
     >
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+      <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-sm text-white opacity-80 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white/50 disabled:pointer-events-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

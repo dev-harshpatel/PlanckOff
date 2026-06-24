@@ -150,12 +150,12 @@ function resolvePlaceholder(
       if (batts.length > 0) candidates = batts;
     }
 
-    // Narrow by cavity depth using the `size` field (which stores dimensions like "3.5" x 15"...")
+    // Narrow by cavity depth using sizes_data entries (each `size` stores dimensions like "3.5" x 15"...")
     // Convert fractional imperial (3-5/8") to its decimal equivalent (3.5") for comparison
     if (targetSize) {
       const decimalSize = imperialFractionToDecimal(targetSize);
       if (decimalSize !== null) {
-        const sizedBatts = candidates.filter(r => r.size?.includes(`${decimalSize}"`));
+        const sizedBatts = candidates.filter(r => r.sizes.some(s => s.size?.includes(`${decimalSize}"`)));
         if (sizedBatts.length > 0) candidates = sizedBatts;
       }
     }

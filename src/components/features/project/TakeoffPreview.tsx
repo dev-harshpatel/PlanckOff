@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
+import React from 'react';
+import { BarChart3 } from 'lucide-react';
 import { AggregatedTakeoff } from '@/types/takeoff';
 
 interface TakeoffPreviewProps {
@@ -10,25 +10,12 @@ interface TakeoffPreviewProps {
 }
 
 export const TakeoffPreview: React.FC<TakeoffPreviewProps> = ({ data, fileName }) => {
-  const [expandedAssemblies, setExpandedAssemblies] = useState<Set<string>>(
-    new Set(data.map(d => d.assemblyCode)) // All expanded by default
-  );
-
-  const toggleAssembly = (code: string) => {
-    setExpandedAssemblies(prev => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  };
-
   const formatNumber = (n: number): string => {
     return n.toLocaleString('en-US', { maximumFractionDigits: 1 });
   };
 
   const totalAssemblies = data.length;
-  const totalRows = data.reduce((sum, d) => d.heightVariants.reduce((s, v) => s + v.count, 0) + sum, 0);
+  const totalRows = data.length;
 
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -68,72 +55,30 @@ export const TakeoffPreview: React.FC<TakeoffPreviewProps> = ({ data, fileName }
 
       {/* Assembly list */}
       <div className="divide-y divide-slate-100 max-h-[360px] overflow-y-auto">
-        {data.map((assembly) => {
-          const isExpanded = expandedAssemblies.has(assembly.assemblyCode);
-          const assemblyRows = assembly.heightVariants.reduce((s, v) => s + v.count, 0);
-          return (
-            <div key={assembly.assemblyCode}>
-              {/* Assembly header row */}
-              <button
-                onClick={() => toggleAssembly(assembly.assemblyCode)}
-                className="w-full grid grid-cols-4 gap-2 px-4 py-3 hover:bg-slate-50 transition-colors text-left items-center"
-              >
-                <div className="flex items-center gap-2">
-                  {isExpanded
-                    ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    : <ChevronRight className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                  }
-                  <span className="inline-flex items-center justify-center h-6 px-2 rounded-md bg-blue-100 text-blue-700 text-xs font-bold">
-                    {assembly.assemblyCode}
-                  </span>
-                </div>
-                <div className="text-right font-mono text-sm font-medium text-slate-700">
-                  {formatNumber(assembly.totalLF)}
-                  <span className="text-slate-400 text-xs font-normal ml-0.5">LF</span>
-                </div>
-                <div className="text-right font-mono text-sm font-medium text-slate-700">
-                  {formatNumber(assembly.totalSF)}
-                  <span className="text-slate-400 text-xs font-normal ml-0.5">SF</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                    {assemblyRows}
-                  </span>
-                </div>
-              </button>
-
-              {/* Height variants */}
-              {isExpanded && (
-                <div className="border-t border-slate-100">
-                  {assembly.heightVariants.map((variant) => (
-                    <div
-                      key={variant.height}
-                      className="grid grid-cols-4 gap-2 px-4 py-2.5 bg-slate-50/50 hover:bg-slate-100/40 transition-colors border-b border-slate-50 last:border-0"
-                    >
-                      <div className="pl-8 flex items-center">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />
-                          <span className="text-xs font-medium text-slate-500">@ {variant.height}&apos;</span>
-                        </span>
-                      </div>
-                      <div className="text-right font-mono text-xs text-slate-500">
-                        {formatNumber(variant.totalLF)}{' '}
-                        <span className="text-slate-400">LF</span>
-                      </div>
-                      <div className="text-right font-mono text-xs text-slate-500">
-                        {formatNumber(variant.totalSF)}{' '}
-                        <span className="text-slate-400">SF</span>
-                      </div>
-                      <div className="text-right text-xs text-slate-400">
-                        {variant.count} row{variant.count !== 1 ? 's' : ''}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {data.map((assembly) => (
+          <div key={assembly.assemblyCode}>
+            <div className="grid grid-cols-4 gap-2 px-4 py-3 hover:bg-slate-50 transition-colors items-center">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center h-6 px-2 rounded-md bg-blue-100 text-blue-700 text-xs font-bold">
+                  {assembly.assemblyCode}
+                </span>
+              </div>
+              <div className="text-right font-mono text-sm font-medium text-slate-700">
+                {formatNumber(assembly.totalLF)}
+                <span className="text-slate-400 text-xs font-normal ml-0.5">LF</span>
+              </div>
+              <div className="text-right font-mono text-sm font-medium text-slate-700">
+                {formatNumber(assembly.totalSF)}
+                <span className="text-slate-400 text-xs font-normal ml-0.5">SF</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                  1
+                </span>
+              </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {/* Footer summary */}

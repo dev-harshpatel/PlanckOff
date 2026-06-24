@@ -89,7 +89,6 @@ export const useTakeoffSchedule = ({
         type: fileHeaders.findIndex((h) => h?.match(/assembly type|type/i)),
         level: fileHeaders.findIndex((h) => h?.match(/level|floor/i)),
         length: fileHeaders.findIndex((h) => h?.match(/wall length|length/i)),
-        height: fileHeaders.findIndex((h) => h?.match(/height/i)),
         area: fileHeaders.findIndex((h) =>
           h?.match(/area parem|area param|ceiling area|net area/i),
         ),
@@ -155,7 +154,6 @@ export const useTakeoffSchedule = ({
         if (!updatedTakeoffs[assembly.id]) updatedTakeoffs[assembly.id] = [];
 
         let len = 0,
-          ht = 0,
           area = 0,
           perim = 0;
         const r = row as Record<number, unknown>;
@@ -175,11 +173,6 @@ export const useTakeoffSchedule = ({
         if (colMap.length !== -1) {
           const { numeric, invalid } = parseNumericCell(r[colMap.length]);
           len = numeric;
-          if (invalid) invalidRowCount += 1;
-        }
-        if (colMap.height !== -1) {
-          const { numeric, invalid } = parseNumericCell(r[colMap.height]);
-          ht = numeric;
           if (invalid) invalidRowCount += 1;
         }
         if (colMap.area !== -1) {
@@ -213,9 +206,8 @@ export const useTakeoffSchedule = ({
           if (colE > 0) area = colE;
           if (colG > 0) perim = colG;
           len = 0;
-        } else if (colMap.length === -1 && colMap.height === -1) {
+        } else if (colMap.length === -1) {
           len = parseFloat(String(r[4] ?? "")) || 0;
-          ht = parseFloat(String(r[14] ?? "")) || 0;
         }
 
         updatedTakeoffs[assembly.id].push({
@@ -224,7 +216,6 @@ export const useTakeoffSchedule = ({
           description: String(r[colMap.desc] || r[1] || "Imported"),
           quantity: 1,
           length: len,
-          height: ht,
           ceilingArea: area,
           perimeter: perim,
           lengthUnit: rawLengthUnit || (len > 0 ? "LF" : ""),
@@ -306,7 +297,6 @@ export const useTakeoffSchedule = ({
           type: headers.findIndex((h) => h?.match(/assembly type|type/i)),
           level: headers.findIndex((h) => h?.match(/level|floor/i)),
           length: headers.findIndex((h) => h?.match(/length/i)),
-          height: headers.findIndex((h) => h?.match(/height|wall height/i)),
           area: headers.findIndex((h) => h?.match(/area|net area/i)),
           perimeter: headers.findIndex((h) =>
             h?.match(/perimeter|area perimeter|zone perimeter/i),
@@ -373,7 +363,6 @@ export const useTakeoffSchedule = ({
           if (!updatedTakeoffs[assembly.id]) updatedTakeoffs[assembly.id] = [];
 
           let len = 0,
-            ht = 0,
             area = 0,
             perim = 0;
           const parseNumericCell = (
@@ -392,10 +381,6 @@ export const useTakeoffSchedule = ({
             const { numeric } = parseNumericCell(r[colMap.length]);
             len = numeric;
           }
-          if (colMap.height !== -1) {
-            const { numeric } = parseNumericCell(r[colMap.height]);
-            ht = numeric;
-          }
           if (colMap.area !== -1) {
             const { numeric } = parseNumericCell(r[colMap.area]);
             area = numeric;
@@ -411,9 +396,8 @@ export const useTakeoffSchedule = ({
             if (colE > 0) area = colE;
             if (colG > 0) perim = colG;
             len = 0;
-          } else if (colMap.length === -1 && colMap.height === -1) {
+          } else if (colMap.length === -1) {
             len = parseFloat(String(r[4] ?? "")) || 0;
-            ht = parseFloat(String(r[14] ?? "")) || 0;
           }
 
           updatedTakeoffs[assembly.id].push({
@@ -422,7 +406,6 @@ export const useTakeoffSchedule = ({
             description: String(r[colMap.desc] || r[1] || "Imported"),
             quantity: 1,
             length: len,
-            height: ht,
             ceilingArea: area,
             perimeter: perim,
             lengthUnit: len > 0 ? "LF" : "",

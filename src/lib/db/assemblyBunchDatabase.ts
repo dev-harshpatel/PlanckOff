@@ -4,6 +4,7 @@ import type { AssemblyBunchItem, AssemblyBunchBranch } from '@/types';
 // ─── Transformer ──────────────────────────────────────────────────────────────
 
 const toAssemblyBunchItem = (row: Record<string, unknown>): AssemblyBunchItem => ({
+  id: row.id as string,
   assemblyCode: (row.assembly_code as string) ?? '',
   itemCode: (row.item_code as string) ?? '',
   section: (row.section as string) ?? '',
@@ -13,6 +14,7 @@ const toAssemblyBunchItem = (row: Record<string, unknown>): AssemblyBunchItem =>
   labourCode: (row.labour_code as string) ?? '',
   note: (row.note as string) ?? '',
   sortOrder: (row.sort_order as number) ?? 0,
+  deletedAt: (row.deleted_at as string) ?? null,
 });
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -25,6 +27,7 @@ export async function getAllAssemblyBunches(opts?: {
   let query = supabaseAdmin
     .from('assembly_bunch_database')
     .select('*')
+    .is('deleted_at', null)
     .order('parent_category')
     .order('branch_code')
     .order('sort_order');
@@ -66,9 +69,121 @@ export async function getAssemblyBunchGroups(): Promise<{
   const { data, error } = await supabaseAdmin
     .from('assembly_bunch_database')
     .select('parent_category')
+    .is('deleted_at', null)
     .order('parent_category');
 
   if (error) return { data: null, error: { message: error.message } };
   const unique = [...new Set((data ?? []).map((r) => r.parent_category as string).filter(Boolean))];
   return { data: unique, error: null };
+}
+
+export async function insertAssemblyBunchItem(row: Record<string, unknown>): Promise<{
+  error: { message: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .insert(row);
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function replaceAssemblyBranchRows(
+  branchCodes: string[],
+  rows: Record<string, unknown>[],
+): Promise<{
+  data: { deleted: number; inserted: number } | null;
+  error: { message: string } | null;
+}> {
+  if (branchCodes.length === 0) return { data: { deleted: 0, inserted: 0 }, error: null };
+
+  // Delete existing rows for each branch being replaced
+  const { error: delError } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .delete()
+    .in('branch_code', branchCodes);
+
+  if (delError) return { data: null, error: { message: delError.message } };
+
+  if (rows.length === 0) return { data: { deleted: 0, inserted: 0 }, error: null };
+
+  const CHUNK = 200;
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const { error } = await supabaseAdmin.from('assembly_bunch_database').insert(chunk);
+    if (error) return { data: null, error: { message: error.message } };
+    inserted += chunk.length;
+  }
+
+  return { data: { deleted: branchCodes.length, inserted }, error: null };
+}
+
+export async function updateAssemblyBunchItem(id: string, updates: Record<string, unknown>): Promise<{
+  data: AssemblyBunchItem | null;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: toAssemblyBunchItem(data as Record<string, unknown>), error: null };
+}
+
+export async function softDeleteAssemblyBunchItem(id: string): Promise<{
+  error: { message: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function restoreAssemblyBunchItem(id: string): Promise<{
+  error: { message: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .update({ deleted_at: null })
+    .eq('id', id);
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function getAssemblyBunchTrash(): Promise<{
+  data: (AssemblyBunchItem & { branchCode: string; group: string })[] | null;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  if (error) return { data: null, error: { message: error.message } };
+  return {
+    data: (data ?? []).map((row) => ({
+      ...toAssemblyBunchItem(row as Record<string, unknown>),
+      branchCode: (row.branch_code as string) ?? '',
+      group: (row.parent_category as string) ?? '',
+    })),
+    error: null,
+  };
+}
+
+export async function purgeExpiredAssemblyBunchTrash(): Promise<{
+  data: { purged: number } | null;
+  error: { message: string } | null;
+}> {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from('assembly_bunch_database')
+    .delete()
+    .not('deleted_at', 'is', null)
+    .lt('deleted_at', cutoff)
+    .select('id');
+
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: { purged: (data ?? []).length }, error: null };
 }

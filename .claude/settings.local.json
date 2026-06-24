@@ -15,7 +15,24 @@
       "PowerShell(New-Item *)",
       "PowerShell(Get-ChildItem \"D:\\\\Projects\\\\learning-projects\\\\PlanckOff\\\\data\\\\json\\\\\" | Select-Object Name, @{N='Size KB';E={[math]::Round\\($_.Length/1KB, 1\\)}})",
       "PowerShell(ls \"D:\\\\Projects\\\\learning-projects\\\\PlanckOff\\\\supabase\\\\migrations\" | Select-Object -Last 5 | ForEach-Object { $_.Name })",
-      "Bash(node *)"
+      "Bash(node *)",
+      "PowerShell(cd D:\\\\Projects\\\\learning-projects\\\\PlanckOff; npx tsc --noEmit 2>&1 | Where-Object { $_ -match \"AddItemSheet|database/new\" } | Select-Object -First 20)",
+      "Bash(xargs grep -l \"databases\")",
+      "Bash(git checkout *)",
+      "Bash(git ls-tree *)",
+      "Bash(mkdir -p /d/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/app/api/material-database/[id])",
+      "Bash(mkdir -p /d/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/app/api/labour-database/[id])",
+      "Bash(mkdir -p /d/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/app/api/database-import)",
+      "Bash(mkdir -p /d/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/lib/utils)",
+      "Bash(mkdir -p /d/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new)",
+      "Bash(cp 'D:/Projects/learning-projects/PlanckOff/src/components/features/database/new/MaterialDatabaseTab.tsx' 'D:/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new/MaterialDatabaseTab.tsx')",
+      "Bash(cp 'D:/Projects/learning-projects/PlanckOff/src/components/features/database/new/LabourDatabaseTab.tsx' 'D:/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new/LabourDatabaseTab.tsx')",
+      "Bash(cp 'D:/Projects/learning-projects/PlanckOff/src/components/features/database/new/MaterialDetailSheet.tsx' 'D:/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new/MaterialDetailSheet.tsx')",
+      "Bash(cp 'D:/Projects/learning-projects/PlanckOff/src/components/features/database/new/LabourDetailSheet.tsx' 'D:/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new/LabourDetailSheet.tsx')",
+      "Bash(cp 'D:/Projects/learning-projects/PlanckOff/src/components/features/database/new/ItemFormSheet.tsx' 'D:/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new/ItemFormSheet.tsx')",
+      "Bash(npx tsx *)",
+      "Skill(run)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

@@ -55,7 +55,12 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
+    // Server error (e.g. Supabase unavailable during hot reload) — do NOT clear the
+    // cookie. The session may still be valid; we just can't verify it right now.
     console.error('Session validation error:', error);
-    return invalidSessionResponse();
+    return NextResponse.json<SessionResponse>(
+      { valid: false, error: AUTH_ERRORS.INTERNAL_ERROR, code: 'INTERNAL_ERROR' },
+      { status: HTTP_STATUS.INTERNAL_ERROR },
+    );
   }
 }

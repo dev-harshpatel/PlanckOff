@@ -2,9 +2,9 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AssemblyComponent, MaterialDefinition, WallAssembly } from '@/types';
-import { AppWindow } from 'lucide-react';
+import { Layers, X } from 'lucide-react';
 import { DEFAULT_TEMPLATES, AssemblyTemplate } from '@/constants/defaultAssemblies';
-import { CloseButton, Modal } from '@/components/ui';
+import { Modal } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { FormulaDebugModal } from '@/components/features/project/FormulaDebugModal';
 import { FormulaEditModal } from '@/components/features/project/FormulaEditModal';
@@ -374,26 +374,43 @@ export const AssemblyEditorModal: React.FC<AssemblyEditorModalProps> = ({
         >
             <div className="bg-white w-full h-[95vh] flex flex-col overflow-hidden">
                 {/* Header bar */}
-                <div className="bg-blue-600 text-white px-6 py-3 flex justify-between items-center shrink-0">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <AppWindow className="w-6 h-6" />
-                        Edit Assembly: {assembly.code}
-                    </h2>
-                    <div className="flex items-center gap-4">
+                <div className="bg-white border-b border-slate-200 px-5 py-3 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                            <Layers className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider leading-none mb-0.5">
+                                Edit Assembly
+                            </p>
+                            <h2 className="text-base font-bold text-slate-900 leading-none">
+                                {assembly.code}
+                            </h2>
+                        </div>
+                        {assembly.assemblyType && (
+                            <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+                                {assembly.assemblyType}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-5">
                         <div className="text-right">
-                            <div className="text-xs opacity-80 uppercase tracking-widest">
-                                Total cost
-                        </div>
-                            <div className="text-2xl font-bold font-mono leading-none">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold leading-none mb-1">
+                                Assembly Total
+                            </p>
+                            <p className={`text-xl font-bold tabular-nums leading-none ${totalCost > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
                                 ${Number.isFinite(totalCost)
-                                    ? totalCost.toLocaleString(undefined, {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                    })
+                                    ? totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                     : '0.00'}
-                            </div>
+                            </p>
                         </div>
-                        <CloseButton onClick={onClose} size="md" variant="light" />
+                        <button
+                            onClick={onClose}
+                            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors text-slate-500 hover:text-slate-700"
+                            aria-label="Close"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
 

@@ -46,22 +46,18 @@ export function useEstimateCalculations({
     }
 
     const assemblyInstances = takeoffs[currentEditingAssembly.id] || [];
+    // Group all instances under key 0 (height removed from takeoff)
     statsByHeight = assemblyInstances.reduce(
       (acc, instance) => {
-        const height = instance.height || 0;
         const length = (instance.length || 0) * (instance.quantity || 1);
-
-        if (!acc[height]) acc[height] = { len: 0, area: 0, count: 0, perim: 0 };
-
+        if (!acc[0]) acc[0] = { len: 0, area: 0, count: 0, perim: 0 };
         if (currentEditingAssembly.assemblyType === 'Ceiling') {
-          acc[height].area += instance.ceilingArea || 0;
-          acc[height].perim = (acc[height].perim || 0) + (instance.perimeter || 0);
+          acc[0].area += instance.ceilingArea || 0;
+          acc[0].perim = (acc[0].perim || 0) + (instance.perimeter || 0);
         } else {
-          acc[height].len += length;
-          acc[height].area += length * height;
+          acc[0].len += length;
         }
-
-        acc[height].count += instance.quantity || 1;
+        acc[0].count += instance.quantity || 1;
         return acc;
       },
       {} as Record<number, { len: number; area: number; count: number; perim?: number }>,

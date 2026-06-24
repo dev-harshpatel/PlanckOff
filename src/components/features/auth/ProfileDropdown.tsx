@@ -3,11 +3,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LogOut, ChevronDown, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useNavigationLoading } from '@/context/NavigationLoadingContext';
 import { useRouter } from 'next/navigation';
 
 export function ProfileDropdown() {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +34,7 @@ export function ProfileDropdown() {
 
   const handleProfile = () => {
     setIsOpen(false);
+    startNavigation('/profile');
     router.push('/profile');
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { Package, Code2, Layers, Ruler, FlaskConical, Link2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Package, Code2, Layers, Ruler, FlaskConical, Link2, Hammer, Plus, X, Check } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -11,11 +12,12 @@ import {
 import { Badge } from '@/components/shadcn/badge';
 import { Separator } from '@/components/shadcn/separator';
 import { ScrollArea } from '@/components/shadcn/scroll-area';
-import type { MaterialDatabaseRow } from '@/types';
+import type { MaterialDatabaseRow, SizeEntry, LabourDatabaseRow, LabourBandEntry } from '@/types';
 
 interface MaterialDetailSheetProps {
   material: MaterialDatabaseRow | null;
   onClose: () => void;
+  onUpdated: (material: MaterialDatabaseRow) => void;
 }
 
 function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -47,10 +49,270 @@ function FormulaBlock({ label, formula, uom }: { label: string; formula: string;
   );
 }
 
-export function MaterialDetailSheet({ material, onClose }: MaterialDetailSheetProps) {
+interface NewSizeForm {
+  size: string;
+  sizeNum: string;
+  containerUnit: string;
+  sizeMm: string;
+  sizeImperial: string;
+}
+
+const EMPTY_NEW_SIZE: NewSizeForm = {
+  size: '', sizeNum: '', containerUnit: '', sizeMm: '', sizeImperial: '',
+};
+
+const HT_BANDS = ['All', 'Standard', 'Medium', 'High', 'Very High', 'Extra High'];
+
+interface NewBandForm {
+  labourCode: string;
+  htBand: string;
+  htMinFt: string;
+  htMaxFt: string;
+  uom: string;
+  ratePerUom: string;
+}
+
+const EMPTY_NEW_BAND: NewBandForm = {
+  labourCode: '', htBand: 'All', htMinFt: '0', htMaxFt: '99', uom: '', ratePerUom: '',
+};
+
+type LabourFieldKey = 'wallLabourCode' | 'ceilingLabourCode' | 'bulkheadLabourCode';
+type SlotKey = 'wall' | 'ceiling' | 'bulkhead';
+
+interface LabourSlot {
+  key: SlotKey;
+  label: string;
+  code: string;
+  parentSection: 'Walls' | 'Ceiling' | 'Bulkhead';
+  materialField: LabourFieldKey;
+}
+
+function buildSlots(material: MaterialDatabaseRow): LabourSlot[] {
+  return [
+    { key: 'wall', label: 'Wall Labour Band', code: material.wallLabourCode, parentSection: 'Walls', materialField: 'wallLabourCode' },
+    { key: 'ceiling', label: 'Ceiling Labour Band', code: material.ceilingLabourCode, parentSection: 'Ceiling', materialField: 'ceilingLabourCode' },
+    { key: 'bulkhead', label: 'Bulkhead Labour Band', code: material.bulkheadLabourCode, parentSection: 'Bulkhead', materialField: 'bulkheadLabourCode' },
+  ];
+}
+
+export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDetailSheetProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newSize, setNewSize] = useState<NewSizeForm>(EMPTY_NEW_SIZE);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // ─── Labour Band — resolved live from the Labour Database, bifurcated per
+  // link (Wall / Ceiling / Bulkhead). Each link's code can match MULTIPLE
+  // bands (e.g. different height ranges), so each slot renders an array,
+  // same pattern as Sizes — but Wall/Ceiling/Bulkhead are never mixed together.
+  const [matchesByCode, setMatchesByCode] = useState<Record<string, LabourBandEntry[]>>({});
+  const [openSlot, setOpenSlot] = useState<SlotKey | null>(null);
+  const [newBand, setNewBand] = useState<NewBandForm>(EMPTY_NEW_BAND);
+  const [bandSaving, setBandSaving] = useState(false);
+  const [bandError, setBandError] = useState<string | null>(null);
+
+  const refreshLabourMatches = useCallback(async (m: MaterialDatabaseRow) => {
+    const codes = [m.wallLabourCode, m.ceilingLabourCode, m.bulkheadLabourCode]
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (codes.length === 0) { setMatchesByCode({}); return; }
+
+    const results = await Promise.all(
+      codes.map((code) =>
+        fetch(`/api/labour-database?search=${encodeURIComponent(code)}`)
+          .then((r) => r.json())
+          .then((j) => (j.success ? (j.data as LabourDatabaseRow[]) : []))
+          .catch(() => [] as LabourDatabaseRow[]),
+      ),
+    );
+
+    const map: Record<string, LabourBandEntry[]> = {};
+    codes.forEach((code, i) => {
+      const key = code.toLowerCase();
+      const bands: LabourBandEntry[] = [];
+      for (const row of results[i]) {
+        for (const band of row.labourBands) {
+          if (band.labourCode.toLowerCase() === key) bands.push(band);
+        }
+      }
+      map[key] = bands;
+    });
+    setMatchesByCode(map);
+  }, []);
+
+  useEffect(() => {
+    if (material) refreshLabourMatches(material);
+    else setMatchesByCode({});
+    setOpenSlot(null);
+    setBandError(null);
+  }, [material, refreshLabourMatches]);
+
+  const startAdd = useCallback(() => {
+    setNewSize(EMPTY_NEW_SIZE);
+    setError(null);
+    setIsAdding(true);
+  }, []);
+
+  const cancelAdd = useCallback(() => {
+    setIsAdding(false);
+    setError(null);
+  }, []);
+
+  const set = useCallback((field: keyof NewSizeForm, value: string) => {
+    setNewSize((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const startAddBand = useCallback((slot: LabourSlot) => {
+    setNewBand({ ...EMPTY_NEW_BAND, labourCode: slot.code.trim() });
+    setBandError(null);
+    setOpenSlot(slot.key);
+  }, []);
+
+  const cancelAddBand = useCallback(() => {
+    setOpenSlot(null);
+    setBandError(null);
+  }, []);
+
+  const setBandField = useCallback((field: keyof NewBandForm, value: string) => {
+    setNewBand((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  async function handleSaveSize() {
+    if (!material) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const size: SizeEntry = {
+        size: newSize.size.trim(),
+        sizeNum: newSize.sizeNum !== '' ? Number(newSize.sizeNum) : 0,
+        containerUnit: newSize.containerUnit.trim(),
+        sizeMm: newSize.sizeMm !== '' ? Number(newSize.sizeMm) : null,
+        sizeImperial: newSize.sizeImperial.trim() || null,
+      };
+
+      const res = await fetch(`/api/material-database/${material.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parentSection: material.parentSection,
+          category: material.category,
+          assemblyCode: material.assemblyCode,
+          code: material.code,
+          wallLabourCode: material.wallLabourCode,
+          ceilingLabourCode: material.ceilingLabourCode,
+          bulkheadLabourCode: material.bulkheadLabourCode,
+          type: material.type,
+          description: material.description,
+          section: material.section,
+          sizes: [...material.sizes, size],
+          unitPrice: material.unitPrice,
+          qty1Formula: material.qty1Formula,
+          uom1: material.uom1,
+          qty2Formula: material.qty2Formula,
+          uom2: material.uom2,
+          qty1FormulaCeiling: material.qty1FormulaCeiling,
+          uom1Ceiling: material.uom1Ceiling,
+          qty2FormulaCeiling: material.qty2FormulaCeiling,
+          uom2Ceiling: material.uom2Ceiling,
+          notes: material.notes,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { setError(json.error ?? 'Failed to save'); return; }
+      onUpdated(json.data);
+      setIsAdding(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Adding a band always writes a NEW row to the Labour Database itself.
+  // If the slot (Wall/Ceiling/Bulkhead) had no code linked yet, the new
+  // code is also written back to that EXISTING material field (wallLabourCode
+  // etc.) so the link shows up — this is not new storage, just populating a
+  // field that was already part of the material row.
+  async function handleSaveBand(slot: LabourSlot) {
+    if (!material) return;
+    setBandError(null);
+    const codeToUse = slot.code.trim() || newBand.labourCode.trim();
+    if (!codeToUse) { setBandError('Labour code is required'); return; }
+
+    setBandSaving(true);
+    try {
+      const res = await fetch('/api/labour-database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          parentSection: slot.parentSection,
+          category: material.category,
+          description: material.description,
+          qty1Formula: '',
+          qty1Uom: '',
+          notes: '',
+          labourBands: [{
+            labourCode: codeToUse,
+            code: '',
+            htBand: newBand.htBand,
+            htMinFt: newBand.htMinFt !== '' ? Number(newBand.htMinFt) : 0,
+            htMaxFt: newBand.htMaxFt !== '' ? Number(newBand.htMaxFt) : 99,
+            uom: newBand.uom.trim(),
+            ratePerUom: newBand.ratePerUom !== '' ? Number(newBand.ratePerUom) : 0,
+          }],
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { setBandError(json.error ?? 'Failed to save'); return; }
+
+      let current = material;
+      if (!slot.code.trim()) {
+        const patchRes = await fetch(`/api/material-database/${material.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parentSection: material.parentSection,
+            category: material.category,
+            assemblyCode: material.assemblyCode,
+            code: material.code,
+            wallLabourCode: slot.materialField === 'wallLabourCode' ? codeToUse : material.wallLabourCode,
+            ceilingLabourCode: slot.materialField === 'ceilingLabourCode' ? codeToUse : material.ceilingLabourCode,
+            bulkheadLabourCode: slot.materialField === 'bulkheadLabourCode' ? codeToUse : material.bulkheadLabourCode,
+            type: material.type,
+            description: material.description,
+            section: material.section,
+            sizes: material.sizes,
+            unitPrice: material.unitPrice,
+            qty1Formula: material.qty1Formula,
+            uom1: material.uom1,
+            qty2Formula: material.qty2Formula,
+            uom2: material.uom2,
+            qty1FormulaCeiling: material.qty1FormulaCeiling,
+            uom1Ceiling: material.uom1Ceiling,
+            qty2FormulaCeiling: material.qty2FormulaCeiling,
+            uom2Ceiling: material.uom2Ceiling,
+            notes: material.notes,
+          }),
+        });
+        const patchJson = await patchRes.json();
+        if (!patchJson.success) {
+          setBandError(patchJson.error ?? 'Created the labour entry, but failed to link it to this material');
+          return;
+        }
+        current = patchJson.data;
+        onUpdated(current);
+      }
+
+      await refreshLabourMatches(current);
+      setOpenSlot(null);
+    } finally {
+      setBandSaving(false);
+    }
+  }
+
+  const slots = material ? buildSlots(material) : [];
+
   return (
     <Sheet open={!!material} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg flex flex-col p-0 gap-0">
+      <SheetContent size="2xl" className="w-full flex flex-col p-0 gap-0">
         {material && (
           <>
             {/* Header */}
@@ -104,19 +366,134 @@ export function MaterialDetailSheet({ material, onClose }: MaterialDetailSheetPr
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Layers className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs font-semibold text-foreground">Pricing & Units</p>
+                    <p className="text-xs font-semibold text-foreground">Pricing &amp; Units</p>
                   </div>
                   <div className="bg-muted/40 rounded-lg px-3 divide-y divide-border">
                     <DetailRow label="Unit Price" value={material.unitPrice === 0 ? '—' : `$${material.unitPrice.toFixed(4)}`} />
-                    <DetailRow label="Container Unit" value={material.containerUnit} />
-                    <DetailRow label="Size" value={material.size} />
-                    <DetailRow label="Size (numeric)" value={material.sizeNum || null} />
-                    <DetailRow label="Size (mm)" value={material.sizeMm} />
-                    <DetailRow label="Size (imperial)" value={material.sizeImperial} />
                   </div>
                 </div>
 
-                {/* Labour links */}
+                {/* Sizes */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Ruler className="w-3.5 h-3.5 text-muted-foreground" />
+                      <p className="text-xs font-semibold text-foreground">Sizes</p>
+                    </div>
+                    {!isAdding && (
+                      <button
+                        type="button"
+                        onClick={startAdd}
+                        className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                      >
+                        <Plus size={11} />
+                        Add Size
+                      </button>
+                    )}
+                  </div>
+                  {material.sizes.length === 0 && !isAdding ? (
+                    <p className="text-xs text-muted-foreground italic px-1">No sizes defined.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border border-border rounded-lg overflow-hidden">
+                        <thead className="bg-muted/60">
+                          <tr>
+                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Size</th>
+                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Num</th>
+                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Container</th>
+                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MM</th>
+                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Imperial</th>
+                            {isAdding && <th className="w-12" />}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {material.sizes.map((s, i) => (
+                            <tr key={i} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-2.5 py-1.5 font-medium text-foreground">{s.size || '—'}</td>
+                              <td className="px-2.5 py-1.5 tabular-nums text-muted-foreground">{s.sizeNum || '—'}</td>
+                              <td className="px-2.5 py-1.5 text-muted-foreground">{s.containerUnit || '—'}</td>
+                              <td className="px-2.5 py-1.5 tabular-nums text-muted-foreground">{s.sizeMm ?? '—'}</td>
+                              <td className="px-2.5 py-1.5 font-mono text-muted-foreground">{s.sizeImperial || '—'}</td>
+                              {isAdding && <td />}
+                            </tr>
+                          ))}
+                          {isAdding && (
+                            <tr className="bg-emerald-50/40">
+                              <td className="px-2 py-1.5">
+                                <input
+                                  autoFocus
+                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                  value={newSize.size}
+                                  onChange={(e) => set('size', e.target.value)}
+                                  placeholder="10'"
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  type="number"
+                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                  value={newSize.sizeNum}
+                                  onChange={(e) => set('sizeNum', e.target.value)}
+                                  placeholder="10"
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                  value={newSize.containerUnit}
+                                  onChange={(e) => set('containerUnit', e.target.value)}
+                                  placeholder="Piece"
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  type="number"
+                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                  value={newSize.sizeMm}
+                                  onChange={(e) => set('sizeMm', e.target.value)}
+                                  placeholder="—"
+                                />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <input
+                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                  value={newSize.sizeImperial}
+                                  onChange={(e) => set('sizeImperial', e.target.value)}
+                                  placeholder='1/2"'
+                                />
+                              </td>
+                              <td className="px-1.5 py-1.5">
+                                <div className="flex items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={handleSaveSize}
+                                    disabled={saving}
+                                    className="flex items-center justify-center w-6 h-6 rounded hover:bg-emerald-100 text-emerald-600 disabled:opacity-50"
+                                    title="Save"
+                                  >
+                                    <Check size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cancelAdd}
+                                    disabled={saving}
+                                    className="flex items-center justify-center w-6 h-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-50"
+                                    title="Cancel"
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {error && <p className="text-[11px] text-red-600 mt-1.5">{error}</p>}
+                </div>
+
+                {/* Labour links — the raw code references */}
                 {(material.wallLabourCode || material.ceilingLabourCode || material.bulkheadLabourCode) && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -130,6 +507,173 @@ export function MaterialDetailSheet({ material, onClose }: MaterialDetailSheetPr
                     </div>
                   </div>
                 )}
+
+                {/* Labour Band — resolved live from the Labour Database, bifurcated
+                    per link. Wall, Ceiling, and Bulkhead are kept fully separate:
+                    each has its own matches and its own "+ Add" that creates a row
+                    scoped to that section only. */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Hammer className="w-3.5 h-3.5 text-muted-foreground" />
+                    <p className="text-xs font-semibold text-foreground">Labour Band</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {slots.map((slot) => {
+                      const bands = matchesByCode[slot.code.trim().toLowerCase()] ?? [];
+                      const isOpen = openSlot === slot.key;
+                      return (
+                        <div key={slot.key}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[11px] font-semibold text-slate-600">{slot.label}</p>
+                              {slot.code && (
+                                <code className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                  {slot.code}
+                                </code>
+                              )}
+                            </div>
+                            {!isOpen && (
+                              <button
+                                type="button"
+                                onClick={() => startAddBand(slot)}
+                                className="flex items-center gap-1 text-[10px] font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                              >
+                                <Plus size={11} />
+                                Add
+                              </button>
+                            )}
+                          </div>
+
+                          {bands.length === 0 && !isOpen ? (
+                            <p className="text-[11px] text-muted-foreground italic px-1">
+                              {slot.code ? 'No bands found in the Labour Database for this code.' : 'No labour code linked yet.'}
+                            </p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border border-border rounded-lg overflow-hidden">
+                                <thead className="bg-muted/60">
+                                  <tr>
+                                    {!slot.code && <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Labour Code</th>}
+                                    <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">HT Band</th>
+                                    <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Min Ft</th>
+                                    <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Ft</th>
+                                    <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">UOM</th>
+                                    <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Rate</th>
+                                    {isOpen && <th className="w-12" />}
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                  {bands.map((b, i) => (
+                                    <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                      {!slot.code && <td className="px-2.5 py-1.5 font-mono text-[10px] text-foreground">{b.labourCode || '—'}</td>}
+                                      <td className="px-2.5 py-1.5 text-muted-foreground">{b.htBand || 'All'}</td>
+                                      <td className="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">{b.htMinFt}</td>
+                                      <td className="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">
+                                        {b.htMaxFt < 99 ? b.htMaxFt : '∞'}
+                                      </td>
+                                      <td className="px-2.5 py-1.5 text-muted-foreground">{b.uom || '—'}</td>
+                                      <td className="px-2.5 py-1.5 tabular-nums text-right font-medium text-foreground">
+                                        {b.ratePerUom === 0 ? '—' : `$${b.ratePerUom.toFixed(4)}`}
+                                      </td>
+                                      {isOpen && <td />}
+                                    </tr>
+                                  ))}
+                                  {isOpen && (
+                                    <tr className="bg-emerald-50/40">
+                                      {!slot.code && (
+                                        <td className="px-2 py-1.5">
+                                          <input
+                                            autoFocus
+                                            className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                            value={newBand.labourCode}
+                                            onChange={(e) => setBandField('labourCode', e.target.value)}
+                                            placeholder="LAB-ACT-TILE"
+                                          />
+                                        </td>
+                                      )}
+                                      <td className="px-2 py-1.5">
+                                        <select
+                                          autoFocus={!!slot.code}
+                                          className="w-full h-7 rounded border border-slate-200 bg-white px-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                          value={newBand.htBand}
+                                          onChange={(e) => setBandField('htBand', e.target.value)}
+                                        >
+                                          {HT_BANDS.map((b) => <option key={b} value={b}>{b}</option>)}
+                                        </select>
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        <input
+                                          type="number"
+                                          className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                          value={newBand.htMinFt}
+                                          onChange={(e) => setBandField('htMinFt', e.target.value)}
+                                        />
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        <input
+                                          type="number"
+                                          className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                          value={newBand.htMaxFt}
+                                          onChange={(e) => setBandField('htMaxFt', e.target.value)}
+                                        />
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        <input
+                                          className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                          value={newBand.uom}
+                                          onChange={(e) => setBandField('uom', e.target.value)}
+                                          placeholder="SF"
+                                        />
+                                      </td>
+                                      <td className="px-2 py-1.5">
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                          value={newBand.ratePerUom}
+                                          onChange={(e) => setBandField('ratePerUom', e.target.value)}
+                                          placeholder="0.00"
+                                        />
+                                      </td>
+                                      <td className="px-1.5 py-1.5">
+                                        <div className="flex items-center gap-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleSaveBand(slot)}
+                                            disabled={bandSaving}
+                                            className="flex items-center justify-center w-6 h-6 rounded hover:bg-emerald-100 text-emerald-600 disabled:opacity-50"
+                                            title="Save"
+                                          >
+                                            <Check size={13} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={cancelAddBand}
+                                            disabled={bandSaving}
+                                            className="flex items-center justify-center w-6 h-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-50"
+                                            title="Cancel"
+                                          >
+                                            <X size={13} />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          {isOpen && bandError && <p className="text-[11px] text-red-600 mt-1.5">{bandError}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 mt-3">
+                    New bands are added directly to the Labour Database. If a section has no code linked yet, adding a band also links the new code to that section on this material.
+                  </p>
+                </div>
 
                 {/* Formulas */}
                 {(material.qty1Formula || material.qty1FormulaCeiling) && (

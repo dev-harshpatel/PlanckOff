@@ -35,18 +35,10 @@ export const mapUiAssembliesToCosting = (
 
     const overrideMaps = buildAssemblyOverrideMaps(assembly);
 
-    // Parse assembly_id and height_ft from composite id ("P1@9.7") to match
-    // the way final_output assemblies are keyed in MaterialCosting.
-    const lastAt = assembly.id.lastIndexOf("@");
-    const assemblyCode =
-      lastAt >= 0 ? assembly.id.slice(0, lastAt) : assembly.id;
-    const heightFt =
-      lastAt >= 0 ? parseFloat(assembly.id.slice(lastAt + 1)) : null;
-
     nextCostingData = applyOverridesToCostingData(
       nextCostingData,
-      assemblyCode,
-      Number.isFinite(heightFt as number) ? (heightFt as number) : null,
+      assembly.id,
+      null,
       overrideMaps,
     );
   });

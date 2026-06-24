@@ -1,5 +1,4 @@
 export {
-  getFinalOutputAssemblyKey,
   mapFinalOutputToTakeoffs,
   mapFinalOutputToWallAssemblies,
   mapJsonToWallAssemblies,

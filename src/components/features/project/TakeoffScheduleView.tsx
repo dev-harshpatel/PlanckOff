@@ -100,10 +100,9 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                     case 'level': valA = a.instance.level || ''; valB = b.instance.level || ''; break;
                     case 'description': valA = a.instance.description || ''; valB = b.instance.description || ''; break;
                     case 'length': valA = a.instance.length || 0; valB = b.instance.length || 0; break;
-                    case 'height': valA = a.instance.height || 0; valB = b.instance.height || 0; break;
                     case 'area':
-                        valA = a.instance.ceilingArea ? a.instance.ceilingArea : ((a.instance.length || 0) * (a.instance.height || 0));
-                        valB = b.instance.ceilingArea ? b.instance.ceilingArea : ((b.instance.length || 0) * (b.instance.height || 0));
+                        valA = a.instance.ceilingArea ?? 0;
+                        valB = b.instance.ceilingArea ?? 0;
                         break;
                     case 'perimeter': valA = a.instance.perimeter || 0; valB = b.instance.perimeter || 0; break;
                 }
@@ -202,7 +201,6 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                 <div className="flex-1 cursor-pointer hover:text-blue-600 flex items-center" onClick={() => handleSort('description')}>Desc {renderSortArrow('description')}</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('length')}>Length {renderSortArrow('length')}</div>
                 <div className="w-12 text-center">Unit</div>
-                <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('height')}>Height {renderSortArrow('height')}</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('area')}>Area {renderSortArrow('area')}</div>
                 <div className="w-12 text-center">Unit</div>
                 <div className="w-20 text-right cursor-pointer hover:text-blue-600 flex items-center justify-end" onClick={() => handleSort('perimeter')}>Perim {renderSortArrow('perimeter')}</div>
@@ -282,21 +280,10 @@ export const TakeoffScheduleView: React.FC<TakeoffScheduleViewProps> = ({
                                 {row.instance.lengthUnit || (row.instance.length ? 'LF' : '-')}
                             </div>
 
-                            {/* HEIGHT */}
-                            <div className="w-20 text-right pr-2">
-                                <input
-                                    type="number"
-                                    className="w-full text-right font-mono text-slate-600 bg-transparent border border-transparent hover:border-slate-300 rounded focus:border-blue-400 outline-none"
-                                    value={row.instance.height ?? ''}
-                                    placeholder="-"
-                                    onChange={(e) => handleFieldChange(row, 'height', parseFloat(e.target.value))}
-                                />
-                            </div>
-
                             {/* AREA (Calculated or Override) */}
                             <div className="w-20 text-right pr-2">
                                 <span className="text-slate-500 font-mono">
-                                    {row.instance.ceilingArea ? row.instance.ceilingArea.toFixed(0) : ((row.instance.length || 0) * (row.instance.height || 0)).toFixed(0)}
+                                    {row.instance.ceilingArea ? row.instance.ceilingArea.toFixed(0) : '—'}
                                 </span>
                             </div>
 

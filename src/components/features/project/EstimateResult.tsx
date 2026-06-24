@@ -417,7 +417,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         setIsTemplateMenuOpen={setIsTemplateMenuOpen}
         templates={templates}
         handleAddFromTemplate={handleAddFromTemplate}
-        setIsDatabaseOpen={setIsDatabaseOpen}
         openImportModal={openImportModal}
         projectId={projectIdProp}
         handleImportComplete={handleImportComplete}

@@ -23,6 +23,7 @@ import { mapFinalOutputToWallAssemblies } from "@/lib/utils/assemblyJsonMapper";
 import { useProjectData } from "@/hooks/useProjectData";
 import { ProjectDataProvider } from "@/context/ProjectDataContext";
 import { ProjectPageSkeleton } from "@/components/features/project/ProjectPageSkeleton";
+import { useNavigationLoading } from "@/context/NavigationLoadingContext";
 
 const REPORT_TABS = ["materials", "matlab", "labor", "markups", "proposal", "bidding"] as const;
 type ReportTab = (typeof REPORT_TABS)[number];
@@ -32,6 +33,7 @@ const isReportTab = (t: string | null): t is ReportTab =>
 
 function ProjectContent() {
   const router = useRouter();
+  const { startNavigation } = useNavigationLoading();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("id");
@@ -317,6 +319,7 @@ function ProjectContent() {
   };
 
   const handleReset = () => {
+    startNavigation('/dashboard');
     router.push("/dashboard");
   };
 
@@ -332,7 +335,7 @@ function ProjectContent() {
         <div className="w-full px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => { startNavigation('/dashboard'); router.push("/dashboard"); }}
               className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600"
             >
               <Briefcase className="w-5 h-5" />

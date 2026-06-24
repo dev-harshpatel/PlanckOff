@@ -56,19 +56,23 @@ async function run() {
 
   const rows = records.map((r) => ({
     parent_section: r.parent_section,
-    labour_code:    r.labour_code,
-    code:           r.code,
     description:    r.description,
     category:       r.category,
-    ht_band:        r.ht_band,
-    ht_min_ft:      r.ht_min_ft,
-    ht_max_ft:      r.ht_max_ft,
-    uom:            r.uom,
-    rate_per_uom:   r.rate_per_uom,
+    labour_bands:   r.labour_bands ?? [],
     qty1_formula:   r.qty1_formula,
     qty1_uom:       r.qty1_uom,
     notes:          r.notes,
   }));
+
+  // No unique key to upsert on (category/description aren't constrained) —
+  // clear the table and re-insert, same approach as importMaterialDatabase.ts.
+  console.log('Clearing existing rows from labour_database...');
+  const { error: deleteError } = await supabase.from(TABLE).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (deleteError) {
+    console.error(`ERROR: Failed to clear table: ${deleteError.message}`);
+    process.exit(1);
+  }
+  console.log('Table cleared.');
 
   const batches = chunk(rows, CHUNK_SIZE);
   let inserted = 0;
@@ -80,7 +84,7 @@ async function run() {
     const batch = batches[i];
     const { error } = await supabase
       .from(TABLE)
-      .upsert(batch, { onConflict: 'labour_code,ht_band' });
+      .insert(batch);
 
     if (error) {
       console.error(`  Batch ${i + 1}/${batches.length} FAILED: ${error.message}`);

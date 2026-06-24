@@ -66,7 +66,7 @@ export const getRowDetails = (comp: AssemblyComponent, assembly: WallAssembly, i
     // Calculate totals from instances
     instances.forEach(inst => {
         const quantity = inst.quantity || 1;
-        const h = inst.height || 0;
+        const h = 0;
 
         // Calculate effective height slice
         const effectiveH = Math.max(0, Math.min(hMax, h) - hMin);

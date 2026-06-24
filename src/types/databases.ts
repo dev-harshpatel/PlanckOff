@@ -1,3 +1,23 @@
+// ─── Shared sub-types ─────────────────────────────────────────────────────────
+
+export interface SizeEntry {
+  size: string;
+  sizeNum: number;
+  containerUnit: string;
+  sizeMm: number | null;
+  sizeImperial: string | null;
+}
+
+export interface LabourBandEntry {
+  labourCode: string;
+  code: string;          // short code: STD | HI | VHI etc.
+  htBand: string;        // Standard | High | Very High | Extra High | Medium | All
+  htMinFt: number;
+  htMaxFt: number;
+  uom: string;
+  ratePerUom: number;
+}
+
 // ─── Material Database ────────────────────────────────────────────────────────
 
 export interface MaterialDatabaseRow {
@@ -13,12 +33,8 @@ export interface MaterialDatabaseRow {
   type: string;
   description: string;
   section: string;
-  size: string;
-  sizeNum: number;
-  sizeMm: number | null;
-  sizeImperial: string | null;
+  sizes: SizeEntry[];              // replaces: size, sizeNum, sizeMm, sizeImperial, containerUnit
   unitPrice: number;
-  containerUnit: string;
   qty1Formula: string;
   uom1: string;
   qty2Formula: string;
@@ -29,6 +45,7 @@ export interface MaterialDatabaseRow {
   uom2Ceiling: string;
   notes: string;
   searchKeywords: string[];
+  deletedAt: string | null;
 }
 
 // ─── Labour Database ──────────────────────────────────────────────────────────
@@ -36,23 +53,19 @@ export interface MaterialDatabaseRow {
 export interface LabourDatabaseRow {
   id: string;
   parentSection: string;           // Walls | Ceiling | Bulkhead
-  labourCode: string;              // e.g. LAB-FRM-STD
-  code: string;                    // height band short code: STD | HI | VHI etc.
   description: string;
   category: string;
-  htBand: string;                  // Standard | High | Very High | Extra High | Medium | All
-  htMinFt: number;
-  htMaxFt: number;
-  uom: string;
-  ratePerUom: number;
+  labourBands: LabourBandEntry[];  // replaces: labourCode, code, htBand, htMinFt, htMaxFt, uom, ratePerUom
   qty1Formula: string;
   qty1Uom: string;
   notes: string;
+  deletedAt: string | null;
 }
 
 // ─── Assembly Bunch Database ──────────────────────────────────────────────────
 
 export interface AssemblyBunchItem {
+  id: string;
   assemblyCode: string;
   itemCode: string;                // XXXXXXX = placeholder resolved at match time
   section: string;
@@ -62,6 +75,7 @@ export interface AssemblyBunchItem {
   labourCode: string;
   note: string;
   sortOrder: number;
+  deletedAt: string | null;
 }
 
 export interface AssemblyBunchBranch {

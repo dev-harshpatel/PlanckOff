@@ -29,12 +29,10 @@ export interface MaterialMatchInput {
   assemblies: MaterialMatchAssembly[];
 }
 
-/** One aggregated takeoff group: same wall_type + height, with summed quantities */
+/** One aggregated takeoff group: same wall_type, with summed quantities */
 interface AggregatedTakeoffGroup {
   assembly_id: string;
   assembly_type: string;
-  height_ft: number;
-  height_category: string;
   total_length: number;
   ceiling_area: number;
   area_parementer: number;
@@ -50,8 +48,6 @@ export interface FinalOutputAssembly {
   area_parementer: number | null;
   fire_rating?: string | null;
   framing_category?: string | null;
-  height_category: string;
-  height_ft: number;
   level?: string;
   materials_costing: MaterialsCostingItem[];
   project_country?: string | null;
@@ -68,114 +64,7 @@ export interface FinalOutputResult {
   assemblies: FinalOutputAssembly[];
 }
 
-// ─── Height Categories ─────────────────────────────────────────────────────────
-
-const HEIGHT_CATEGORIES: Array<{ max: number; label: string }> = [
-  { max: 10, label: "up to 10'" },
-  { max: 12, label: "10' to 12'" },
-  { max: 15, label: "12' to 15'" },
-  { max: 20, label: "15' to 20'" },
-  { max: Number.POSITIVE_INFINITY, label: "20' and above" },
-];
-
-const getHeightCategory = (heightFt: number): string => {
-  for (const { max, label } of HEIGHT_CATEGORIES) {
-    if (heightFt < max) return label;
-  }
-  return HEIGHT_CATEGORIES[HEIGHT_CATEGORIES.length - 1].label;
-};
-
-// ─── Steel Framing Gauge Filter ────────────────────────────────────────────────
-
-/**
- * Extracts the mil (thousandths of an inch) value from a material code.
- * e.g. "ST-358-18" → 18, "TR-358-43" → 43, "DLT-358-33" → 33
- */
-const getMilFromCode = (code: string): number | null => {
-  const m = code.match(/-(\d{2,3})$/);
-  return m ? parseInt(m[1], 10) : null;
-};
-
-/**
- * Returns the target mil value for a given wall height using USA ASTM C645/C955 defaults.
- * ≤ 12 ft → 25ga (18mil), 12–20 ft → 20ga (30mil), > 20 ft → 18ga (43mil)
- */
-const getTargetMilForHeight = (heightFt: number): number => {
-  if (heightFt <= 12) return 18;
-  if (heightFt <= 20) return 30;
-  return 43;
-};
-
-const STUD_CODE_RE = /^ST-/i;
-const STD_TRACK_CODE_RE = /^TR-/i;
-const SPECIAL_TRACK_CODE_RE = /^(DLT|SLT)-/i;
-const FRAMING_SCREW_CODE_RE = /^SC-FRM/i;
-const STEEL_FRAMING_TEXT_RE = /STUD|FURRING|TRACK|METAL STUD/i;
-
-/** Given a list of same-category framing items, keep only the one closest to targetMil. */
-const selectBestGauge = <T extends { code: string }>(
-  items: T[],
-  targetMil: number,
-): T[] => {
-  if (items.length <= 1) return items;
-  const withMil = items.map((item) => ({
-    item,
-    mil: getMilFromCode(item.code),
-  }));
-  const exact = withMil.find((x) => x.mil === targetMil);
-  if (exact) return [exact.item];
-  // Closest mil >= target (next heavier gauge up)
-  const above = withMil
-    .filter((x) => x.mil != null && x.mil >= targetMil)
-    .sort((a, b) => (a.mil ?? 999) - (b.mil ?? 999));
-  if (above.length > 0) return [above[0].item];
-  // Fallback: lightest available
-  const sorted = withMil
-    .filter((x) => x.mil != null)
-    .sort((a, b) => (a.mil ?? 999) - (b.mil ?? 999));
-  return sorted.length > 0 ? [sorted[0].item] : [items[0]];
-};
-
-/**
- * For steel framing matched_materials: keep exactly one stud, one standard track,
- * at most one special track (DLT/SLT), and all framing screws.
- * Gauge selection is based on wall height.
- */
-const filterSteelFramingGauges = <T extends { code: string }>(
-  materials: T[],
-  heightFt: number,
-): T[] => {
-  const targetMil = getTargetMilForHeight(heightFt);
-  const studs = materials.filter((m) => STUD_CODE_RE.test(m.code));
-  const stdTracks = materials.filter((m) => STD_TRACK_CODE_RE.test(m.code));
-  const specialTracks = materials.filter((m) =>
-    SPECIAL_TRACK_CODE_RE.test(m.code),
-  );
-  const screws = materials.filter((m) => FRAMING_SCREW_CODE_RE.test(m.code));
-  const other = materials.filter(
-    (m) =>
-      !STUD_CODE_RE.test(m.code) &&
-      !STD_TRACK_CODE_RE.test(m.code) &&
-      !SPECIAL_TRACK_CODE_RE.test(m.code) &&
-      !FRAMING_SCREW_CODE_RE.test(m.code),
-  );
-  return [
-    ...selectBestGauge(studs, targetMil),
-    ...selectBestGauge(stdTracks, targetMil),
-    ...selectBestGauge(specialTracks, targetMil),
-    ...screws,
-    ...other,
-  ];
-};
-
 // ─── Takeoff Helpers ───────────────────────────────────────────────────────────
-
-const parseHeight = (h: string | number | null | undefined): number => {
-  if (h == null) return 0;
-  if (typeof h === "number" && !Number.isNaN(h)) return h;
-  const n = parseFloat(String(h).replace(/,/g, ""));
-  return Number.isNaN(n) ? 0 : n;
-};
 
 const toNumber = (v: number | string | null | undefined): number => {
   if (v == null) return 0;
@@ -191,39 +80,25 @@ const isCeilingRow = (
     .toLowerCase()
     .includes("ceiling");
 
-/** Group takeoff rows by (wall_type, height) and sum quantities */
+/** Group takeoff rows by wall_type and sum quantities */
 const aggregateTakeoff = (
   rows: TakeoffRawRecord[],
 ): AggregatedTakeoffGroup[] => {
-  const keyToGroup = new Map<
-    string,
-    {
-      assembly_id: string;
-      assembly_type: string;
-      height_ft: number;
-      total_length: number;
-      ceiling_area: number;
-      area_parementer: number;
-      is_ceiling: boolean;
-      levels: string[];
-    }
-  >();
+  const keyToGroup = new Map<string, AggregatedTakeoffGroup>();
 
   for (const row of rows) {
     const wallType = row.wall_type;
     if (wallType == null || String(wallType).trim() === "") continue;
 
     const assemblyId = String(wallType).trim();
-    const heightFt = parseHeight(row.height);
     const isCeiling = isCeilingRow(row.assembly_type);
-    const key = `${assemblyId}|${heightFt}`;
 
     const wallLength = isCeiling ? 0 : toNumber(row.wall_length);
     const ceilingArea = isCeiling ? toNumber(row.ceiling_area) : 0;
     const areaParementer = toNumber(row.area_parementer);
 
     const levelStr = row.level != null ? String(row.level).trim() : "";
-    const existing = keyToGroup.get(key);
+    const existing = keyToGroup.get(assemblyId);
     if (existing) {
       existing.total_length += wallLength;
       existing.ceiling_area += ceilingArea;
@@ -232,11 +107,10 @@ const aggregateTakeoff = (
         existing.levels.push(levelStr);
       }
     } else {
-      keyToGroup.set(key, {
+      keyToGroup.set(assemblyId, {
         assembly_id: assemblyId,
         assembly_type:
           row.assembly_type != null ? String(row.assembly_type) : "wall",
-        height_ft: heightFt,
         total_length: wallLength,
         ceiling_area: ceilingArea,
         area_parementer: areaParementer,
@@ -246,10 +120,7 @@ const aggregateTakeoff = (
     }
   }
 
-  return Array.from(keyToGroup.values()).map((g) => ({
-    ...g,
-    height_category: getHeightCategory(g.height_ft),
-  }));
+  return Array.from(keyToGroup.values());
 };
 
 // ─── Enrich Materials Costing ──────────────────────────────────────────────────
@@ -271,28 +142,14 @@ const enrichMaterialsCosting = (
       ...ext,
       area_parementer: takeoff.is_ceiling ? takeoff.area_parementer : null,
       ceiling_area: takeoff.is_ceiling ? takeoff.ceiling_area : null,
-      height_category: takeoff.is_ceiling ? undefined : takeoff.height_category,
-      height_ft: takeoff.is_ceiling ? undefined : takeoff.height_ft,
       total_length: takeoff.is_ceiling ? undefined : takeoff.total_length,
     };
 
-    // Apply gauge filtering for steel framing items (walls only)
-    const rawMatchedMaterials = Array.isArray(item.matched_materials)
-      ? (item.matched_materials as MatchedMaterial[]).map((m) => ({ ...m }))
-      : [];
-    const isSteelFraming =
-      !takeoff.is_ceiling &&
-      STEEL_FRAMING_TEXT_RE.test(ext.raw_text ?? "") &&
-      rawMatchedMaterials.some(
-        (m) => STUD_CODE_RE.test(m.code) || STD_TRACK_CODE_RE.test(m.code),
-      );
-    const filteredMaterials = isSteelFraming
-      ? filterSteelFramingGauges(rawMatchedMaterials, takeoff.height_ft)
-      : rawMatchedMaterials;
-
     return {
       extracted_material: enriched,
-      matched_materials: filteredMaterials,
+      matched_materials: Array.isArray(item.matched_materials)
+        ? (item.matched_materials as MatchedMaterial[]).map((m) => ({ ...m }))
+        : [],
       matched_labor: Array.isArray(item.matched_labor)
         ? item.matched_labor.map((l) => ({ ...l }))
         : [],
@@ -340,8 +197,6 @@ export const mergeTakeoffWithMaterialMatch = (
         area_parementer: group.is_ceiling ? group.area_parementer : null,
         fire_rating: null,
         framing_category: null,
-        height_category: group.height_category,
-        height_ft: group.height_ft,
         level,
         materials_costing: [],
         project_country: projectContext?.country ?? null,
@@ -372,8 +227,6 @@ export const mergeTakeoffWithMaterialMatch = (
       area_parementer: group.is_ceiling ? group.area_parementer : null,
       fire_rating: match.fire_rating ?? null,
       framing_category: match.framing_category ?? null,
-      height_category: group.height_category,
-      height_ft: group.height_ft,
       level,
       materials_costing,
       project_country: projectContext?.country ?? match.project_country ?? null,

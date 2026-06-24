@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, ChevronRight, ChevronDown, Layers, SlidersHorizontal } from 'lucide-react';
+import { Search, ChevronRight, ChevronDown, Layers, SlidersHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/shadcn/input';
 import { Badge } from '@/components/shadcn/badge';
+import { Button } from '@/components/shadcn/button';
 import { Skeleton } from '@/components/shadcn/skeleton';
 import { Separator } from '@/components/shadcn/separator';
 import {
@@ -22,8 +23,12 @@ import {
   TableRow,
 } from '@/components/shadcn/table';
 import { ScrollArea } from '@/components/shadcn/scroll-area';
-import type { AssemblyBunchBranch } from '@/types';
+import { ItemFormSheet } from './ItemFormSheet';
+import { ConfirmModal } from '@/components/ui';
+import type { AssemblyBunchBranch, AssemblyBunchItem } from '@/types';
 import { cn } from '@/lib/cn';
+
+type BunchEditItem = AssemblyBunchItem & { branchCode: string; group: string };
 
 const GROUP_COLORS: Record<string, string> = {
   Framing: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -40,6 +45,9 @@ export function AssemblyBunchTab() {
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<BunchEditItem | null>(null);
+  const [deleting, setDeleting] = useState<BunchEditItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -94,6 +102,21 @@ export function AssemblyBunchTab() {
   }, {});
 
   const totalItems = branches.reduce((sum, b) => sum + b.items.length, 0);
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/assembly-bunch-database/${deleting.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        setDeleting(null);
+        load(search, group);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -215,6 +238,7 @@ export function AssemblyBunchTab() {
                                     <TableHead className="text-[10px] min-w-36">Labour Code</TableHead>
                                     <TableHead className="text-[10px] min-w-20">Section</TableHead>
                                     <TableHead className="text-[10px] min-w-32">Note</TableHead>
+                                    <TableHead className="text-[10px] min-w-20">Actions</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -222,7 +246,7 @@ export function AssemblyBunchTab() {
                                     const isPlaceholder = item.itemCode === 'XXXXXXX' || item.itemCode === '—';
                                     const isAssemblyPlaceholder = item.assemblyCode === 'XXXXXXX' || item.assemblyCode === '—';
                                     return (
-                                      <TableRow key={idx} className="hover:bg-white/80 bg-white/40">
+                                      <TableRow key={item.id ?? idx} className="hover:bg-white/80 bg-white/40">
                                         <TableCell className="text-center text-[10px] text-muted-foreground tabular-nums">
                                           {item.sortOrder ?? idx + 1}
                                         </TableCell>
@@ -286,6 +310,28 @@ export function AssemblyBunchTab() {
                                             {item.note || '—'}
                                           </span>
                                         </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0"
+                                              onClick={() => setEditing({ ...item, branchCode: branch.branchCode, group: branch.group })}
+                                              title="Edit"
+                                            >
+                                              <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0"
+                                              onClick={() => setDeleting({ ...item, branchCode: branch.branchCode, group: branch.group })}
+                                              title="Delete"
+                                            >
+                                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                            </Button>
+                                          </div>
+                                        </TableCell>
                                       </TableRow>
                                     );
                                   })}
@@ -303,6 +349,25 @@ export function AssemblyBunchTab() {
           </div>
         )}
       </ScrollArea>
+
+      <ItemFormSheet
+        activeTab="assembly-bunches"
+        isOpen={!!editing}
+        editItem={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(search, group); }}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={handleDelete}
+        title="Delete assembly item?"
+        message={`"${deleting?.itemCode || deleting?.assemblyCode}" will be moved to trash and permanently deleted after 30 days.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

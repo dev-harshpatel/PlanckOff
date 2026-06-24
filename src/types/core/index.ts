@@ -182,7 +182,6 @@ export interface TakeoffInstance {
   description: string;
   quantity: number;
   length: number;
-  height: number;
   ceilingArea?: number;
   perimeter?: number;
   lengthUnit?: string;

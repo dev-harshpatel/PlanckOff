@@ -64,7 +64,7 @@ interface ComponentsListProps {
     onClose: () => void;
 }
 
-// ─── Column resize helper ─────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const getUnitSuffix = (u: string) => {
     if (!u) return '';
@@ -73,6 +73,9 @@ const getUnitSuffix = (u: string) => {
     if (lower.includes('lf') || lower.includes('ft') || lower.includes('pcs')) return 'LF';
     return 'EA';
 };
+
+const fmtNum = (n: number) =>
+    n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -97,20 +100,27 @@ export const ComponentsList = ({
 }: ComponentsListProps) => {
     // ── Column resize state ──
     const [colWidths, setColWidths] = useState({
-        index: 30,
-        sect: 72,
-        desc: 360,
-        lab: 90,
+        sect: 55,
+        code: 90,
+        itemDesc: 190,
         height: 50,
-        oc: 60,
+        oc: 50,
         layers: 50,
-        waste: 40,
-        qty: 60,
-        seQty: 65,
-        uom: 60,
-        mou: 80,
-        matCost: 90,
-        total: 110,
+        matDesc: 160,
+        laborCode: 90,
+        waste: 45,
+        qty1: 65,
+        uom1: 55,
+        size: 65,
+        qty2: 65,
+        uom2: 55,
+        labQty: 65,
+        labUom: 55,
+        matUnitPrice: 90,
+        labUnitPrice: 90,
+        totalMat: 95,
+        totalLab: 95,
+        total: 95,
     });
     const [resizingCol, setResizingCol] = useState<string | null>(null);
     const [startX, setStartX] = useState(0);
@@ -144,10 +154,10 @@ export const ComponentsList = ({
 
     const Resizer = ({ col }: { col: string }) => (
         <div
-            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-20 group"
+            className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-emerald-400 z-20 group"
             onMouseDown={(e) => startResize(col, e)}
         >
-            <div className="w-[1px] h-full bg-slate-300 mx-auto group-hover:bg-blue-400" />
+            <div className="w-[1px] h-full bg-slate-200 mx-auto group-hover:bg-emerald-400" />
         </div>
     );
 
@@ -160,13 +170,29 @@ export const ComponentsList = ({
 
     const isCeilingAssembly = assembly.assemblyType === 'Ceiling';
 
+    // ── Grand totals for footer ──
+    const grandTotals = assembly.components
+        .filter((c) => !c.muted)
+        .reduce(
+            (acc, c) => {
+                const t = getRowTotalCost(c, assembly, materials, takeoffInstances, materialCostingData, getRowDetails);
+                if (c.materialCode?.startsWith('LAB-')) acc.lab += t;
+                else acc.mat += t;
+                return acc;
+            },
+            { mat: 0, lab: 0 },
+        );
+
     return (
         <>
             {/* Panel header */}
-            <div className="px-4 py-2 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0 gap-4">
-                <h3 className="font-bold text-slate-800 text-sm whitespace-nowrap">
-                    Assembly Components
-                </h3>
+            <div className="px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-white shrink-0 gap-4">
+                <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-slate-800 text-sm">Assembly Components</h3>
+                    <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {assembly.components.length}
+                    </span>
+                </div>
                 <Button
                     variant="ghost"
                     size="sm"
@@ -182,79 +208,148 @@ export const ComponentsList = ({
             </div>
 
             {/* Scrollable table */}
-            <div className="flex-1 overflow-auto p-0 bg-white relative">
+            <div className="flex-1 overflow-auto bg-white relative">
                 <table
-                    className="min-w-full text-[11px] border-collapse font-sans table-fixed"
-                    style={{ width: 'max-content' }}
+                    className="text-[11px] border-collapse font-sans table-fixed"
+                    style={{ width: 'max-content', minWidth: '100%' }}
                 >
-                    <thead className="bg-slate-100 text-slate-600 sticky top-0 z-10 shadow-sm border-b border-slate-300 h-8">
-                        <tr>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.index }}>
-                                #<Resizer col="index" />
+                    <thead className="sticky top-0 z-10">
+                        {/* Column group labels */}
+                        <tr className="bg-slate-100 border-b border-slate-200" style={{ height: '20px' }}>
+                            <th colSpan={3} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-slate-500">
+                                Identification
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.lab }}>
-                                Code<Resizer col="lab" />
+                            <th colSpan={5} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-slate-500">
+                                Specs
                             </th>
-                            <th className="relative border-r border-slate-300 text-left pl-2" style={{ width: colWidths.desc }}>
-                                Item / Description<Resizer col="desc" />
+                            <th colSpan={6} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-emerald-600">
+                                Quantities
                             </th>
-                            <th className="relative border-r border-slate-300 text-center px-1 whitespace-nowrap" style={{ width: colWidths.sect }}>
+                            <th colSpan={4} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-amber-600">
+                                Labour
+                            </th>
+                            <th colSpan={3} className="text-center text-[9px] font-bold uppercase tracking-wider px-1 text-sky-600">
+                                Costs
+                            </th>
+                            <th className="w-8 border-l border-slate-200 bg-slate-100" />
+                        </tr>
+                        {/* Column headers */}
+                        <tr className="bg-white border-b border-slate-200 h-7 text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                            {/* Identification */}
+                            <th className="relative border-r border-slate-200 text-center px-1" style={{ width: colWidths.sect }}>
                                 Sect<Resizer col="sect" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.height }}>
-                                Hgt<Resizer col="height" />
+                            <th className="relative border-r border-slate-200 text-center px-1" style={{ width: colWidths.code }}>
+                                Code<Resizer col="code" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center px-1" style={{ width: colWidths.oc }}>
+                            <th className="relative border-r border-slate-200 text-left pl-2" style={{ width: colWidths.itemDesc }}>
+                                Item / Description<Resizer col="itemDesc" />
+                            </th>
+
+                            {/* Specs */}
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.height }}>
+                                Height<Resizer col="height" />
+                            </th>
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.oc }}>
                                 OC<Resizer col="oc" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.layers }}>
-                                Layering<Resizer col="layers" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.layers }}>
+                                Layers<Resizer col="layers" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.waste }}>
+                            <th className="relative border-r border-slate-200 text-left pl-1" style={{ width: colWidths.matDesc }}>
+                                Description<Resizer col="matDesc" />
+                            </th>
+                            <th className="relative border-r border-slate-200 text-center px-1" style={{ width: colWidths.laborCode }}>
+                                Labor Code<Resizer col="laborCode" />
+                            </th>
+
+                            {/* Quantities */}
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.waste }}>
                                 Wst%<Resizer col="waste" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.qty }}>
-                                <span className="flex items-center justify-center gap-1">
-                                    Qty
-                                    <FunctionSquare className="w-2.5 h-2.5 text-emerald-500 opacity-70" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.qty1 }}>
+                                <span className="flex items-center justify-center gap-0.5">
+                                    Qty 1
+                                    <FunctionSquare className="w-2.5 h-2.5 text-emerald-500" />
                                 </span>
-                                <Resizer col="qty" />
+                                <Resizer col="qty1" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.uom }}>
-                                UOM<Resizer col="uom" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.uom1 }}>
+                                UOM1<Resizer col="uom1" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.seQty }}>
-                                <span className="flex items-center justify-center gap-1">
-                                    Se.Qty
-                                    <FunctionSquare className="w-2.5 h-2.5 text-emerald-500 opacity-70" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.size }}>
+                                Size<Resizer col="size" />
+                            </th>
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.qty2 }}>
+                                <span className="flex items-center justify-center gap-0.5">
+                                    Qty 2
+                                    <FunctionSquare className="w-2.5 h-2.5 text-emerald-500" />
                                 </span>
-                                <Resizer col="seQty" />
+                                <Resizer col="qty2" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.mou }}>
-                                UOM<Resizer col="mou" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.uom2 }}>
+                                UOM2<Resizer col="uom2" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center" style={{ width: colWidths.matCost }}>
-                                Unit Cost<Resizer col="matCost" />
+
+                            {/* Labour */}
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.labQty }}>
+                                Lab. Qty<Resizer col="labQty" />
                             </th>
-                            <th className="relative border-r border-slate-300 text-center font-bold" style={{ width: colWidths.total }}>
-                                Total Cost<Resizer col="total" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.labUom }}>
+                                Lab. UOM<Resizer col="labUom" />
                             </th>
-                            <th className="w-8 sticky right-0 bg-slate-100 z-10 border-l border-slate-300" />
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.matUnitPrice }}>
+                                Mat. Unit $<Resizer col="matUnitPrice" />
+                            </th>
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.labUnitPrice }}>
+                                Lab. Unit $<Resizer col="labUnitPrice" />
+                            </th>
+
+                            {/* Costs */}
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.totalMat }}>
+                                Tot. Mat.<Resizer col="totalMat" />
+                            </th>
+                            <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.totalLab }}>
+                                Tot. Lab.<Resizer col="totalLab" />
+                            </th>
+                            <th className="relative border-r border-slate-200 text-center font-bold text-slate-700" style={{ width: colWidths.total }}>
+                                Total<Resizer col="total" />
+                            </th>
+
+                            {/* Delete (sticky) */}
+                            <th className="w-8 sticky right-0 bg-white z-10 border-l border-slate-200" />
                         </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-slate-200">
-                        {assembly.components.map((comp, idx) => {
+                    <tbody className="divide-y divide-slate-100">
+                        {assembly.components.map((comp) => {
                             const details = getRowDetails(comp, assembly, takeoffInstances);
                             const mat = getMaterialByRowCode(comp, materials);
                             const extractedDims = findExtractedDimsForComponent(comp, materialCostingData);
                             const fq = computeFormulaQuantities(comp, mat, assembly, takeoffInstances, extractedDims);
                             const hasFormula = hasFormulaForContext(comp, mat, isCeilingAssembly);
 
-                            const section = comp.sectionCode || '';
                             const isLaborRow = !!comp.materialCode?.startsWith('LAB-');
 
-                            // Hgt display
+                            // Debug source badges — not for production
+                            const isMatFromNewDb = !!materialCostingData?.materials_costing?.some(
+                                (item) => item.matched_materials.some((m) => m.code === comp.materialCode && m._fromNewDb),
+                            );
+                            const isLabFromNewDb = !!materialCostingData?.materials_costing?.some(
+                                (item) => item.matched_labor.some((l) => l.code === comp.materialCode && l._fromNewDb),
+                            );
+                            const isFromNewDb = isMatFromNewDb || isLabFromNewDb;
+                            const dbSourceLabel = isLaborRow && isLabFromNewDb ? 'LD' : !isLaborRow && isMatFromNewDb ? 'MD' : isFromNewDb ? 'AD' : null;
+
+                            // For material rows: find associated labor from the costing group
+                            const costingGroup = !isLaborRow && comp.materialCode
+                                ? materialCostingData?.materials_costing.find(
+                                    (item) => item.matched_materials.some((m) => m.code === comp.materialCode),
+                                )
+                                : undefined;
+                            const associatedLabor = costingGroup?.matched_labor[0];
+
+                            // ── Height ──
                             const heightVal =
                                 comp.overrideHeight != null
                                     ? `${comp.overrideHeight}'`
@@ -264,7 +359,7 @@ export const ComponentsList = ({
                                             ? `${assembly.defaultHeight}'`
                                             : '';
 
-                            // OC display
+                            // ── OC ──
                             let ocVal = '';
                             if (comp.ocSpacing) {
                                 ocVal = comp.ocSpacing;
@@ -281,7 +376,7 @@ export const ComponentsList = ({
                                                 : '';
                             }
 
-                            // Layering display
+                            // ── Layers ──
                             const isGypsumComponent =
                                 comp.overrideLayers != null ||
                                 comp.usage.includes('Coverage') ||
@@ -295,30 +390,19 @@ export const ComponentsList = ({
                                     layersVal = '1';
                             }
 
-                            // Formula-derived qty / seQty
+                            // ── Formula quantities ──
                             const formulaQtyValue = isCeilingAssembly ? fq.ceilQty : fq.qty;
-                            /**
-                             * Qty display rules:
-                             * - If there is a formula for this context → show the formula result only.
-                             * - If usage is "Fixed Qty" with no formula → show the editable overrideQuantity.
-                             * - Otherwise (no formula + not fixed) → show "—" instead of any fallback quantity
-                             *   coming from imported data (e.g. final_output JSON).
-                             */
                             const displayQty = (() => {
                                 if (!hasFormula) {
-                                    if (comp.usage === 'Fixed Qty') {
-                                        return comp.overrideQuantity ?? null;
-                                    }
+                                    if (comp.usage === 'Fixed Qty') return comp.overrideQuantity ?? null;
                                     return null;
                                 }
                                 return formulaQtyValue;
                             })();
                             const formulaSeQtyValue = isCeilingAssembly ? fq.ceilSeQty : fq.seQty;
                             const displaySeQty = formulaSeQtyValue;
-                            const altU = details.altUnits || {};
-                            const mouVal = altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
 
-                            // Override indicators
+                            // ── Override indicators ──
                             const matOverrides = mat?.code ? (overrideMap[mat.code] ?? {}) : {};
                             const hasFormulaOverride = isCeilingAssembly
                                 ? ('formulaCeilQty' in matOverrides || 'formulaCeilSecQty' in matOverrides)
@@ -328,8 +412,7 @@ export const ComponentsList = ({
                             const hasMouQtyOverride = mouQtyField in matOverrides;
                             const hasMouSeQtyOverride = mouSeQtyField in matOverrides;
 
-                            // Cost cell data — guard against NaN propagating from DB null values
-                            // Uses Number() to catch both number NaN and string "NaN" (PostgreSQL NaN via Supabase)
+                            // ── Unit cost ──
                             const unitCostDisplay = (() => {
                                 const prodRate = mat?.productivity;
                                 const raw = comp.overrideMatCost ?? prodRate;
@@ -353,119 +436,104 @@ export const ComponentsList = ({
                                 comp, assembly, materials, takeoffInstances, materialCostingData, getRowDetails,
                             );
 
+                            // ── Labour data ──
+                            const labUnitCost = isLaborRow
+                                ? (unitCostDisplay ?? 0)
+                                : (associatedLabor?.unit_cost ?? 0);
+                            const labQtyVal = isLaborRow
+                                ? (displayQty ?? 0)
+                                : (associatedLabor?.quantity ?? 0);
+                            const labUomVal = isLaborRow
+                                ? ((isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) ||
+                                    getUnitSuffix(comp.selectedUnit || details.unit))
+                                : (associatedLabor?.unit ?? '');
+                            const totalLabCost = labUnitCost * labQtyVal;
+                            const totalMatCost = isLaborRow ? 0 : rowTotal;
+
                             const handleSimpleFieldChange = <K extends keyof AssemblyComponent>(
                                 field: K,
                                 nextValue: AssemblyComponent[K],
                             ) => {
-                                const prevValue = comp[field];
-                                if (prevValue === nextValue) return;
+                                if (comp[field] === nextValue) return;
                                 onUpdateComp(assembly.id, comp.id, field, nextValue);
                             };
 
-                            // Detect if this component came from the new rule-based databases
-                            const isFromNewDb = !!materialCostingData?.materials_costing?.some(
-                                (item) =>
-                                    [
-                                        ...(item.matched_materials ?? []),
-                                        ...(item.matched_labor ?? []),
-                                    ].some((m) => m.code === comp.materialCode && m._fromNewDb),
-                            );
-
-                            // Code cell
-                            const CodeCell = () => {
-                                if (comp.materialCode) {
-                                    const isLabor = comp.materialCode.startsWith('LAB-');
-                                    return (
-                                        <div className="flex flex-col items-center leading-none py-0.5">
-                                            <span className="font-bold text-[10px] text-slate-700">
-                                                {comp.materialCode}
-                                            </span>
-                                            <span className={`text-[8px] uppercase font-bold ${isLabor ? 'text-amber-600' : 'text-cyan-600'}`}>
-                                                {isLabor ? 'Labor' : 'Mat.'}
-                                            </span>
-                                        </div>
-                                    );
-                                }
-                                const m = materials.find((m) => m.description === comp.materialName);
-                                if (!m) return <span className="text-slate-300">-</span>;
-                                return (
-                                    <div className="flex flex-col items-center leading-none py-0.5">
-                                        <span className="font-bold text-[10px] text-slate-700">{m.code}</span>
-                                        <span className={`text-[8px] uppercase font-bold ${m.category === 'Labor' ? 'text-amber-600' : 'text-cyan-600'}`}>
-                                            {m.category === 'Labor' ? 'Labor' : 'Mat.'}
-                                        </span>
-                                    </div>
-                                );
-                            };
+                            const rowBg = comp.muted
+                                ? 'opacity-40 bg-slate-50/80 pointer-events-none'
+                                : isLaborRow
+                                    ? 'bg-amber-50/20 hover:bg-amber-50/50'
+                                    : isFromNewDb
+                                        ? 'bg-emerald-50/40 hover:bg-emerald-50/70'
+                                        : 'hover:bg-slate-50/60';
 
                             return (
-                                <tr
-                                    key={comp.id}
-                                    className={`transition-colors h-7 cursor-pointer ${
-                                        comp.muted
-                                            ? "opacity-40 bg-slate-50/80 pointer-events-none"
-                                            : isFromNewDb
-                                                ? "bg-emerald-50/40 hover:bg-emerald-50/70"
-                                                : "hover:bg-blue-50/20"
-                                    }`}
-                                >
-                                    <td className="border-r border-slate-200 text-center bg-slate-50 text-[10px]">
-                                        {comp.muted ? (
-                                            <span className="text-slate-300 italic">-</span>
+                                <tr key={comp.id} className={`transition-colors h-7 ${rowBg}`}>
+
+                                    {/* ── Sect ── */}
+                                    <td className="border-r border-slate-200 text-center px-1 text-slate-500 text-[10px]">
+                                        {comp.sectionCode || <span className="text-slate-300">—</span>}
+                                    </td>
+
+                                    {/* ── Code ── */}
+                                    <td className="border-r border-slate-200 text-center px-1">
+                                        {comp.materialCode ? (
+                                            <div className="flex flex-col items-center leading-none py-0.5">
+                                                <span className="font-bold text-[10px] text-slate-700 truncate max-w-full">
+                                                    {comp.materialCode}
+                                                </span>
+                                                <span className={`text-[8px] uppercase font-semibold mt-px ${isLaborRow ? 'text-amber-600' : 'text-cyan-600'}`}>
+                                                    {isLaborRow ? 'Labor' : 'Mat.'}
+                                                </span>
+                                            </div>
                                         ) : (
-                                            idx + 1
+                                            <span className="text-slate-300">—</span>
                                         )}
                                     </td>
 
-                                    {/* Code */}
-                                    <td className="border-r border-slate-200 text-center px-1">
-                                        <CodeCell />
-                                    </td>
-
-                                    {/* Description */}
+                                    {/* ── Item / Description ── */}
                                     <td className="border-r border-slate-200 relative p-0">
                                         <div
-                                            className="w-full h-full px-2 flex items-center gap-1.5 cursor-pointer hover:bg-emerald-50/40 transition-colors group/desc"
+                                            className="w-full h-full px-2 flex items-center gap-1.5 cursor-pointer hover:bg-emerald-50/50 transition-colors group/desc"
                                             onClick={() => onOpenDetail(comp, false)}
                                         >
-                                            <span className="truncate">{comp.materialName}</span>
-                                            {isFromNewDb && (
-                                                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 border border-emerald-300 rounded px-1 py-0.5 leading-none">
-                                                    NEW DB
+                                            <span className="truncate text-slate-700">{comp.materialName}</span>
+                                            {dbSourceLabel && (
+                                                <span className={`shrink-0 text-[8px] font-bold uppercase tracking-wide rounded px-1 py-0.5 leading-none ${
+                                                    dbSourceLabel === 'MD'
+                                                        ? 'text-emerald-700 bg-emerald-100 border border-emerald-300'
+                                                        : dbSourceLabel === 'LD'
+                                                            ? 'text-amber-700 bg-amber-100 border border-amber-300'
+                                                            : 'text-purple-700 bg-purple-100 border border-purple-300'
+                                                }`}>
+                                                    {dbSourceLabel}
                                                 </span>
                                             )}
                                             <Settings2 className="w-3 h-3 text-slate-300 shrink-0 ml-auto opacity-0 group-hover/desc:opacity-100 transition-opacity" />
                                         </div>
                                     </td>
 
-                                    <td className="border-r border-slate-200 text-center text-slate-500 px-1 whitespace-nowrap">
-                                        {section}
-                                    </td>
-
-                                    {/* Hgt */}
+                                    {/* ── Height ── */}
                                     <td className="border-r border-slate-200 text-center p-0">
                                         {isLaborRow ? (
-                                            <span className="block w-full text-center text-xs text-slate-400 px-1 py-1.5 select-none" title="Labor height is derived from material height">
+                                            <span className="block w-full text-center text-[10px] text-slate-400 px-1 select-none">
                                                 {heightVal || '—'}
                                             </span>
                                         ) : (
                                             <NumberInput
                                                 cellMode
-                                                className="w-full h-full bg-transparent text-center outline-none"
+                                                className="w-full h-full bg-transparent text-center outline-none text-[11px]"
                                                 value={comp.overrideHeight}
-                                                onChange={(val) =>
-                                                    handleSimpleFieldChange('overrideHeight', val)
-                                                }
+                                                onChange={(val) => handleSimpleFieldChange('overrideHeight', val)}
                                                 placeholder={heightVal}
                                             />
                                         )}
                                     </td>
 
-                                    {/* OC */}
+                                    {/* ── OC ── */}
                                     <td className="border-r border-slate-200 text-center px-1">
                                         {comp.usage.includes('Vertical') ? (
                                             <input
-                                                className="w-full h-full bg-transparent text-center outline-none"
+                                                className="w-full h-full bg-transparent text-center outline-none text-[11px]"
                                                 value={ocVal.replace('"', '')}
                                                 onChange={(e) => {
                                                     const val = e.target.value;
@@ -475,77 +543,83 @@ export const ComponentsList = ({
                                                 }}
                                             />
                                         ) : (
-                                            ocVal
+                                            <span className="text-slate-400">{ocVal || '—'}</span>
                                         )}
                                     </td>
 
-                                    {/* Layering */}
+                                    {/* ── Layers ── */}
                                     <td className="border-r border-slate-200 text-center p-0">
                                         {isGypsumComponent ? (
                                             <NumberInput
                                                 cellMode
-                                                className="w-full h-full bg-transparent text-center outline-none"
+                                                className="w-full h-full bg-transparent text-center outline-none text-[11px]"
                                                 value={comp.overrideLayers}
-                                                onChange={(val) =>
-                                                    handleSimpleFieldChange('overrideLayers', val)
-                                                }
+                                                onChange={(val) => handleSimpleFieldChange('overrideLayers', val)}
                                                 placeholder={layersVal}
                                                 type="float"
                                             />
                                         ) : (
-                                            <span className="text-slate-400">-</span>
+                                            <span className="text-slate-300">—</span>
                                         )}
                                     </td>
 
-                                    {/* Waste Factor */}
+                                    {/* ── Description (from material DB) ── */}
+                                    <td className="border-r border-slate-200 px-1 truncate">
+                                        <span className="truncate block text-slate-500 text-[10px]" title={mat?.description}>
+                                            {mat?.description || <span className="text-slate-300">—</span>}
+                                        </span>
+                                    </td>
+
+                                    {/* ── Labor Code ── */}
+                                    <td className="border-r border-slate-200 text-center px-1">
+                                        {isLaborRow ? (
+                                            <span className="text-[10px] font-semibold text-amber-700 truncate block text-center">
+                                                {comp.materialCode}
+                                            </span>
+                                        ) : mat?.laborCostCode ? (
+                                            <span className="text-[10px] font-medium text-slate-600 truncate block text-center">
+                                                {mat.laborCostCode}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
+                                    </td>
+
+                                    {/* ── Wst% ── */}
                                     <td className="border-r border-slate-200 text-center p-0">
                                         <NumberInput
                                             cellMode
-                                            className="w-full h-full bg-transparent text-center outline-none"
+                                            className="w-full h-full bg-transparent text-center outline-none text-[11px]"
                                             value={comp.wasteFactor}
-                                            onChange={(val) =>
-                                                handleSimpleFieldChange('wasteFactor', val)
-                                            }
+                                            onChange={(val) => handleSimpleFieldChange('wasteFactor', val)}
                                             placeholder="5"
                                             scale={0.01}
                                         />
                                     </td>
 
-                                    {/* Qty */}
+                                    {/* ── Qty 1 ── */}
                                     <td
                                         className={[
-                                            'border-r border-slate-200 text-center font-bold px-1 p-0',
+                                            'border-r border-slate-200 text-center p-0',
                                             hasFormula ? 'cursor-pointer group' : '',
                                         ].join(' ')}
-                                        onClick={
-                                            hasFormula
-                                                ? () => onFormulaClick(comp, 'qty', extractedDims)
-                                                : undefined
-                                        }
+                                        onClick={hasFormula ? () => onFormulaClick(comp, 'qty', extractedDims) : undefined}
                                         title={hasFormula ? 'Click to edit formula' : undefined}
                                     >
                                         {comp.usage === 'Fixed Qty' && !hasFormula ? (
                                             <NumberInput
                                                 cellMode
-                                                className="w-full h-full bg-transparent text-center outline-none font-bold"
+                                                className="w-full h-full bg-transparent text-center outline-none font-semibold text-[11px]"
                                                 value={comp.overrideQuantity}
-                                                onChange={(val) =>
-                                                    handleSimpleFieldChange('overrideQuantity', val)
-                                                }
-                                                placeholder={
-                                                    displayQty != null ? displayQty.toFixed(2) : '0.00'
-                                                }
+                                                onChange={(val) => handleSimpleFieldChange('overrideQuantity', val)}
+                                                placeholder={displayQty != null ? displayQty.toFixed(2) : '0.00'}
                                             />
                                         ) : (
-                                            <div
-                                                className={[
-                                                    'flex items-center justify-center gap-0.5 h-full px-1 relative',
-                                                    hasFormula
-                                                        ? 'hover:bg-emerald-50 transition-colors rounded'
-                                                        : '',
-                                                ].join(' ')}
-                                            >
-                                                <span className={hasFormula ? 'text-emerald-700' : ''}>
+                                            <div className={[
+                                                'flex items-center justify-center gap-0.5 h-full px-1 relative',
+                                                hasFormula ? 'hover:bg-emerald-50 transition-colors rounded' : '',
+                                            ].join(' ')}>
+                                                <span className={`tabular-nums ${hasFormula ? 'text-emerald-700 font-semibold' : 'text-slate-600'}`}>
                                                     {displayQty != null ? displayQty.toFixed(2) : '—'}
                                                 </span>
                                                 {hasFormula && (
@@ -554,8 +628,8 @@ export const ComponentsList = ({
                                                 {hasFormulaOverride && mat?.code && (
                                                     <button
                                                         type="button"
-                                                        className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-orange-400 hover:bg-orange-500 cursor-pointer"
-                                                        title="Formula overridden for this project — click to revert"
+                                                        className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-orange-400 hover:bg-orange-500"
+                                                        title="Formula overridden — click to revert"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             onRevertFormulaOverrides(
@@ -571,44 +645,33 @@ export const ComponentsList = ({
                                         )}
                                     </td>
 
-                                    {/* UOM (Qty MOU) */}
+                                    {/* ── UOM1 ── */}
                                     <td
-                                        className="border-r border-slate-200 text-center px-1 font-medium relative group/mou"
+                                        className="border-r border-slate-200 text-center px-1 relative group/mou"
                                         title={mat?.code ? 'Click to edit UOM' : undefined}
                                     >
                                         {displayQty != null || hasFormula ? (
-                                            editingMouCell?.compId === comp.id &&
-                                            editingMouCell.type === 'qty' ? (
+                                            editingMouCell?.compId === comp.id && editingMouCell.type === 'qty' ? (
                                                 <input
                                                     autoFocus
-                                                    className="w-full text-center text-xs border border-emerald-400 rounded outline-none px-1"
+                                                    className="w-full text-center text-[10px] border border-emerald-400 rounded outline-none px-1"
                                                     value={mouInputValue}
                                                     onChange={(e) => setMouInputValue(e.target.value)}
                                                     onBlur={() => {
-                                                        const original =
-                                                            (isCeilingAssembly
-                                                                ? mat?.mouCeil
-                                                                : mat?.mouWall) || '';
-                                                        if (
-                                                            mouInputValue.trim() &&
-                                                            mouInputValue.trim() !== original &&
-                                                            mat?.code
-                                                        ) {
+                                                        const original = (isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) || '';
+                                                        if (mouInputValue.trim() && mouInputValue.trim() !== original && mat?.code) {
                                                             onMouSavePending({
                                                                 materialCode: mat.code,
                                                                 materialName: mat.description || mat.code,
-                                                                field: isCeilingAssembly
-                                                                    ? 'mouCeil'
-                                                                    : 'mouWall',
-                                                                fieldLabel: 'UOM (Qty)',
+                                                                field: isCeilingAssembly ? 'mouCeil' : 'mouWall',
+                                                                fieldLabel: 'UOM1',
                                                                 newValue: mouInputValue.trim(),
                                                             });
                                                         }
                                                         setEditingMouCell(null);
                                                     }}
                                                     onKeyDown={(e) => {
-                                                        if (e.key === 'Enter')
-                                                            (e.target as HTMLInputElement).blur();
+                                                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                                                         if (e.key === 'Escape') setEditingMouCell(null);
                                                     }}
                                                 />
@@ -617,75 +680,49 @@ export const ComponentsList = ({
                                                     className="flex items-center justify-center gap-0.5 cursor-pointer hover:bg-slate-100 rounded px-0.5"
                                                     onClick={() => {
                                                         if (!mat?.code) return;
-                                                        const val =
-                                                            (isCeilingAssembly
-                                                                ? mat?.mouCeil
-                                                                : mat?.mouWall) ||
-                                                            getUnitSuffix(
-                                                                comp.selectedUnit || details.unit,
-                                                            );
+                                                        const val = (isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) ||
+                                                            getUnitSuffix(comp.selectedUnit || details.unit);
                                                         setMouInputValue(val);
-                                                        setEditingMouCell({
-                                                            compId: comp.id,
-                                                            type: 'qty',
-                                                        });
+                                                        setEditingMouCell({ compId: comp.id, type: 'qty' });
                                                     }}
                                                 >
-                                                    <span>
-                                                        {(isCeilingAssembly
-                                                            ? mat?.mouCeil
-                                                            : mat?.mouWall) ||
-                                                            getUnitSuffix(
-                                                                comp.selectedUnit || details.unit,
-                                                            )}
+                                                    <span className="text-[10px] font-medium text-slate-600">
+                                                        {(isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) ||
+                                                            getUnitSuffix(comp.selectedUnit || details.unit)}
                                                     </span>
                                                     {mat?.code && (
                                                         <Edit2 className="w-2 h-2 text-slate-300 opacity-0 group-hover/mou:opacity-100" />
                                                     )}
                                                     {hasMouQtyOverride && (
-                                                        <span
-                                                            className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block"
-                                                            title="UOM overridden for this project"
-                                                        />
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" title="UOM overridden" />
                                                     )}
                                                 </div>
                                             )
                                         ) : (
-                                            '-'
+                                            <span className="text-slate-300">—</span>
                                         )}
                                     </td>
 
-                                    {/* Se.Qty */}
+                                    {/* ── Size ── */}
+                                    <td className="border-r border-slate-200 text-center px-1 text-[10px] text-slate-500">
+                                        {mat?.size || <span className="text-slate-300">—</span>}
+                                    </td>
+
+                                    {/* ── Qty 2 ── */}
                                     <td
                                         className={[
                                             'border-r border-slate-200 text-center px-1',
-                                            hasFormula ? 'cursor-pointer group' : 'text-slate-600',
+                                            hasFormula ? 'cursor-pointer group' : '',
                                         ].join(' ')}
-                                        onClick={
-                                            hasFormula
-                                                ? () => onFormulaClick(comp, 'seqty', extractedDims)
-                                                : undefined
-                                        }
+                                        onClick={hasFormula ? () => onFormulaClick(comp, 'seqty', extractedDims) : undefined}
                                         title={hasFormula ? 'Click to edit formula' : undefined}
                                     >
-                                        <div
-                                            className={[
-                                                'flex items-center justify-center gap-0.5 h-full px-0.5',
-                                                hasFormula
-                                                    ? 'hover:bg-emerald-50 transition-colors rounded'
-                                                    : '',
-                                            ].join(' ')}
-                                        >
-                                            <span
-                                                className={
-                                                    hasFormula
-                                                        ? 'text-emerald-700 font-medium'
-                                                        : 'text-slate-600'
-                                                }
-                                            >
-                                                {displaySeQty != null
-                                                    ? displaySeQty.toFixed(2)
-                                                    : '-'}
+                                        <div className={[
+                                            'flex items-center justify-center gap-0.5 h-full px-0.5',
+                                            hasFormula ? 'hover:bg-emerald-50 transition-colors rounded' : '',
+                                        ].join(' ')}>
+                                            <span className={`tabular-nums ${hasFormula ? 'text-emerald-700 font-medium' : 'text-slate-500'}`}>
+                                                {displaySeQty != null ? displaySeQty.toFixed(2) : '—'}
                                             </span>
                                             {hasFormula && (
                                                 <FunctionSquare className="w-2.5 h-2.5 text-emerald-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -693,44 +730,33 @@ export const ComponentsList = ({
                                         </div>
                                     </td>
 
-                                    {/* MOU (Se.Qty MOU) */}
+                                    {/* ── UOM2 ── */}
                                     <td
-                                        className="border-r border-slate-200 text-center px-1 text-slate-600 truncate relative group/mou2"
-                                        title={mat?.code ? 'Click to edit Se.Qty UOM' : undefined}
+                                        className="border-r border-slate-200 text-center px-1 relative group/mou2"
+                                        title={mat?.code ? 'Click to edit UOM2' : undefined}
                                     >
                                         {displaySeQty != null ? (
-                                            editingMouCell?.compId === comp.id &&
-                                            editingMouCell.type === 'seqty' ? (
+                                            editingMouCell?.compId === comp.id && editingMouCell.type === 'seqty' ? (
                                                 <input
                                                     autoFocus
-                                                    className="w-full text-center text-xs border border-emerald-400 rounded outline-none px-1"
+                                                    className="w-full text-center text-[10px] border border-emerald-400 rounded outline-none px-1"
                                                     value={mouInputValue}
                                                     onChange={(e) => setMouInputValue(e.target.value)}
                                                     onBlur={() => {
-                                                        const original =
-                                                            (isCeilingAssembly
-                                                                ? mat?.mouCeilSec
-                                                                : mat?.mouWallSec) || '';
-                                                        if (
-                                                            mouInputValue.trim() &&
-                                                            mouInputValue.trim() !== original &&
-                                                            mat?.code
-                                                        ) {
+                                                        const original = (isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || '';
+                                                        if (mouInputValue.trim() && mouInputValue.trim() !== original && mat?.code) {
                                                             onMouSavePending({
                                                                 materialCode: mat.code,
                                                                 materialName: mat.description || mat.code,
-                                                                field: isCeilingAssembly
-                                                                    ? 'mouCeilSec'
-                                                                    : 'mouWallSec',
-                                                                fieldLabel: 'UOM (Se.Qty)',
+                                                                field: isCeilingAssembly ? 'mouCeilSec' : 'mouWallSec',
+                                                                fieldLabel: 'UOM2',
                                                                 newValue: mouInputValue.trim(),
                                                             });
                                                         }
                                                         setEditingMouCell(null);
                                                     }}
                                                     onKeyDown={(e) => {
-                                                        if (e.key === 'Enter')
-                                                            (e.target as HTMLInputElement).blur();
+                                                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                                                         if (e.key === 'Escape') setEditingMouCell(null);
                                                     }}
                                                 />
@@ -739,70 +765,127 @@ export const ComponentsList = ({
                                                     className="flex items-center justify-center gap-0.5 cursor-pointer hover:bg-slate-100 rounded px-0.5"
                                                     onClick={() => {
                                                         if (!mat?.code) return;
-                                                        const val =
-                                                            (isCeilingAssembly
-                                                                ? mat?.mouCeilSec
-                                                                : mat?.mouWallSec) || mouVal;
+                                                        const altU = details.altUnits || {};
+                                                        const mouFallback = altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
+                                                        const val = (isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || mouFallback;
                                                         setMouInputValue(val);
-                                                        setEditingMouCell({
-                                                            compId: comp.id,
-                                                            type: 'seqty',
-                                                        });
+                                                        setEditingMouCell({ compId: comp.id, type: 'seqty' });
                                                     }}
                                                 >
-                                                    <span>
-                                                        {(isCeilingAssembly
-                                                            ? mat?.mouCeilSec
-                                                            : mat?.mouWallSec) || mouVal}
+                                                    <span className="text-[10px] font-medium text-slate-600">
+                                                        {(isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) ||
+                                                            (() => {
+                                                                const altU = details.altUnits || {};
+                                                                return altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
+                                                            })()}
                                                     </span>
                                                     {mat?.code && (
                                                         <Edit2 className="w-2 h-2 text-slate-300 opacity-0 group-hover/mou2:opacity-100" />
                                                     )}
                                                     {hasMouSeQtyOverride && (
-                                                        <span
-                                                            className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block"
-                                                            title="Se.Qty UOM overridden for this project"
-                                                        />
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" title="UOM2 overridden" />
                                                     )}
                                                 </div>
                                             )
                                         ) : (
-                                            '-'
+                                            <span className="text-slate-300">—</span>
                                         )}
                                     </td>
 
-                                    {/* Unit Cost */}
-                                    <td className="border-r border-slate-200 text-center font-medium p-0">
-                                        <NumberInput
-                                            cellMode
-                                            className="w-full h-full bg-transparent text-center outline-none font-medium"
-                                            value={unitCostDisplay}
-                                            onChange={(val) =>
-                                                onUpdateComp(assembly.id, comp.id, 'overrideMatCost', val)
-                                            }
-                                            placeholder={unitCostPlaceholder}
-                                        />
+                                    {/* ── Labour Qty ── */}
+                                    <td className="border-r border-slate-200 text-center px-1">
+                                        {labQtyVal > 0 ? (
+                                            <span className="tabular-nums font-medium text-amber-700">
+                                                {labQtyVal.toFixed(2)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
                                     </td>
 
-                                    {/* Total Cost */}
-                                    <td className="text-center font-bold bg-slate-50 text-slate-800 border-r border-slate-200">
-                                        {Number.isFinite(rowTotal)
-                                            ? rowTotal.toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                            })
-                                            : '—'}
+                                    {/* ── Labour UOM ── */}
+                                    <td className="border-r border-slate-200 text-center px-1">
+                                        {labUomVal ? (
+                                            <span className="text-[10px] font-medium text-amber-700">{labUomVal}</span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
                                     </td>
 
-                                    {/* Delete */}
+                                    {/* ── Mat. Unit Price ── */}
+                                    <td className="border-r border-slate-200 text-center p-0">
+                                        {isLaborRow ? (
+                                            <span className="block text-center text-slate-300 px-2">—</span>
+                                        ) : (
+                                            <NumberInput
+                                                cellMode
+                                                className="w-full h-full bg-transparent text-center outline-none font-medium text-[11px]"
+                                                value={unitCostDisplay}
+                                                onChange={(val) => onUpdateComp(assembly.id, comp.id, 'overrideMatCost', val)}
+                                                placeholder={unitCostPlaceholder}
+                                            />
+                                        )}
+                                    </td>
+
+                                    {/* ── Lab. Unit Price ── */}
+                                    <td className="border-r border-slate-200 text-center p-0">
+                                        {isLaborRow ? (
+                                            <NumberInput
+                                                cellMode
+                                                className="w-full h-full bg-transparent text-center outline-none font-medium text-[11px] text-amber-700"
+                                                value={unitCostDisplay}
+                                                onChange={(val) => onUpdateComp(assembly.id, comp.id, 'overrideMatCost', val)}
+                                                placeholder={unitCostPlaceholder}
+                                            />
+                                        ) : labUnitCost > 0 ? (
+                                            <span className="block text-center tabular-nums font-medium text-amber-700 px-2">
+                                                {labUnitCost.toFixed(2)}
+                                            </span>
+                                        ) : (
+                                            <span className="block text-center text-slate-300 px-2">—</span>
+                                        )}
+                                    </td>
+
+                                    {/* ── Total Mat. Cost ── */}
+                                    <td className="border-r border-slate-200 text-right px-2">
+                                        {!isLaborRow && Number.isFinite(totalMatCost) && totalMatCost > 0 ? (
+                                            <span className="tabular-nums font-medium text-slate-700">
+                                                {fmtNum(totalMatCost)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
+                                    </td>
+
+                                    {/* ── Total Lab. Cost ── */}
+                                    <td className="border-r border-slate-200 text-right px-2">
+                                        {Number.isFinite(totalLabCost) && totalLabCost > 0 ? (
+                                            <span className="tabular-nums font-medium text-amber-700">
+                                                {fmtNum(totalLabCost)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
+                                    </td>
+
+                                    {/* ── Total Cost ── */}
+                                    <td className="border-r border-slate-200 text-right px-2 bg-slate-50">
+                                        {Number.isFinite(rowTotal) && rowTotal > 0 ? (
+                                            <span className="tabular-nums font-bold text-slate-800">
+                                                {fmtNum(rowTotal)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
+                                    </td>
+
+                                    {/* ── Delete (sticky) ── */}
                                     <td className="text-center sticky right-0 bg-white border-l border-slate-200">
                                         <IconButton
                                             icon={Trash2}
                                             variant="danger"
                                             size="sm"
-                                            onClick={() =>
-                                                onDeleteComponent(assembly.id, comp.id)
-                                            }
+                                            onClick={() => onDeleteComponent(assembly.id, comp.id)}
                                             tooltip="Delete component"
                                         />
                                     </td>
@@ -810,17 +893,28 @@ export const ComponentsList = ({
                             );
                         })}
 
-                        {/* Footer total row */}
-                        <tr className="bg-slate-800 text-white font-bold h-8 border-t-2 border-slate-900">
-                            <td colSpan={14} className="text-right px-4 uppercase text-xs tracking-wider" />
-                            <td className="sticky right-0 bg-slate-800" />
+                        {/* Footer totals row */}
+                        <tr className="bg-slate-50 border-t border-slate-200 h-8 text-[11px]">
+                            <td colSpan={18} className="px-4 text-right text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                Assembly Total
+                            </td>
+                            <td className="text-right px-2 tabular-nums font-semibold text-slate-700">
+                                {fmtNum(grandTotals.mat)}
+                            </td>
+                            <td className="text-right px-2 tabular-nums font-semibold text-amber-700">
+                                {fmtNum(grandTotals.lab)}
+                            </td>
+                            <td className="text-right px-2 tabular-nums font-bold text-slate-900 bg-white">
+                                {fmtNum(grandTotals.mat + grandTotals.lab)}
+                            </td>
+                            <td className="sticky right-0 bg-slate-50 border-l border-slate-200" />
                         </tr>
                     </tbody>
                 </table>
             </div>
 
             {/* Save / Close footer */}
-            <div className="bg-slate-100 p-2 border-t border-slate-200 flex justify-end items-center gap-2">
+            <div className="bg-white border-t border-slate-200 px-4 py-2.5 flex justify-end items-center gap-2 shrink-0">
                 {isDirty && (
                     <Button
                         variant="primary"
@@ -828,7 +922,7 @@ export const ComponentsList = ({
                         isLoading={isSavingAssembly}
                         onClick={onSaveClick}
                     >
-                        Save
+                        Save Changes
                     </Button>
                 )}
                 <Button

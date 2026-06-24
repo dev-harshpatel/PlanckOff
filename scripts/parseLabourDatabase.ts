@@ -98,6 +98,20 @@ function run() {
   };
 
   // ── Parse data rows ───────────────────────────────────────────────────────
+  // Every Excel row is its own unique labour_database row — labour_bands is
+  // always a single-entry array on parse. Additional band entries are only
+  // ever added later by a user via the "Add Band" button in the edit sidebar
+  // (ItemFormSheet.tsx) — the importer must never merge rows by category/description.
+  interface LabourBandEntry {
+    labourCode: string;
+    code: string;
+    htBand: string;
+    htMinFt: number;
+    htMaxFt: number;
+    uom: string;
+    ratePerUom: number;
+  }
+
   const records = [];
   let skippedSectionLabels = 0;
   let skippedBlank = 0;
@@ -120,18 +134,25 @@ function run() {
     }
 
     const category = str(row, COL.CATEGORY);
+    const description = str(row, COL.DESCRIPTION);
+    const rawBand = str(row, COL.HT_BAND) || 'All';
+    const htBand = HT_BAND_NORMALISE[rawBand] ?? rawBand;
+
+    const band: LabourBandEntry = {
+      labourCode,
+      code:       str(row, COL.CODE),
+      htBand,
+      htMinFt:    num(row, COL.HT_MIN_FT),
+      htMaxFt:    num(row, COL.HT_MAX_FT) || 99,
+      uom:        str(row, COL.UOM),
+      ratePerUom: num(row, COL.RATE_PER_UOM),
+    };
 
     records.push({
       parent_section: resolveParent(category),
-      labour_code:   labourCode,
-      code:          str(row, COL.CODE),
-      description:   str(row, COL.DESCRIPTION),
+      description,
       category,
-      ht_band:       (() => { const raw = str(row, COL.HT_BAND) || 'All'; return HT_BAND_NORMALISE[raw] ?? raw; })(),
-      ht_min_ft:     num(row, COL.HT_MIN_FT),
-      ht_max_ft:     num(row, COL.HT_MAX_FT) || 99,
-      uom:           str(row, COL.UOM),
-      rate_per_uom:  num(row, COL.RATE_PER_UOM),
+      labour_bands:  [band],
       qty1_formula:  str(row, COL.QTY1_FORMULA),
       qty1_uom:      str(row, COL.QTY1_UOM),
       notes:         str(row, COL.NOTES),
@@ -162,9 +183,13 @@ function run() {
     console.log(`    ${cat.padEnd(35)} ${count}`);
   }
 
-  // Height band breakdown
+  // Height band breakdown (across all bands, not just grouped records)
   const byBand: Record<string, number> = {};
-  for (const r of records) { byBand[r.ht_band] = (byBand[r.ht_band] ?? 0) + 1; }
+  for (const r of records) {
+    for (const band of r.labour_bands) {
+      byBand[band.htBand] = (byBand[band.htBand] ?? 0) + 1;
+    }
+  }
   console.log('\n  Rows per height band:');
   for (const [band, count] of Object.entries(byBand).sort()) {
     console.log(`    ${band.padEnd(15)} ${count}`);

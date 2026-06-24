@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/server';
-import type { MaterialDatabaseRow, PaginatedResponse } from '@/types';
+import type { MaterialDatabaseRow, SizeEntry, PaginatedResponse } from '@/types';
 
 // ─── Transformer ──────────────────────────────────────────────────────────────
 
@@ -16,12 +16,8 @@ const toMaterialDatabaseRow = (row: Record<string, unknown>): MaterialDatabaseRo
   type: (row.type as string) ?? '',
   description: (row.description as string) ?? '',
   section: (row.section as string) ?? '',
-  size: (row.size as string) ?? '',
-  sizeNum: (row.size_num as number) ?? 0,
-  sizeMm: row.size_mm as number | null,
-  sizeImperial: row.size_imperial as string | null,
+  sizes: Array.isArray(row.sizes_data) ? (row.sizes_data as SizeEntry[]) : [],
   unitPrice: (row.unit_price as number) ?? 0,
-  containerUnit: (row.container_unit as string) ?? '',
   qty1Formula: (row.qty1_formula as string) ?? '',
   uom1: (row.uom1 as string) ?? '',
   qty2Formula: (row.qty2_formula as string) ?? '',
@@ -32,6 +28,7 @@ const toMaterialDatabaseRow = (row: Record<string, unknown>): MaterialDatabaseRo
   uom2Ceiling: (row.uom2_ceiling as string) ?? '',
   notes: (row.notes as string) ?? '',
   searchKeywords: (row.search_keywords as string[]) ?? [],
+  deletedAt: (row.deleted_at as string) ?? null,
 });
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -48,7 +45,7 @@ export async function getMaterialsPaginated(opts: {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let query = supabaseAdmin.from('material_database').select('*', { count: 'exact' });
+  let query = supabaseAdmin.from('material_database').select('*', { count: 'exact' }).is('deleted_at', null);
 
   if (opts.parentSection && opts.parentSection !== 'all') {
     query = query.eq('parent_section', opts.parentSection);
@@ -92,6 +89,7 @@ export async function getMaterialCategories(): Promise<{
   const { data, error } = await supabaseAdmin
     .from('material_database')
     .select('category')
+    .is('deleted_at', null)
     .order('category', { ascending: true });
 
   if (error) return { data: null, error: { message: error.message } };
@@ -108,6 +106,7 @@ export async function getMaterialByCode(code: string): Promise<{
     .from('material_database')
     .select('*')
     .eq('code', code)
+    .is('deleted_at', null)
     .limit(1)
     .maybeSingle();
 
@@ -123,9 +122,144 @@ export async function getAllMaterialRows(): Promise<{
   const { data, error } = await supabaseAdmin
     .from('material_database')
     .select('*')
+    .is('deleted_at', null)
     .order('parent_section', { ascending: true })
     .order('row_num', { ascending: true });
 
   if (error) return { data: null, error: { message: error.message } };
   return { data: (data ?? []).map(toMaterialDatabaseRow), error: null };
+}
+
+export async function getNextRowNumForCategory(category: string): Promise<{
+  data: number | null;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from('material_database')
+    .select('row_num')
+    .eq('category', category)
+    .order('row_num', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return { data: null, error: { message: error.message } };
+  const maxNum = (data as Record<string, unknown> | null)?.row_num;
+  return { data: typeof maxNum === 'number' ? maxNum + 1 : 1, error: null };
+}
+
+export async function insertMaterialRow(row: Record<string, unknown>): Promise<{
+  data: MaterialDatabaseRow | null;
+  error: { message: string } | null;
+}> {
+  const category = row.category as string | undefined;
+  if (category) {
+    const { data: maxRow } = await supabaseAdmin
+      .from('material_database')
+      .select('row_num')
+      .eq('category', category)
+      .order('row_num', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const maxNum = (maxRow as Record<string, unknown> | null)?.row_num;
+    row = { ...row, row_num: typeof maxNum === 'number' ? maxNum + 1 : 1 };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('material_database')
+    .insert(row)
+    .select()
+    .single();
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: toMaterialDatabaseRow(data as Record<string, unknown>), error: null };
+}
+
+export async function upsertMaterialRows(rows: Record<string, unknown>[]): Promise<{
+  data: { inserted: number } | null;
+  error: { message: string } | null;
+}> {
+  if (rows.length === 0) return { data: { inserted: 0 }, error: null };
+
+  const codes = rows.map((r) => r.code as string).filter(Boolean);
+
+  const { error: delError } = await supabaseAdmin
+    .from('material_database')
+    .delete()
+    .in('code', codes);
+
+  if (delError) return { data: null, error: { message: delError.message } };
+
+  const CHUNK = 200;
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const { error } = await supabaseAdmin.from('material_database').insert(chunk);
+    if (error) return { data: null, error: { message: error.message } };
+    inserted += chunk.length;
+  }
+
+  return { data: { inserted }, error: null };
+}
+
+export async function updateMaterialRow(id: string, updates: Record<string, unknown>): Promise<{
+  data: MaterialDatabaseRow | null;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from('material_database')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: toMaterialDatabaseRow(data as Record<string, unknown>), error: null };
+}
+
+export async function softDeleteMaterialRow(id: string): Promise<{
+  error: { message: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from('material_database')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function restoreMaterialRow(id: string): Promise<{
+  error: { message: string } | null;
+}> {
+  const { error } = await supabaseAdmin
+    .from('material_database')
+    .update({ deleted_at: null })
+    .eq('id', id);
+  return { error: error ? { message: error.message } : null };
+}
+
+export async function getMaterialsTrash(): Promise<{
+  data: MaterialDatabaseRow[] | null;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from('material_database')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: (data ?? []).map(toMaterialDatabaseRow), error: null };
+}
+
+export async function purgeExpiredMaterialTrash(): Promise<{
+  data: { purged: number } | null;
+  error: { message: string } | null;
+}> {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabaseAdmin
+    .from('material_database')
+    .delete()
+    .not('deleted_at', 'is', null)
+    .lt('deleted_at', cutoff)
+    .select('id');
+
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: { purged: (data ?? []).length }, error: null };
 }

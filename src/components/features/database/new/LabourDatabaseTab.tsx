@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/shadcn/input';
 import { Badge } from '@/components/shadcn/badge';
+import { Button } from '@/components/shadcn/button';
 import { Skeleton } from '@/components/shadcn/skeleton';
 import {
   Select,
@@ -21,11 +22,13 @@ import {
   TableRow,
 } from '@/components/shadcn/table';
 import { LabourDetailSheet } from './LabourDetailSheet';
+import { ItemFormSheet } from './ItemFormSheet';
+import { ConfirmModal } from '@/components/ui';
 import type { LabourDatabaseRow } from '@/types';
 import { cn } from '@/lib/cn';
 
 const HT_BANDS = ['All', 'Standard', 'Medium', 'High', 'Very High', 'Extra High'];
-const COL_COUNT = 14;
+const COL_COUNT = 15;
 
 // ─── Badge variant maps ────────────────────────────────────────────────────────
 
@@ -109,6 +112,7 @@ const COLUMNS: { label: string; minWidth: number }[] = [
   { label: 'QTY1 Formula',   minWidth: 248 },  // QTY1_FORMULA + QTY1_UOM inline
   { label: 'QTY1 UOM',       minWidth: 80  },  // QTY1_UOM
   { label: 'Notes',          minWidth: 160 },  // NOTES
+  { label: 'Actions',        minWidth: 88  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -122,6 +126,9 @@ export function LabourDatabaseTab() {
   const [parentSection, setParentSection] = useState('all');
   const [htBand, setHtBand] = useState('all');
   const [selected, setSelected] = useState<LabourDatabaseRow | null>(null);
+  const [editing, setEditing] = useState<LabourDatabaseRow | null>(null);
+  const [deleting, setDeleting] = useState<LabourDatabaseRow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -149,6 +156,22 @@ export function LabourDatabaseTab() {
     debounceRef.current = setTimeout(() => load(search, category, parentSection, htBand), 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search, category, parentSection, htBand, load]);
+
+  async function handleDelete() {
+    if (!deleting) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/labour-database/${deleting.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        if (selected?.id === deleting.id) setSelected(null);
+        setDeleting(null);
+        load(search, category, parentSection, htBand);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -240,7 +263,9 @@ export function LabourDatabaseTab() {
                     </TableCell>
                   </TableRow>
                 )
-              : rows.map((row, i) => (
+              : rows.map((row, i) => {
+                  const band = row.labourBands[0];
+                  return (
                   <TableRow
                     key={row.id}
                     className={cn(
@@ -266,12 +291,12 @@ export function LabourDatabaseTab() {
 
                     {/* LABOUR_CODE */}
                     <TableCell className="border-r border-slate-100">
-                      <CodeChip value={row.labourCode} color="slate" />
+                      <CodeChip value={band?.labourCode ?? ''} color="slate" />
                     </TableCell>
 
                     {/* CODE (band short code: STD, HI, VHI…) */}
                     <TableCell className="border-r border-slate-100">
-                      <CodeChip value={row.code} color="blue" />
+                      <CodeChip value={band?.code ?? ''} color="blue" />
                     </TableCell>
 
                     {/* DESCRIPTION */}
@@ -291,34 +316,34 @@ export function LabourDatabaseTab() {
                     {/* HT_BAND */}
                     <TableCell className="border-r border-slate-100">
                       <Badge
-                        variant={HT_BAND_VARIANT[row.htBand] ?? 'outline'}
+                        variant={HT_BAND_VARIANT[band?.htBand ?? 'All'] ?? 'outline'}
                         className="text-[10px] py-0 whitespace-nowrap"
                       >
-                        {row.htBand || 'All'}
+                        {band?.htBand || 'All'}
                       </Badge>
                     </TableCell>
 
                     {/* HT_MIN_FT */}
                     <TableCell className="border-r border-slate-100 text-center">
-                      <TextCell value={row.htMinFt} className="tabular-nums" />
+                      <TextCell value={band?.htMinFt} className="tabular-nums" />
                     </TableCell>
 
                     {/* HT_MAX_FT */}
                     <TableCell className="border-r border-slate-100 text-center">
                       <TextCell
-                        value={row.htMaxFt && row.htMaxFt < 99 ? row.htMaxFt : null}
+                        value={band && band.htMaxFt < 99 ? band.htMaxFt : null}
                         className="tabular-nums"
                       />
                     </TableCell>
 
                     {/* UOM */}
                     <TableCell className="border-r border-slate-100">
-                      <TextCell value={row.uom} className="text-muted-foreground" />
+                      <TextCell value={band?.uom} className="text-muted-foreground" />
                     </TableCell>
 
                     {/* RATE_PER_UOM */}
                     <TableCell className="border-r border-slate-100">
-                      <RateCell value={row.ratePerUom} />
+                      <RateCell value={band?.ratePerUom ?? 0} />
                     </TableCell>
 
                     {/* QTY1_FORMULA */}
@@ -332,18 +357,62 @@ export function LabourDatabaseTab() {
                     </TableCell>
 
                     {/* NOTES */}
-                    <TableCell>
+                    <TableCell className="border-r border-slate-100">
                       <span className="text-xs truncate block text-muted-foreground italic" title={row.notes}>
                         {row.notes || '—'}
                       </span>
                     </TableCell>
+
+                    {/* Actions */}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setEditing(row)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => setDeleting(row)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
           </TableBody>
         </Table>
       </div>
 
       <LabourDetailSheet labour={selected} onClose={() => setSelected(null)} />
+
+      <ItemFormSheet
+        activeTab="labour"
+        isOpen={!!editing}
+        editItem={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); load(search, category, parentSection, htBand); }}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={handleDelete}
+        title="Delete labour entry?"
+        message={`"${deleting?.labourBands[0]?.labourCode}" will be moved to trash and permanently deleted after 30 days.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

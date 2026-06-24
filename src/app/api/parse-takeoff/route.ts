@@ -23,46 +23,27 @@ interface ParserCandidate {
 }
 
 const aggregateEntries = (entries: TakeoffEntry[]) => {
-  const grouped = new Map<string, Map<number, { totalLF: number; totalCeilingArea: number; count: number }>>();
+  const grouped = new Map<string, { totalLF: number; totalCeilingArea: number }>();
 
   for (const entry of entries) {
-    if (!grouped.has(entry.assemblyCode)) {
-      grouped.set(entry.assemblyCode, new Map());
+    const existing = grouped.get(entry.assemblyCode);
+    if (existing) {
+      existing.totalLF += entry.wallLength;
+      existing.totalCeilingArea += entry.ceilingArea || 0;
+    } else {
+      grouped.set(entry.assemblyCode, {
+        totalLF: entry.wallLength,
+        totalCeilingArea: entry.ceilingArea || 0,
+      });
     }
-
-    const heightMap = grouped.get(entry.assemblyCode)!;
-    if (!heightMap.has(entry.height)) {
-      heightMap.set(entry.height, { totalLF: 0, totalCeilingArea: 0, count: 0 });
-    }
-
-    const existing = heightMap.get(entry.height)!;
-    existing.totalLF += entry.wallLength;
-    existing.totalCeilingArea += entry.ceilingArea || 0;
-    existing.count += 1;
   }
 
   return Array.from(grouped.entries())
-    .map(([assemblyCode, heightMap]) => {
-      const heightVariants = Array.from(heightMap.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([height, data]) => {
-          const totalSF =
-            data.totalCeilingArea > 0 ? data.totalCeilingArea : height * data.totalLF;
-          return {
-            height,
-            totalLF: Math.round(data.totalLF * 100) / 100,
-            totalSF: Math.round(totalSF * 100) / 100,
-            count: data.count,
-          };
-        });
-
-      return {
-        assemblyCode,
-        heightVariants,
-        totalLF: Math.round(heightVariants.reduce((sum, variant) => sum + variant.totalLF, 0) * 100) / 100,
-        totalSF: Math.round(heightVariants.reduce((sum, variant) => sum + variant.totalSF, 0) * 100) / 100,
-      };
-    })
+    .map(([assemblyCode, data]) => ({
+      assemblyCode,
+      totalLF: Math.round(data.totalLF * 100) / 100,
+      totalSF: Math.round(data.totalCeilingArea * 100) / 100,
+    }))
     .sort((a, b) => a.assemblyCode.localeCompare(b.assemblyCode));
 };
 
@@ -70,10 +51,7 @@ const buildParsedTakeoffFromRawRecords = (rawRecords: TakeoffRawRecord[]): Parse
   const entries = rawRecords
     .map((record) => {
       const assemblyCode = String(record.wall_type ?? '').trim();
-      const height = Number.parseFloat(String(record.height ?? 0));
-      if (!assemblyCode || !Number.isFinite(height) || height <= 0) {
-        return null;
-      }
+      if (!assemblyCode) return null;
 
       const assemblyType = String(record.assembly_type ?? '').trim().toLowerCase();
       const isCeiling = assemblyType === 'ceiling';
@@ -82,13 +60,10 @@ const buildParsedTakeoffFromRawRecords = (rawRecords: TakeoffRawRecord[]): Parse
       const description = String(record.description ?? record.assembly_type ?? '').trim() || undefined;
       const level = String(record.level ?? '').trim() || undefined;
 
-      if (wallLength === 0 && (ceilingArea ?? 0) === 0) {
-        return null;
-      }
+      if (wallLength === 0 && (ceilingArea ?? 0) === 0) return null;
 
       const entry: TakeoffEntry = {
         assemblyCode,
-        height,
         wallLength,
         ceilingArea,
         level,
@@ -111,8 +86,7 @@ const buildParsedTakeoffFromRawRecords = (rawRecords: TakeoffRawRecord[]): Parse
     totalAssemblies: aggregated.length,
     columnMapping: {
       assemblyCode: 'Wall Type',
-      height: 'Height',
-      wallLength: 'wall Length/ Ceiling area',
+      wallLength: 'Wall Length / Ceiling Area',
       level: 'Level',
       assemblyType: 'Assembly Type',
     },
