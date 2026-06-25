@@ -23,7 +23,11 @@ function fingerprintSizes(sizes: SizeEntry[] | undefined): string {
 
 function fingerprintLabourBands(bands: LabourBandEntry[] | undefined): string {
   return (bands ?? [])
-    .map((b) => [b.labourCode, b.code, b.htBand, b.htMinFt, b.htMaxFt, b.uom, b.ratePerUom].join('|'))
+    .map((b) => [
+      b.labourCode, b.code, b.htBand, b.htMinFt, b.htMaxFt,
+      b.description ?? '', b.uom, b.ratePerUom,
+      b.qty1Formula ?? '', b.qty1Uom ?? '', b.notes ?? '',
+    ].join('|'))
     .sort()
     .join(';;');
 }
@@ -127,13 +131,10 @@ async function importMaterials(rows: Record<string, unknown>[]): Promise<ImportR
 
 // ─── Labour import ────────────────────────────────────────────────────────────
 
-// Labour rows are NOT deduped by category+description alone — the same
-// category+description can legitimately appear on multiple Excel rows, one
-// per height band (e.g. "Standard" vs "High"). Each parsed row always
-// carries exactly one labour_bands entry, so adding htBand makes the key
-// unique per row, same as it was per-row in the original sheet.
-function labourRowKey(category: unknown, description: unknown, bands: LabourBandEntry[] | undefined): string {
-  return `${category}|${description}|${bands?.[0]?.htBand ?? ''}`;
+// In the new structure each row = one parent bunch, keyed by parent_code.
+// parent_code is unique per row so no htBand disambiguation needed.
+function labourRowKey(parentCode: unknown): string {
+  return String(parentCode ?? '');
 }
 
 async function importLabour(rows: Record<string, unknown>[]): Promise<ImportResult> {
@@ -141,7 +142,7 @@ async function importLabour(rows: Record<string, unknown>[]): Promise<ImportResu
   if (error) throw new Error(error.message);
 
   const existingMap = new Map(
-    (existing ?? []).map((r) => [labourRowKey(r.category, r.description, r.labourBands), r]),
+    (existing ?? []).map((r) => [labourRowKey(r.parentCode), r]),
   );
 
   const stats: ImportResult = { added: 0, updated: 0, unchanged: 0, total: rows.length };
@@ -149,18 +150,17 @@ async function importLabour(rows: Record<string, unknown>[]): Promise<ImportResu
   const toInsert: Record<string, unknown>[] = [];
 
   for (const uploaded of rows) {
-    const key = labourRowKey(uploaded.category, uploaded.description, uploaded.labour_bands as LabourBandEntry[]);
+    const key = labourRowKey(uploaded.parent_code);
     const existing = existingMap.get(key);
     if (!existing) {
       stats.added++;
       toInsert.push(uploaded);
     } else {
       const changed =
+        normalizeVal(existing.parentCode) !== normalizeVal(uploaded.parent_code) ||
         normalizeVal(existing.parentSection) !== normalizeVal(uploaded.parent_section) ||
-        fingerprintLabourBands(existing.labourBands) !== fingerprintLabourBands(uploaded.labour_bands as LabourBandEntry[]) ||
-        normalizeVal(existing.qty1Formula) !== normalizeVal(uploaded.qty1_formula) ||
-        normalizeVal(existing.qty1Uom) !== normalizeVal(uploaded.qty1_uom) ||
-        normalizeVal(existing.notes) !== normalizeVal(uploaded.notes);
+        normalizeVal(existing.description) !== normalizeVal(uploaded.description) ||
+        fingerprintLabourBands(existing.labourBands) !== fingerprintLabourBands(uploaded.labour_bands as LabourBandEntry[]);
 
       if (changed) {
         stats.updated++;

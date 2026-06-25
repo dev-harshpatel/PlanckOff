@@ -106,7 +106,6 @@ export const ComponentsList = ({
         height: 50,
         oc: 50,
         layers: 50,
-        matDesc: 160,
         laborCode: 90,
         waste: 45,
         qty1: 65,
@@ -219,7 +218,7 @@ export const ComponentsList = ({
                             <th colSpan={3} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-slate-500">
                                 Identification
                             </th>
-                            <th colSpan={5} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-slate-500">
+                            <th colSpan={4} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-slate-500">
                                 Specs
                             </th>
                             <th colSpan={6} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-emerald-600">
@@ -255,9 +254,6 @@ export const ComponentsList = ({
                             </th>
                             <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.layers }}>
                                 Layers<Resizer col="layers" />
-                            </th>
-                            <th className="relative border-r border-slate-200 text-left pl-1" style={{ width: colWidths.matDesc }}>
-                                Description<Resizer col="matDesc" />
                             </th>
                             <th className="relative border-r border-slate-200 text-center px-1" style={{ width: colWidths.laborCode }}>
                                 Labor Code<Resizer col="laborCode" />
@@ -561,13 +557,6 @@ export const ComponentsList = ({
                                         ) : (
                                             <span className="text-slate-300">—</span>
                                         )}
-                                    </td>
-
-                                    {/* ── Description (from material DB) ── */}
-                                    <td className="border-r border-slate-200 px-1 truncate">
-                                        <span className="truncate block text-slate-500 text-[10px]" title={mat?.description}>
-                                            {mat?.description || <span className="text-slate-300">—</span>}
-                                        </span>
                                     </td>
 
                                     {/* ── Labor Code ── */}

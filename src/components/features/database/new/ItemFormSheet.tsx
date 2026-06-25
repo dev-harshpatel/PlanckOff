@@ -153,35 +153,8 @@ function CategoryCombobox({
 // the material row. If no match exists for the typed code, lets the user
 // create a brand-new row directly in the Labour Database, then auto-fills it.
 
-interface LabourMatch {
-  labourCode: string;
-  description: string;
-  category: string;
-  htBand: string;
-  htMinFt: number;
-  htMaxFt: number;
-  uom: string;
-  ratePerUom: number;
-}
-
-function flattenLabourMatches(rows: LabourDatabaseRow[]): LabourMatch[] {
-  return rows.flatMap((row) =>
-    row.labourBands.map((band) => ({
-      labourCode: band.labourCode,
-      description: row.description,
-      category: row.category,
-      htBand: band.htBand,
-      htMinFt: band.htMinFt,
-      htMaxFt: band.htMaxFt,
-      uom: band.uom,
-      ratePerUom: band.ratePerUom,
-    })),
-  );
-}
-
 const NEW_LABOUR_DEFAULTS = {
   parentSection: 'Walls',
-  category: '',
   description: '',
   htBand: 'All',
   htMinFt: '0',
@@ -202,11 +175,10 @@ function LabourCodeField({
   onChange: (code: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [matches, setMatches] = useState<LabourMatch[]>([]);
-  // All bands whose labourCode exactly matches the typed value — a single
-  // code can resolve to more than one band (e.g. different height ranges),
-  // so this is always rendered as an array, same as the Sizes pattern.
-  const [exactMatches, setExactMatches] = useState<LabourMatch[]>([]);
+  // Rows matching the search term (for the dropdown suggestions)
+  const [suggestions, setSuggestions] = useState<LabourDatabaseRow[]>([]);
+  // The row whose parentCode exactly matches the typed value (for the band preview)
+  const [matchedRow, setMatchedRow] = useState<LabourDatabaseRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [newForm, setNewForm] = useState(NEW_LABOUR_DEFAULTS);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -215,15 +187,18 @@ function LabourCodeField({
 
   // Debounced search as the user types
   useEffect(() => {
-    if (!value.trim()) { setMatches([]); setExactMatches([]); return; }
+    if (!value.trim()) { setSuggestions([]); setMatchedRow(null); return; }
     const timer = setTimeout(() => {
       fetch(`/api/labour-database?search=${encodeURIComponent(value.trim())}`)
         .then((r) => r.json())
         .then((j) => {
           if (!j.success) return;
-          const all = flattenLabourMatches(j.data as LabourDatabaseRow[]);
-          setMatches(all);
-          setExactMatches(all.filter((m) => m.labourCode.toLowerCase() === value.trim().toLowerCase()));
+          const rows = j.data as LabourDatabaseRow[];
+          setSuggestions(rows);
+          const exact = rows.find(
+            (r) => r.parentCode.toLowerCase() === value.trim().toLowerCase(),
+          ) ?? null;
+          setMatchedRow(exact);
         })
         .catch(() => {});
     }, 300);
@@ -244,7 +219,7 @@ function LabourCodeField({
 
   async function handleCreateNew() {
     setCreateError(null);
-    if (!newForm.category.trim()) { setCreateError('Category is required'); return; }
+    if (!value.trim()) { setCreateError('Parent code is required'); return; }
 
     setSaving(true);
     try {
@@ -252,8 +227,8 @@ function LabourCodeField({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          parentCode: value.trim(),
           parentSection: newForm.parentSection,
-          category: newForm.category,
           description: newForm.description,
           qty1Formula: newForm.qty1Formula,
           qty1Uom: newForm.qty1Uom,
@@ -264,24 +239,19 @@ function LabourCodeField({
             htBand: newForm.htBand,
             htMinFt: newForm.htMinFt !== '' ? Number(newForm.htMinFt) : 0,
             htMaxFt: newForm.htMaxFt !== '' ? Number(newForm.htMaxFt) : 99,
+            description: newForm.description,
             uom: newForm.uom,
             ratePerUom: newForm.ratePerUom !== '' ? Number(newForm.ratePerUom) : 0,
+            qty1Formula: newForm.qty1Formula,
+            qty1Uom: newForm.qty1Uom,
+            notes: '',
           }],
         }),
       });
       const json = await res.json();
       if (!json.success) { setCreateError(json.error ?? 'Failed to create labour entry'); return; }
 
-      setExactMatches((prev) => [...prev, {
-        labourCode: value.trim(),
-        description: newForm.description,
-        category: newForm.category,
-        htBand: newForm.htBand,
-        htMinFt: newForm.htMinFt !== '' ? Number(newForm.htMinFt) : 0,
-        htMaxFt: newForm.htMaxFt !== '' ? Number(newForm.htMaxFt) : 99,
-        uom: newForm.uom,
-        ratePerUom: newForm.ratePerUom !== '' ? Number(newForm.ratePerUom) : 0,
-      }]);
+      setMatchedRow(json.data as LabourDatabaseRow);
       setCreating(false);
       setNewForm(NEW_LABOUR_DEFAULTS);
     } finally {
@@ -298,12 +268,12 @@ function LabourCodeField({
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); setCreating(false); }}
         onFocus={() => setOpen(true)}
-        placeholder="Search labour code…"
+        placeholder="Search parent labour code…"
       />
 
       {open && value.trim() && !creating && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-44 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-          {matches.length === 0 ? (
+          {suggestions.length === 0 ? (
             <button
               type="button"
               className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50"
@@ -313,25 +283,30 @@ function LabourCodeField({
               Create &ldquo;{value.trim()}&rdquo; in Labour Database
             </button>
           ) : (
-            matches.map((m, i) => (
+            suggestions.map((row) => (
               <button
-                key={`${m.labourCode}-${i}`}
+                key={row.id}
                 type="button"
                 className="flex w-full flex-col items-start gap-0.5 px-3 py-1.5 text-left hover:bg-slate-50"
-                onMouseDown={(e) => { e.preventDefault(); onChange(m.labourCode); setOpen(false); }}
+                onMouseDown={(e) => { e.preventDefault(); onChange(row.parentCode); setOpen(false); }}
               >
-                <span className="text-xs font-mono font-medium text-emerald-700">{m.labourCode}</span>
-                <span className="text-[10px] text-slate-500 truncate w-full">{m.description || m.category}</span>
+                <span className="text-xs font-mono font-medium text-emerald-700">{row.parentCode}</span>
+                <span className="text-[10px] text-slate-500 truncate w-full">{row.description}</span>
               </button>
             ))
           )}
         </div>
       )}
 
-      {/* Live read-only band info — looked up from Labour Database, never stored on the material.
-          A code can resolve to more than one band, so always render as a table. */}
-      {exactMatches.length > 0 && !creating && (
+      {/* Labour Band preview — shows all children of the matched parent row */}
+      {matchedRow && !creating && (
         <div className="mt-1.5 overflow-x-auto rounded-md border border-slate-200">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border-b border-slate-200">
+            <span className="text-[10px] text-slate-500">Labour Band</span>
+            <code className="text-[10px] font-mono bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">
+              {matchedRow.parentCode}
+            </code>
+          </div>
           <table className="w-full text-[10px]">
             <thead className="bg-slate-50">
               <tr>
@@ -342,12 +317,16 @@ function LabourCodeField({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {exactMatches.map((m, i) => (
+              {matchedRow.labourBands.map((band, i) => (
                 <tr key={i}>
-                  <td className="px-2 py-1 font-medium text-slate-700">{m.htBand}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-slate-700">{m.htMinFt}–{m.htMaxFt < 99 ? m.htMaxFt : '∞'}</td>
-                  <td className="px-2 py-1 text-slate-700">{m.uom || '—'}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-slate-700">{m.ratePerUom ? `$${m.ratePerUom.toFixed(2)}` : '—'}</td>
+                  <td className="px-2 py-1 font-medium text-slate-700">{band.htBand}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-slate-700">
+                    {band.htMinFt}–{band.htMaxFt < 99 ? band.htMaxFt : '∞'}
+                  </td>
+                  <td className="px-2 py-1 text-slate-700">{band.uom || '—'}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-slate-700">
+                    {band.ratePerUom ? `$${band.ratePerUom.toFixed(2)}` : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -370,12 +349,6 @@ function LabourCodeField({
               <option value="Ceiling">Ceiling</option>
               <option value="Bulkhead">Bulkhead</option>
             </select>
-            <input
-              className="h-7 rounded border border-slate-200 bg-white px-2 text-xs"
-              placeholder="Category*"
-              value={newForm.category}
-              onChange={(e) => setNewField('category', e.target.value)}
-            />
             <input
               className="col-span-2 h-7 rounded border border-slate-200 bg-white px-2 text-xs"
               placeholder="Description"

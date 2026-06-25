@@ -32,7 +32,8 @@
       "Bash(cp 'D:/Projects/learning-projects/PlanckOff/src/components/features/database/new/ItemFormSheet.tsx' 'D:/Projects/learning-projects/PlanckOff/.claude/worktrees/agent-a93581940a40be533/src/components/features/database/new/ItemFormSheet.tsx')",
       "Bash(npx tsx *)",
       "Skill(run)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(npm run *)"
     ]
   }
 }

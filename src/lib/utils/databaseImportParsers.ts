@@ -36,6 +36,7 @@ export interface MaterialImportRow {
 }
 
 export interface LabourImportRow {
+  parent_code: string;
   parent_section: string;
   description: string;
   category: string;
@@ -383,72 +384,130 @@ export function parseMaterialsExcel(arrayBuffer: ArrayBuffer): ParseResult<Mater
   return { rows, sheetName, totalRawRows: allRows.length, skipped };
 }
 
+// Regex to match parent bunch header lines:
+// "LAB-FRM   —   Install Framing Wall (Metal Studs)   (5 children)"
+// "LAB-FRM-SH   —   Install CH/CT Studs (Shaftwall)   (no children)"
+const PARENT_LINE_RE = /^([A-Z0-9\-]+)\s+[—\-]+\s+(.+?)\s+\((?:\d+|no)\s+children\)\s*$/;
+
+function resolveParentSectionFromCode(
+  excelSection: string,
+  parentCode: string,
+  parentDesc: string,
+): 'Walls' | 'Ceiling' | 'Bulkhead' {
+  if (excelSection === 'WALLS') return 'Walls';
+  const pc = parentCode.toUpperCase();
+  const pd = parentDesc.toUpperCase();
+  if (
+    pd.includes('CEILING') ||
+    pc.includes('-CLG') ||
+    pc.includes('-ACT') ||
+    pc.includes('SHCLG') ||
+    pc.includes('SHAFTCLNG') ||
+    pc.includes('INSEXT') ||
+    pc.includes('BAFFLE') ||
+    pc.includes('REPAIR-CEILING') ||
+    pc.includes('GRID-DW') ||
+    pc === 'LAB-SH'
+  ) return 'Ceiling';
+  if (pd.includes('BULKHEAD') || pc.includes('BLKHD') || pc.includes('BULK')) return 'Bulkhead';
+  return 'Ceiling';
+}
+
 export function parseLabourExcel(arrayBuffer: ArrayBuffer): ParseResult<LabourImportRow> {
   const wb = read(arrayBuffer, { type: 'array' });
   const sheetName =
-    ['Labour Data', 'Sheet1', 'Sheet 1', 'Labour'].find((n) => wb.Sheets[n]) ??
+    ['Labour Bunches', 'Labour Data', 'Sheet1', 'Sheet 1', 'Labour'].find((n) => wb.Sheets[n]) ??
     wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   if (!ws) throw new Error(`No sheet found. Available: ${wb.SheetNames.join(', ')}`);
 
   const allRows: unknown[][] = utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-  const header = findHeaderRow(allRows, 5, ['LABOUR_CODE']);
-  if (!header) throw new Error('Could not find header row with LABOUR_CODE.');
+  // ── Indices for the per-child-row columns (fixed positions in this sheet) ──
+  // Row format: [LABOUR CODE, CODE, HT BAND, HT MIN(ft), HT MAX(ft), DESCRIPTION, UOM, RATE/UOM, QTY1 FORMULA, QTY1 UOM, NOTES]
+  const C = { LABOUR_CODE: 0, CODE: 1, HT_BAND: 2, HT_MIN: 3, HT_MAX: 4, DESC: 5, UOM: 6, RATE: 7, QTY1: 8, QTY1_UOM: 9, NOTES: 10 };
 
-  const { idx: headerRowIdx, colMap } = header;
-  const COL = {
-    LABOUR_CODE: colMap['LABOUR_CODE'] ?? -1,
-    CODE: colMap['CODE'] ?? -1,
-    DESCRIPTION: colMap['DESCRIPTION'] ?? -1,
-    CATEGORY: colMap['CATEGORY'] ?? -1,
-    HT_BAND: colMap['HT_BAND'] ?? -1,
-    HT_MIN_FT: colMap['HT_MIN_FT'] ?? -1,
-    HT_MAX_FT: colMap['HT_MAX_FT'] ?? -1,
-    UOM: colMap['UOM'] ?? -1,
-    RATE_PER_UOM: colMap['RATE_PER_UOM'] ?? -1,
-    QTY1_FORMULA: colMap['QTY1_FORMULA'] ?? -1,
-    QTY1_UOM: colMap['QTY1_UOM'] ?? -1,
-    NOTES: colMap['NOTES'] ?? -1,
-  };
-
-  // Every Excel row is its own unique labour row — labour_bands is always a
-  // single-entry array on parse. Additional band entries are only ever added
-  // later by a user via the "Add Band" button in the edit sidebar
-  // (ItemFormSheet.tsx) — the importer must never merge rows by category/description.
   const rows: LabourImportRow[] = [];
   let skipped = 0;
+  let currentExcelSection = 'WALLS';
+  let i = 0;
 
-  for (let i = headerRowIdx + 1; i < allRows.length; i++) {
+  while (i < allRows.length) {
     const row = allRows[i] as unknown[];
-    const labourCode = str(row, COL.LABOUR_CODE);
-    if (!labourCode) { skipped++; continue; }
-    if (SECTION_LABELS.has(labourCode)) { skipped++; continue; }
+    const first = str(row, 0);
 
-    const category = str(row, COL.CATEGORY);
-    const description = str(row, COL.DESCRIPTION);
-    const rawBand = str(row, COL.HT_BAND) || 'All';
-    const htBand = HT_BAND_NORMALISE[rawBand] ?? rawBand;
+    // Detect section headers (WALLS / CEILINGS / BULKHEAD)
+    if (first === 'WALLS' || first === 'CEILINGS' || first === 'BULKHEAD') {
+      currentExcelSection = first;
+      i++;
+      continue;
+    }
 
-    const band: LabourBandEntry = {
-      labourCode,
-      code: str(row, COL.CODE),
-      htBand,
-      htMinFt: num(row, COL.HT_MIN_FT),
-      htMaxFt: num(row, COL.HT_MAX_FT) || 99,
-      uom: str(row, COL.UOM),
-      ratePerUom: num(row, COL.RATE_PER_UOM),
-    };
+    // Detect parent bunch header line
+    const parentMatch = first.match(PARENT_LINE_RE);
+    if (parentMatch) {
+      const parentCode = parentMatch[1].trim();
+      const parentDesc = parentMatch[2].trim();
+      const parentSection = resolveParentSectionFromCode(
+        currentExcelSection,
+        parentCode,
+        parentDesc,
+      );
 
-    rows.push({
-      parent_section: resolveParentSection(category),
-      description,
-      category,
-      labour_bands: [band],
-      qty1_formula: str(row, COL.QTY1_FORMULA),
-      qty1_uom: str(row, COL.QTY1_UOM),
-      notes: str(row, COL.NOTES),
-    });
+      i++; // skip parent header
+      // skip column-header row (LABOUR CODE, CODE, HT BAND, ...)
+      if (i < allRows.length) {
+        const headerCandidate = str(allRows[i] as unknown[], 0);
+        if (headerCandidate === 'LABOUR CODE') i++;
+      }
+
+      // Collect all child band rows until empty row or next parent
+      const bands: LabourBandEntry[] = [];
+      while (i < allRows.length) {
+        const childRow = allRows[i] as unknown[];
+        const labourCode = str(childRow, C.LABOUR_CODE);
+
+        // Empty row, section label, or next parent header → end of this bunch
+        if (!labourCode) { i++; break; }
+        if (SECTION_LABELS.has(labourCode)) break;
+        if (PARENT_LINE_RE.test(labourCode)) break;
+        if (labourCode === 'LABOUR CODE') { i++; continue; }
+
+        const rawBand = str(childRow, C.HT_BAND) || 'All';
+        bands.push({
+          labourCode,
+          code: str(childRow, C.CODE),
+          htBand: HT_BAND_NORMALISE[rawBand] ?? rawBand,
+          htMinFt: num(childRow, C.HT_MIN),
+          htMaxFt: num(childRow, C.HT_MAX) || 99,
+          description: str(childRow, C.DESC),
+          uom: str(childRow, C.UOM),
+          ratePerUom: num(childRow, C.RATE),
+          qty1Formula: str(childRow, C.QTY1),
+          qty1Uom: str(childRow, C.QTY1_UOM),
+          notes: str(childRow, C.NOTES),
+        });
+        i++;
+      }
+
+      if (bands.length === 0) { skipped++; continue; }
+
+      rows.push({
+        parent_code: parentCode,
+        parent_section: parentSection,
+        description: parentDesc,
+        category: parentSection,
+        labour_bands: bands,
+        // row-level formula/uom/notes: use first band's values as representative
+        qty1_formula: bands[0].qty1Formula,
+        qty1_uom: bands[0].qty1Uom,
+        notes: '',
+      });
+      continue;
+    }
+
+    skipped++;
+    i++;
   }
 
   return { rows, sheetName, totalRawRows: allRows.length, skipped };

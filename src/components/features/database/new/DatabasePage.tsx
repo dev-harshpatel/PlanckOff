@@ -114,14 +114,17 @@ export function DatabasePage() {
           </div>
         </div>
 
-        <TabsContent value="materials" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
-          <MaterialDatabaseTab key={`materials-${tabKeys.materials}`} />
+        {/* forceMount keeps each tab's component permanently in the DOM so that
+            switching tabs never causes a remount → no redundant API calls.
+            isActive gates the very first data fetch until the tab is opened. */}
+        <TabsContent forceMount value="materials" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
+          <MaterialDatabaseTab key={`materials-${tabKeys.materials}`} isActive={activeTab === 'materials'} />
         </TabsContent>
-        <TabsContent value="labour" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
-          <LabourDatabaseTab key={`labour-${tabKeys.labour}`} />
+        <TabsContent forceMount value="labour" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
+          <LabourDatabaseTab key={`labour-${tabKeys.labour}`} isActive={activeTab === 'labour'} />
         </TabsContent>
-        <TabsContent value="assembly-bunches" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
-          <AssemblyBunchTab key={`assembly-${tabKeys['assembly-bunches']}`} />
+        <TabsContent forceMount value="assembly-bunches" className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
+          <AssemblyBunchTab key={`assembly-${tabKeys['assembly-bunches']}`} isActive={activeTab === 'assembly-bunches'} />
         </TabsContent>
       </Tabs>
 

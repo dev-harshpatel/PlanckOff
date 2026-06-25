@@ -33,15 +33,16 @@ export const POST = withRoleAuth(['Administrator', 'Team Lead'], async (request:
   const body = await request.json().catch(() => null);
   if (!body) return errorResponse('Invalid JSON body', 400);
 
+  const parentCode = String(body.parentCode ?? '').trim();
   const parentSection = String(body.parentSection ?? '').trim();
-  const category = String(body.category ?? '').trim();
+  const category = String(body.category ?? parentSection).trim();
   const description = String(body.description ?? '').trim();
   if (!parentSection) return errorResponse('parentSection is required', 400);
-  if (!category) return errorResponse('category is required', 400);
 
   const labourBands: LabourBandEntry[] = Array.isArray(body.labourBands) ? body.labourBands : [];
 
   const row = {
+    parent_code: parentCode,
     parent_section: parentSection,
     description,
     category,

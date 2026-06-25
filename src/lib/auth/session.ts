@@ -88,6 +88,15 @@ export async function validateSession(): Promise<SessionValidationResult> {
       shouldRefreshCookie: resolvedSession.renewed,
     };
   } catch (error) {
+    // DYNAMIC_SERVER_USAGE is Next.js's build-time signal that a route uses
+    // dynamic APIs (cookies, headers). Re-throw it so Next.js can correctly
+    // mark the route as dynamic instead of logging a false "Session validation error".
+    if (
+      error instanceof Error &&
+      (error as Error & { digest?: string }).digest === 'DYNAMIC_SERVER_USAGE'
+    ) {
+      throw error;
+    }
     console.error('Session validation error:', error);
     return {
       isValid: false,

@@ -5,6 +5,7 @@ import type { LabourDatabaseRow, LabourBandEntry } from '@/types';
 
 const toLabourDatabaseRow = (row: Record<string, unknown>): LabourDatabaseRow => ({
   id: row.id as string,
+  parentCode: (row.parent_code as string) ?? '',
   parentSection: (row.parent_section as string) ?? '',
   description: (row.description as string) ?? '',
   category: (row.category as string) ?? '',
@@ -33,19 +34,24 @@ export async function getAllLabour(opts?: {
   }
   // Each row always has exactly one band entry — filter on its htBand directly.
   if (opts?.htBand && opts.htBand !== 'all') {
-    query = query.filter('labour_bands->0->>htBand', 'eq', opts.htBand);
+    // Filter rows that have at least one band matching the requested htBand.
+    // JSONB @> checks if the array contains an object with htBand == requested value.
+    query = query.filter(
+      'labour_bands',
+      'cs',
+      JSON.stringify([{ htBand: opts.htBand }]),
+    );
   }
   if (opts?.search?.trim()) {
     const term = opts.search.trim();
-    // Each row's labour code lives at labour_bands[0]->>labourCode (JSONB) —
-    // search must match that too, not just description/category, since
-    // callers (e.g. the Labour Band lookup on the Material side) search by code.
+    // Search parent code, description, and category.
+    // parent_code is the primary key callers (Material form) search by.
     query = query.or(
-      `description.ilike.%${term}%,category.ilike.%${term}%,labour_bands->0->>labourCode.ilike.%${term}%`,
+      `parent_code.ilike.%${term}%,description.ilike.%${term}%,category.ilike.%${term}%`,
     );
   }
 
-  query = query.order('parent_section').order('category');
+  query = query.order('parent_section').order('parent_code');
 
   const { data, error } = await query;
   if (error) return { data: null, error: { message: error.message } };
@@ -155,6 +161,21 @@ export async function getLabourTrash(): Promise<{
 
   if (error) return { data: null, error: { message: error.message } };
   return { data: (data ?? []).map(toLabourDatabaseRow), error: null };
+}
+
+export async function getLabourByParentCode(parentCode: string): Promise<{
+  data: LabourDatabaseRow | null;
+  error: { message: string } | null;
+}> {
+  const { data, error } = await supabaseAdmin
+    .from('labour_database')
+    .select('*')
+    .eq('parent_code', parentCode)
+    .is('deleted_at', null)
+    .single();
+
+  if (error) return { data: null, error: { message: error.message } };
+  return { data: toLabourDatabaseRow(data as Record<string, unknown>), error: null };
 }
 
 export async function purgeExpiredLabourTrash(): Promise<{

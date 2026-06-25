@@ -38,10 +38,15 @@ const GROUP_COLORS: Record<string, string> = {
   'Ceiling Systems': 'bg-amber-100 text-amber-700 border-amber-200',
 };
 
-export function AssemblyBunchTab() {
+interface AssemblyBunchTabProps {
+  isActive?: boolean;
+}
+
+export function AssemblyBunchTab({ isActive = true }: AssemblyBunchTabProps) {
+  const [ready, setReady] = useState(isActive);
   const [branches, setBranches] = useState<AssemblyBunchBranch[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [group, setGroup] = useState('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -50,11 +55,17 @@ export function AssemblyBunchTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Activate once the tab is first opened — never deactivates
   useEffect(() => {
+    if (isActive && !ready) setReady(true);
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!ready) return;
     fetch('/api/assembly-bunch-database?meta=groups')
       .then((r) => r.json())
       .then((j) => { if (j.success) setGroups(j.data); });
-  }, []);
+  }, [ready]);
 
   const load = useCallback((q: string, g: string) => {
     setIsLoading(true);
@@ -77,10 +88,11 @@ export function AssemblyBunchTab() {
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => load(search, group), 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, group, load]);
+  }, [search, group, load, ready]);
 
   const toggleBranch = (branchCode: string) => {
     setExpanded((prev) => {

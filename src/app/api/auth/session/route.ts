@@ -55,6 +55,14 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
+    // Re-throw Next.js's build-time dynamic server usage signal so it correctly
+    // marks this route as dynamic without logging a false error.
+    if (
+      error instanceof Error &&
+      (error as Error & { digest?: string }).digest === 'DYNAMIC_SERVER_USAGE'
+    ) {
+      throw error;
+    }
     // Server error (e.g. Supabase unavailable during hot reload) — do NOT clear the
     // cookie. The session may still be valid; we just can't verify it right now.
     console.error('Session validation error:', error);

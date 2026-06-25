@@ -12,6 +12,7 @@ import {
 import { Badge } from '@/components/shadcn/badge';
 import { Separator } from '@/components/shadcn/separator';
 import { ScrollArea } from '@/components/shadcn/scroll-area';
+import { Skeleton } from '@/components/shadcn/skeleton';
 import type { MaterialDatabaseRow, SizeEntry, LabourDatabaseRow, LabourBandEntry } from '@/types';
 
 interface MaterialDetailSheetProps {
@@ -106,6 +107,7 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
   // bands (e.g. different height ranges), so each slot renders an array,
   // same pattern as Sizes — but Wall/Ceiling/Bulkhead are never mixed together.
   const [matchesByCode, setMatchesByCode] = useState<Record<string, LabourBandEntry[]>>({});
+  const [isLoadingBands, setIsLoadingBands] = useState(false);
   const [openSlot, setOpenSlot] = useState<SlotKey | null>(null);
   const [newBand, setNewBand] = useState<NewBandForm>(EMPTY_NEW_BAND);
   const [bandSaving, setBandSaving] = useState(false);
@@ -117,27 +119,32 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
       .filter(Boolean);
     if (codes.length === 0) { setMatchesByCode({}); return; }
 
-    const results = await Promise.all(
-      codes.map((code) =>
-        fetch(`/api/labour-database?search=${encodeURIComponent(code)}`)
-          .then((r) => r.json())
-          .then((j) => (j.success ? (j.data as LabourDatabaseRow[]) : []))
-          .catch(() => [] as LabourDatabaseRow[]),
-      ),
-    );
+    setIsLoadingBands(true);
+    try {
+      const results = await Promise.all(
+        codes.map((code) =>
+          fetch(`/api/labour-database?search=${encodeURIComponent(code)}`)
+            .then((r) => r.json())
+            .then((j) => (j.success ? (j.data as LabourDatabaseRow[]) : []))
+            .catch(() => [] as LabourDatabaseRow[]),
+        ),
+      );
 
-    const map: Record<string, LabourBandEntry[]> = {};
-    codes.forEach((code, i) => {
-      const key = code.toLowerCase();
-      const bands: LabourBandEntry[] = [];
-      for (const row of results[i]) {
-        for (const band of row.labourBands) {
-          if (band.labourCode.toLowerCase() === key) bands.push(band);
-        }
-      }
-      map[key] = bands;
-    });
-    setMatchesByCode(map);
+      const map: Record<string, LabourBandEntry[]> = {};
+      codes.forEach((code, i) => {
+        const key = code.toLowerCase();
+        // Match on parentCode (material DB stores parent codes like LAB-HNG)
+        const parentRow = results[i].find((r) => r.parentCode.toLowerCase() === key);
+        map[key] = parentRow
+          ? [...parentRow.labourBands]
+              .filter((b) => b.isActive !== false)   // only active bands
+              .sort((a, b) => a.htMinFt - b.htMinFt)
+          : [];
+      });
+      setMatchesByCode(map);
+    } finally {
+      setIsLoadingBands(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -226,11 +233,9 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
     }
   }
 
-  // Adding a band always writes a NEW row to the Labour Database itself.
-  // If the slot (Wall/Ceiling/Bulkhead) had no code linked yet, the new
-  // code is also written back to that EXISTING material field (wallLabourCode
-  // etc.) so the link shows up — this is not new storage, just populating a
-  // field that was already part of the material row.
+  // Adding a band: if the parent labour row already exists (it has a parentCode matching
+  // slot.code), PATCH it to append the new band to its labourBands array.
+  // If no parent exists yet, POST to create one (then also link the code to this material).
   async function handleSaveBand(slot: LabourSlot) {
     if (!material) return;
     setBandError(null);
@@ -239,31 +244,77 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
 
     setBandSaving(true);
     try {
-      const res = await fetch('/api/labour-database', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          parentSection: slot.parentSection,
-          category: material.category,
-          description: material.description,
-          qty1Formula: '',
-          qty1Uom: '',
-          notes: '',
-          labourBands: [{
-            labourCode: codeToUse,
-            code: '',
-            htBand: newBand.htBand,
-            htMinFt: newBand.htMinFt !== '' ? Number(newBand.htMinFt) : 0,
-            htMaxFt: newBand.htMaxFt !== '' ? Number(newBand.htMaxFt) : 99,
-            uom: newBand.uom.trim(),
-            ratePerUom: newBand.ratePerUom !== '' ? Number(newBand.ratePerUom) : 0,
-          }],
-        }),
-      });
-      const json = await res.json();
-      if (!json.success) { setBandError(json.error ?? 'Failed to save'); return; }
+      const band = {
+        labourCode: newBand.labourCode.trim() || codeToUse,
+        code: '',
+        htBand: newBand.htBand,
+        htMinFt: newBand.htMinFt !== '' ? Number(newBand.htMinFt) : 0,
+        htMaxFt: newBand.htMaxFt !== '' ? Number(newBand.htMaxFt) : 99,
+        uom: newBand.uom.trim(),
+        ratePerUom: newBand.ratePerUom !== '' ? Number(newBand.ratePerUom) : 0,
+        description: '',
+        notes: '',
+        qty1Formula: '',
+        qty1Uom: '',
+        isActive: true,
+      };
+
+      // Try to find the existing parent row first
+      const searchRes = await fetch(
+        `/api/labour-database?search=${encodeURIComponent(codeToUse)}`,
+      ).then((r) => r.json()).catch(() => ({ success: false }));
+
+      const existingRow = searchRes.success
+        ? (searchRes.data as LabourDatabaseRow[]).find(
+            (r) => r.parentCode.toLowerCase() === codeToUse.toLowerCase(),
+          )
+        : undefined;
+
+      let saveOk = false;
+      if (existingRow) {
+        // PATCH the existing parent row — add band to its labourBands array
+        const sorted = [...existingRow.labourBands, band].sort((a, b) => a.htMinFt - b.htMinFt);
+        const patchRes = await fetch(`/api/labour-database/${existingRow.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parentSection: existingRow.parentSection,
+            category: existingRow.category,
+            description: existingRow.description,
+            labourBands: sorted,
+            qty1Formula: existingRow.qty1Formula,
+            qty1Uom: existingRow.qty1Uom,
+            notes: existingRow.notes,
+          }),
+        });
+        const patchJson = await patchRes.json();
+        if (!patchJson.success) { setBandError(patchJson.error ?? 'Failed to save'); return; }
+        saveOk = true;
+      } else {
+        // No parent row yet — create one via POST
+        const postRes = await fetch('/api/labour-database', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parentCode: codeToUse,
+            parentSection: slot.parentSection,
+            category: material.category,
+            description: material.description,
+            qty1Formula: '',
+            qty1Uom: '',
+            notes: '',
+            labourBands: [band],
+          }),
+        });
+        const postJson = await postRes.json();
+        if (!postJson.success) { setBandError(postJson.error ?? 'Failed to save'); return; }
+        saveOk = true;
+      }
+
+      if (!saveOk) return;
 
       let current = material;
+      // If the slot had no code yet, link the new code back to this material row
       if (!slot.code.trim()) {
         const patchRes = await fetch(`/api/material-database/${material.id}`, {
           method: 'PATCH',
@@ -294,7 +345,7 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
         });
         const patchJson = await patchRes.json();
         if (!patchJson.success) {
-          setBandError(patchJson.error ?? 'Created the labour entry, but failed to link it to this material');
+          setBandError(patchJson.error ?? 'Band saved, but failed to link code to this material');
           return;
         }
         current = patchJson.data;
@@ -545,7 +596,34 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                             )}
                           </div>
 
-                          {bands.length === 0 && !isOpen ? (
+                          {isLoadingBands ? (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs border border-border rounded-lg overflow-hidden">
+                                <thead className="bg-muted/60">
+                                  <tr>
+                                    <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Child Code</th>
+                                    <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">HT Band</th>
+                                    <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Min Ft</th>
+                                    <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Ft</th>
+                                    <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">UOM</th>
+                                    <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Rate</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                  {[0, 1, 2].map((i) => (
+                                    <tr key={i}>
+                                      <td className="px-2.5 py-2"><Skeleton className="h-4 w-28 rounded" /></td>
+                                      <td className="px-2.5 py-2"><Skeleton className="h-4 w-16 rounded" /></td>
+                                      <td className="px-2.5 py-2 text-right"><Skeleton className="h-4 w-8 rounded ml-auto" /></td>
+                                      <td className="px-2.5 py-2 text-right"><Skeleton className="h-4 w-8 rounded ml-auto" /></td>
+                                      <td className="px-2.5 py-2"><Skeleton className="h-4 w-10 rounded" /></td>
+                                      <td className="px-2.5 py-2 text-right"><Skeleton className="h-4 w-14 rounded ml-auto" /></td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : bands.length === 0 && !isOpen ? (
                             <p className="text-[11px] text-muted-foreground italic px-1">
                               {slot.code ? 'No bands found in the Labour Database for this code.' : 'No labour code linked yet.'}
                             </p>
@@ -554,7 +632,7 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                               <table className="w-full text-xs border border-border rounded-lg overflow-hidden">
                                 <thead className="bg-muted/60">
                                   <tr>
-                                    {!slot.code && <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Labour Code</th>}
+                                    <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Child Code</th>
                                     <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">HT Band</th>
                                     <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Min Ft</th>
                                     <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Ft</th>
@@ -566,7 +644,11 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                                 <tbody className="divide-y divide-border">
                                   {bands.map((b, i) => (
                                     <tr key={i} className="hover:bg-muted/30 transition-colors">
-                                      {!slot.code && <td className="px-2.5 py-1.5 font-mono text-[10px] text-foreground">{b.labourCode || '—'}</td>}
+                                      <td className="px-2.5 py-1.5">
+                                        <code className="font-mono text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+                                          {b.labourCode || '—'}
+                                        </code>
+                                      </td>
                                       <td className="px-2.5 py-1.5 text-muted-foreground">{b.htBand || 'All'}</td>
                                       <td className="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">{b.htMinFt}</td>
                                       <td className="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">
@@ -581,20 +663,18 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                                   ))}
                                   {isOpen && (
                                     <tr className="bg-emerald-50/40">
-                                      {!slot.code && (
-                                        <td className="px-2 py-1.5">
-                                          <input
-                                            autoFocus
-                                            className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                                            value={newBand.labourCode}
-                                            onChange={(e) => setBandField('labourCode', e.target.value)}
-                                            placeholder="LAB-ACT-TILE"
-                                          />
-                                        </td>
-                                      )}
+                                      <td className="px-2 py-1.5">
+                                        <input
+                                          autoFocus
+                                          className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                          value={newBand.labourCode}
+                                          onChange={(e) => setBandField('labourCode', e.target.value)}
+                                          placeholder="LAB-HNG-STD"
+                                        />
+                                      </td>
                                       <td className="px-2 py-1.5">
                                         <select
-                                          autoFocus={!!slot.code}
+                                          autoFocus={false}
                                           className="w-full h-7 rounded border border-slate-200 bg-white px-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                                           value={newBand.htBand}
                                           onChange={(e) => setBandField('htBand', e.target.value)}

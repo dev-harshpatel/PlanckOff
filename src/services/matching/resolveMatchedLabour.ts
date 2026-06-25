@@ -2,12 +2,11 @@ import type { LabourDatabaseRow } from '@/types/databases';
 import type { MatchedLabor } from '@/types/assembly';
 
 /**
- * Resolves all height-band variants for a given labour code from labour_database.
+ * Resolves all height-band variants for a given parent labour code.
  *
- * Each row's labourBands array is searched for entries matching labourCode.
- * At match time we don't know the actual wall height — that comes from the
- * takeoff in the finalize step. So we include ALL matching bands, ordered by
- * htMinFt ascending. The finalize step picks the right band based on height.
+ * The material DB stores parent codes (e.g. LAB-FRM) in wall/ceiling/bulkhead
+ * labour code fields. Each parent row holds all its child bands in labourBands[].
+ * We return ALL bands so the finalize step can pick the right one by wall height.
  */
 export function resolveMatchedLabour(
   labourCode: string,
@@ -15,40 +14,17 @@ export function resolveMatchedLabour(
 ): MatchedLabor[] {
   if (!labourCode) return [];
 
-  const matched: Array<{
-    labourCode: string;
-    htBand: string;
-    htMinFt: number;
-    uom: string;
-    ratePerUom: number;
-    description: string;
-    category: string;
-  }> = [];
+  // Find the parent row whose parentCode matches
+  const parentRow = allLabourRows.find((r) => r.parentCode === labourCode);
+  if (!parentRow) return [];
 
-  for (const row of allLabourRows) {
-    for (const band of row.labourBands) {
-      if (band.labourCode === labourCode) {
-        matched.push({
-          labourCode: band.labourCode,
-          htBand: band.htBand,
-          htMinFt: band.htMinFt,
-          uom: band.uom,
-          ratePerUom: band.ratePerUom,
-          description: row.description,
-          category: row.category,
-        });
-      }
-    }
-  }
-
-  if (matched.length === 0) return [];
-
-  return matched
+  return parentRow.labourBands
+    .slice()
     .sort((a, b) => a.htMinFt - b.htMinFt)
-    .map(band => ({
+    .map((band) => ({
       code:            band.labourCode,
-      section:         band.category || undefined,
-      description:     band.description,
+      section:         parentRow.category || undefined,
+      description:     band.description || parentRow.description,
       unit:            band.uom,
       unit_cost:       band.ratePerUom,
       height_ft:       band.htMinFt,

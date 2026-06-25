@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, SlidersHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronRight, Pencil, Trash2, Plus, Check, X } from 'lucide-react';
 import { Input } from '@/components/shadcn/input';
 import { Badge } from '@/components/shadcn/badge';
 import { Button } from '@/components/shadcn/button';
@@ -13,24 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shadcn/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/shadcn/table';
 import { LabourDetailSheet } from './LabourDetailSheet';
 import { ItemFormSheet } from './ItemFormSheet';
 import { ConfirmModal } from '@/components/ui';
-import type { LabourDatabaseRow } from '@/types';
+import type { LabourBandEntry, LabourDatabaseRow } from '@/types';
 import { cn } from '@/lib/cn';
 
-const HT_BANDS = ['All', 'Standard', 'Medium', 'High', 'Very High', 'Extra High'];
-const COL_COUNT = 15;
+const HT_BANDS = ['Standard', 'Medium', 'High', 'Very High', 'Extra High', 'All'];
 
-// ─── Badge variant maps ────────────────────────────────────────────────────────
+const SECTION_VARIANT: Record<string, 'success' | 'info' | 'warning'> = {
+  Walls:    'success',
+  Ceiling:  'info',
+  Bulkhead: 'warning',
+};
 
 const HT_BAND_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'purple' | 'secondary'> = {
   Standard:    'success',
@@ -41,47 +36,20 @@ const HT_BAND_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'purple' 
   All:         'secondary',
 };
 
-const SECTION_VARIANT: Record<string, 'success' | 'info' | 'warning'> = {
-  Walls:    'success',
-  Ceiling:  'info',
-  Bulkhead: 'warning',
-};
-
-// ─── Cell helpers ─────────────────────────────────────────────────────────────
-
-function CodeChip({ value, color = 'slate' }: { value: string; color?: 'slate' | 'blue' | 'emerald' }) {
+function CodeChip({ value, dimmed }: { value: string; dimmed?: boolean }) {
   if (!value) return <span className="text-muted-foreground text-xs">—</span>;
-  const cls: Record<string, string> = {
-    slate:   'text-slate-700 bg-slate-100',
-    blue:    'text-blue-700 bg-blue-50',
-    emerald: 'text-emerald-700 bg-emerald-50',
-  };
   return (
-    <code className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap', cls[color])}>
+    <code className={cn(
+      'text-[10px] font-mono px-1.5 py-0.5 rounded whitespace-nowrap',
+      dimmed ? 'bg-slate-100 text-slate-400 line-through' : 'bg-emerald-50 text-emerald-700',
+    )}>
       {value}
     </code>
   );
 }
 
-function FormulaCell({ formula, uom }: { formula: string; uom: string }) {
-  if (!formula) return <span className="text-muted-foreground text-xs">—</span>;
-  return (
-    <span className="flex items-center gap-1.5 min-w-0">
-      <code
-        className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded truncate max-w-[200px]"
-        title={formula}
-      >
-        {formula}
-      </code>
-      {uom && (
-        <span className="text-[10px] text-muted-foreground shrink-0 font-medium">{uom}</span>
-      )}
-    </span>
-  );
-}
-
 function RateCell({ value }: { value: number }) {
-  if (!value || value === 0) return <span className="text-muted-foreground text-xs">—</span>;
+  if (!value) return <span className="text-muted-foreground text-xs">—</span>;
   return (
     <span className="text-xs tabular-nums font-medium">
       <span className="text-muted-foreground text-[10px] mr-0.5">$</span>
@@ -90,58 +58,295 @@ function RateCell({ value }: { value: number }) {
   );
 }
 
-function TextCell({ value, className }: { value: string | number | null | undefined; className?: string }) {
-  if (value == null || value === '' || value === 0) return <span className="text-muted-foreground text-xs">—</span>;
-  return <span className={cn('text-xs', className)}>{value}</span>;
+// ─── Inline add-band form ─────────────────────────────────────────────────────
+
+interface NewBandForm {
+  labourCode: string;
+  htBand: string;
+  htMinFt: string;
+  htMaxFt: string;
+  uom: string;
+  ratePerUom: string;
+  description: string;
+  notes: string;
 }
 
-// ─── Column definitions — ordered exactly as the source sheet ─────────────────
+function emptyBandForm(parentCode: string): NewBandForm {
+  return {
+    labourCode: parentCode ? `${parentCode}-` : '',
+    htBand: 'Standard',
+    htMinFt: '0',
+    htMaxFt: '99',
+    uom: '',
+    ratePerUom: '',
+    description: '',
+    notes: '',
+  };
+}
 
-const COLUMNS: { label: string; minWidth: number }[] = [
-  { label: 'Row #',          minWidth: 48  },  // display index
-  { label: 'Parent Section', minWidth: 104 },  // computed grouping column, shown first
-  { label: 'Labour Code',    minWidth: 152 },  // LABOUR_CODE
-  { label: 'Code',           minWidth: 64  },  // CODE (band short code: STD, HI…)
-  { label: 'Description',    minWidth: 240 },  // DESCRIPTION
-  { label: 'Category',       minWidth: 200 },  // CATEGORY
-  { label: 'HT Band',        minWidth: 112 },  // HT_BAND
-  { label: 'HT Min Ft',      minWidth: 80  },  // HT_MIN_FT
-  { label: 'HT Max Ft',      minWidth: 80  },  // HT_MAX_FT
-  { label: 'UOM',            minWidth: 64  },  // UOM
-  { label: 'Rate Per UOM',   minWidth: 104 },  // RATE_PER_UOM
-  { label: 'QTY1 Formula',   minWidth: 248 },  // QTY1_FORMULA + QTY1_UOM inline
-  { label: 'QTY1 UOM',       minWidth: 80  },  // QTY1_UOM
-  { label: 'Notes',          minWidth: 160 },  // NOTES
-  { label: 'Actions',        minWidth: 88  },
-];
+// ─── Children table shown when a parent row is expanded ───────────────────────
 
-// ─── Component ────────────────────────────────────────────────────────────────
+interface ChildBandsTableProps {
+  row: LabourDatabaseRow;
+  onToggleBand: (bandLabourCode: string, newIsActive: boolean) => Promise<void>;
+  onAddBand: (form: NewBandForm) => Promise<void>;
+}
 
-export function LabourDatabaseTab() {
+function ChildBandsTable({ row, onToggleBand, onAddBand }: ChildBandsTableProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newBand, setNewBand] = useState<NewBandForm>(emptyBandForm(row.parentCode));
+  const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function setBandField(field: keyof NewBandForm, value: string) {
+    setNewBand((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleToggle(labourCode: string, currentIsActive: boolean) {
+    setToggling(labourCode);
+    try { await onToggleBand(labourCode, !currentIsActive); }
+    finally { setToggling(null); }
+  }
+
+  async function handleSave() {
+    if (!newBand.labourCode.trim()) { setError('Child code is required'); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      await onAddBand(newBand);
+      setIsAdding(false);
+      setNewBand(emptyBandForm(row.parentCode));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = 'w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500';
+
+  return (
+    <tr>
+      <td colSpan={7} className="p-0">
+        <div className="bg-slate-50 border-b border-slate-200 px-4 pb-3 pt-1">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="py-1.5 w-7" />
+                <th className="py-1.5 pl-2 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-36">Child Code</th>
+                <th className="py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-28">HT Band</th>
+                <th className="py-1.5 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-16">Min Ft</th>
+                <th className="py-1.5 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-16">Max Ft</th>
+                <th className="py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-14">UOM</th>
+                <th className="py-1.5 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-24">Rate / UOM</th>
+                <th className="py-1.5 pl-2 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</th>
+                {isAdding && <th className="w-14" />}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {row.labourBands.map((band, idx) => {
+                const active = band.isActive !== false;
+                const isToggling = toggling === band.labourCode;
+                return (
+                  <tr
+                    key={idx}
+                    className={cn(
+                      'transition-colors',
+                      active ? 'hover:bg-slate-100/60' : 'bg-slate-50/50 opacity-60',
+                    )}
+                  >
+                    <td className="py-1.5 pl-2 w-7">
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        disabled={isToggling}
+                        onChange={() => handleToggle(band.labourCode, active)}
+                        title={active ? 'Visible in material database — uncheck to hide' : 'Hidden from material database — check to show'}
+                        className="h-3.5 w-3.5 rounded cursor-pointer accent-emerald-600 disabled:cursor-not-allowed"
+                      />
+                    </td>
+                    <td className="py-1.5 pl-2">
+                      <CodeChip value={band.labourCode} dimmed={!active} />
+                    </td>
+                    <td className="py-1.5">
+                      <Badge
+                        variant={active ? (HT_BAND_VARIANT[band.htBand] ?? 'outline') : 'outline'}
+                        className="text-[10px] py-0 whitespace-nowrap"
+                      >
+                        {band.htBand}
+                      </Badge>
+                    </td>
+                    <td className="py-1.5 text-center tabular-nums text-slate-600">{band.htMinFt}</td>
+                    <td className="py-1.5 text-center tabular-nums text-slate-600">
+                      {band.htMaxFt < 99 ? band.htMaxFt : <span className="text-slate-400">∞</span>}
+                    </td>
+                    <td className="py-1.5 text-slate-500">{band.uom || '—'}</td>
+                    <td className="py-1.5 text-right"><RateCell value={band.ratePerUom} /></td>
+                    <td className="py-1.5 pl-2 text-slate-500 max-w-xs truncate" title={band.description}>
+                      {band.description || '—'}
+                      {band.notes && (
+                        <span className="ml-1.5 text-[10px] italic text-amber-600">({band.notes})</span>
+                      )}
+                    </td>
+                    {isAdding && <td />}
+                  </tr>
+                );
+              })}
+
+              {/* Inline add-band form */}
+              {isAdding && (
+                <tr className="bg-emerald-50/60">
+                  <td className="py-1.5 pl-2 w-7" />
+                  <td className="py-1.5 pl-2">
+                    <input
+                      autoFocus
+                      className={cn(inputCls, 'font-mono')}
+                      value={newBand.labourCode}
+                      onChange={(e) => setBandField('labourCode', e.target.value)}
+                      placeholder={`${row.parentCode}-STD`}
+                    />
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <select
+                      className={inputCls}
+                      value={newBand.htBand}
+                      onChange={(e) => setBandField('htBand', e.target.value)}
+                    >
+                      {HT_BANDS.map((b) => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <input
+                      type="number"
+                      className={cn(inputCls, 'text-center')}
+                      value={newBand.htMinFt}
+                      onChange={(e) => setBandField('htMinFt', e.target.value)}
+                      placeholder="0"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <input
+                      type="number"
+                      className={cn(inputCls, 'text-center')}
+                      value={newBand.htMaxFt}
+                      onChange={(e) => setBandField('htMaxFt', e.target.value)}
+                      placeholder="99"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <input
+                      className={inputCls}
+                      value={newBand.uom}
+                      onChange={(e) => setBandField('uom', e.target.value)}
+                      placeholder="SF"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <input
+                      type="number"
+                      step="0.0001"
+                      className={cn(inputCls, 'text-right')}
+                      value={newBand.ratePerUom}
+                      onChange={(e) => setBandField('ratePerUom', e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <input
+                      className={inputCls}
+                      value={newBand.description}
+                      onChange={(e) => setBandField('description', e.target.value)}
+                      placeholder="Description…"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-1">
+                    <div className="flex items-center gap-0.5 justify-end">
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving}
+                        title="Save"
+                        className="flex items-center justify-center w-6 h-6 rounded hover:bg-emerald-100 text-emerald-600 disabled:opacity-50"
+                      >
+                        <Check size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsAdding(false); setError(null); }}
+                        disabled={saving}
+                        title="Cancel"
+                        className="flex items-center justify-center w-6 h-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-50"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* QTY1 formula hint */}
+          {row.labourBands[0]?.qty1Formula && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-400 font-medium">QTY1:</span>
+              <code className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                {row.labourBands[0].qty1Formula}
+              </code>
+              {row.labourBands[0].qty1Uom && (
+                <span className="text-[10px] text-slate-400">{row.labourBands[0].qty1Uom}</span>
+              )}
+            </div>
+          )}
+
+          {error && <p className="text-[11px] text-red-600 mt-1.5 ml-0.5">{error}</p>}
+
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => { setNewBand(emptyBandForm(row.parentCode)); setError(null); setIsAdding(true); }}
+              className="mt-2 flex items-center gap-1 text-[10px] font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+            >
+              <Plus size={11} />
+              Add Child Band
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+interface LabourDatabaseTabProps {
+  isActive?: boolean;
+}
+
+export function LabourDatabaseTab({ isActive = true }: LabourDatabaseTabProps) {
   const [rows, setRows] = useState<LabourDatabaseRow[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
   const [parentSection, setParentSection] = useState('all');
   const [htBand, setHtBand] = useState('all');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<LabourDatabaseRow | null>(null);
   const [editing, setEditing] = useState<LabourDatabaseRow | null>(null);
   const [deleting, setDeleting] = useState<LabourDatabaseRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Defer first fetch until tab is first opened
+  const [ready, setReady] = useState(isActive);
   useEffect(() => {
-    fetch('/api/labour-database?meta=categories')
-      .then((r) => r.json())
-      .then((j) => { if (j.success) setCategories(j.data); });
-  }, []);
+    if (isActive && !ready) setReady(true);
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const load = useCallback((q: string, cat: string, sec: string, band: string) => {
+  const load = useCallback((q: string, sec: string, band: string) => {
     setIsLoading(true);
     const params = new URLSearchParams({
       search: q,
-      category: cat === 'all' ? '' : cat,
       parentSection: sec === 'all' ? '' : sec,
       htBand: band === 'all' ? '' : band,
     });
@@ -152,10 +357,83 @@ export function LabourDatabaseTab() {
   }, []);
 
   useEffect(() => {
+    if (!ready) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => load(search, category, parentSection, htBand), 300);
+    debounceRef.current = setTimeout(() => load(search, parentSection, htBand), 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, category, parentSection, htBand, load]);
+  }, [search, parentSection, htBand, ready, load]);
+
+  function toggleExpand(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  // ─── PATCH helper ──────────────────────────────────────────────────────────
+
+  async function patchRow(row: LabourDatabaseRow, newBands: LabourBandEntry[]): Promise<LabourDatabaseRow> {
+    const res = await fetch(`/api/labour-database/${row.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        parentSection: row.parentSection,
+        category: row.category,
+        description: row.description,
+        labourBands: newBands,
+        qty1Formula: row.qty1Formula,
+        qty1Uom: row.qty1Uom,
+        notes: row.notes,
+      }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error ?? 'Update failed');
+    const updated = json.data as LabourDatabaseRow;
+    setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    return updated;
+  }
+
+  // ─── Toggle isActive on a band (checkbox) ──────────────────────────────────
+
+  const handleToggleBand = useCallback(
+    async (row: LabourDatabaseRow, bandLabourCode: string, newIsActive: boolean) => {
+      const newBands = row.labourBands.map((b) =>
+        b.labourCode === bandLabourCode ? { ...b, isActive: newIsActive } : b,
+      );
+      await patchRow(row, newBands);
+    },
+    // patchRow is stable (no deps), but using inline form to avoid eslint warning
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // ─── Add a new child band to an existing parent ────────────────────────────
+
+  const handleAddBand = useCallback(
+    async (row: LabourDatabaseRow, form: NewBandForm) => {
+      const band: LabourBandEntry = {
+        labourCode: form.labourCode.trim(),
+        code: '',
+        htBand: form.htBand,
+        htMinFt: Number(form.htMinFt) || 0,
+        htMaxFt: Number(form.htMaxFt) || 99,
+        uom: form.uom.trim(),
+        ratePerUom: Number(form.ratePerUom) || 0,
+        description: form.description.trim(),
+        notes: form.notes.trim(),
+        qty1Formula: '',
+        qty1Uom: '',
+        isActive: true,
+      };
+      const sorted = [...row.labourBands, band].sort((a, b) => a.htMinFt - b.htMinFt);
+      await patchRow(row, sorted);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // ─── Delete parent bunch ───────────────────────────────────────────────────
 
   async function handleDelete() {
     if (!deleting) return;
@@ -166,7 +444,7 @@ export function LabourDatabaseTab() {
       if (json.success) {
         if (selected?.id === deleting.id) setSelected(null);
         setDeleting(null);
-        load(search, category, parentSection, htBand);
+        load(search, parentSection, htBand);
       }
     } finally {
       setIsDeleting(false);
@@ -180,7 +458,7 @@ export function LabourDatabaseTab() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search labour code, description, category..."
+            placeholder="Search parent code, description…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-8 text-xs"
@@ -189,7 +467,7 @@ export function LabourDatabaseTab() {
         <div className="flex items-center gap-2 shrink-0">
           <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
           <Select value={parentSection} onValueChange={setParentSection}>
-            <SelectTrigger className="h-8 text-xs w-28">
+            <SelectTrigger className="h-8 text-xs w-32">
               <SelectValue placeholder="Section" />
             </SelectTrigger>
             <SelectContent>
@@ -197,17 +475,6 @@ export function LabourDatabaseTab() {
               <SelectItem value="Walls">Walls</SelectItem>
               <SelectItem value="Ceiling">Ceiling</SelectItem>
               <SelectItem value="Bulkhead">Bulkhead</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="h-8 text-xs w-44">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
             </SelectContent>
           </Select>
           <Select value={htBand} onValueChange={setHtBand}>
@@ -223,174 +490,113 @@ export function LabourDatabaseTab() {
           </Select>
         </div>
         <span className="text-xs text-muted-foreground shrink-0">
-          {isLoading ? 'Loading…' : `${rows.length} item${rows.length !== 1 ? 's' : ''}`}
+          {isLoading ? 'Loading…' : `${rows.length} bunch${rows.length !== 1 ? 'es' : ''}`}
         </span>
       </div>
 
-      {/* Table — horizontally scrollable, every column at its natural width */}
+      {/* Table */}
       <div className="flex-1 overflow-x-auto overflow-y-auto">
-        <Table className="w-max min-w-full border-collapse">
-          <TableHeader className="sticky top-0 bg-slate-50 z-10">
-            <TableRow>
-              {COLUMNS.map((col) => (
-                <TableHead
-                  key={col.label}
-                  className="text-xs whitespace-nowrap border-r border-slate-200 last:border-r-0"
-                  style={{ minWidth: col.minWidth }}
-                >
-                  {col.label}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+        <table className="w-full border-collapse text-sm min-w-[700px]">
+          <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
+            <tr>
+              <th className="w-8" />
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Parent Code</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Description</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Section</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Bands</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">UOM</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+            </tr>
+          </thead>
 
-          <TableBody>
+          <tbody>
             {isLoading
               ? Array.from({ length: 12 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: COL_COUNT }).map((__, j) => (
-                      <TableCell key={j} className="border-r border-slate-100 last:border-r-0">
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
+                  <tr key={i} className="border-b border-slate-100">
+                    {Array.from({ length: 7 }).map((__, j) => (
+                      <td key={j} className="px-3 py-2.5"><Skeleton className="h-4 w-full" /></td>
                     ))}
-                  </TableRow>
+                  </tr>
                 ))
               : rows.length === 0
               ? (
-                  <TableRow>
-                    <TableCell colSpan={COL_COUNT} className="text-center py-16 text-muted-foreground text-sm">
-                      No labour items found
-                    </TableCell>
-                  </TableRow>
+                  <tr>
+                    <td colSpan={7} className="text-center py-16 text-muted-foreground text-sm">
+                      No labour bunches found
+                    </td>
+                  </tr>
                 )
-              : rows.map((row, i) => {
-                  const band = row.labourBands[0];
+              : rows.map((row) => {
+                  const isExpanded = expandedIds.has(row.id);
+                  const firstBand = row.labourBands[0];
+                  const allSameUom = row.labourBands.every(b => b.uom === firstBand?.uom);
+                  const activeBandCount = row.labourBands.filter(b => b.isActive !== false).length;
                   return (
-                  <TableRow
-                    key={row.id}
-                    className={cn(
-                      'cursor-pointer hover:bg-slate-50',
-                      selected?.id === row.id && 'bg-blue-50 hover:bg-blue-50',
-                    )}
-                    onClick={() => setSelected(row)}
-                  >
-                    {/* Row # */}
-                    <TableCell className="border-r border-slate-100 text-center">
-                      <span className="text-xs text-muted-foreground tabular-nums">{i + 1}</span>
-                    </TableCell>
-
-                    {/* Parent Section (computed grouping) */}
-                    <TableCell className="border-r border-slate-100">
-                      <Badge
-                        variant={SECTION_VARIANT[row.parentSection] ?? 'outline'}
-                        className="text-[10px] py-0 whitespace-nowrap"
+                    <>
+                      <tr
+                        key={row.id}
+                        className={cn(
+                          'border-b border-slate-100 transition-colors cursor-pointer',
+                          isExpanded ? 'bg-slate-50' : 'hover:bg-slate-50',
+                          selected?.id === row.id && 'bg-blue-50 hover:bg-blue-50',
+                        )}
+                        onClick={() => setSelected(row)}
                       >
-                        {row.parentSection || '—'}
-                      </Badge>
-                    </TableCell>
-
-                    {/* LABOUR_CODE */}
-                    <TableCell className="border-r border-slate-100">
-                      <CodeChip value={band?.labourCode ?? ''} color="slate" />
-                    </TableCell>
-
-                    {/* CODE (band short code: STD, HI, VHI…) */}
-                    <TableCell className="border-r border-slate-100">
-                      <CodeChip value={band?.code ?? ''} color="blue" />
-                    </TableCell>
-
-                    {/* DESCRIPTION */}
-                    <TableCell className="border-r border-slate-100 max-w-60">
-                      <span className="text-xs truncate block" title={row.description}>
-                        {row.description || '—'}
-                      </span>
-                    </TableCell>
-
-                    {/* CATEGORY */}
-                    <TableCell className="border-r border-slate-100 max-w-52">
-                      <span className="text-xs truncate block text-muted-foreground" title={row.category}>
-                        {row.category || '—'}
-                      </span>
-                    </TableCell>
-
-                    {/* HT_BAND */}
-                    <TableCell className="border-r border-slate-100">
-                      <Badge
-                        variant={HT_BAND_VARIANT[band?.htBand ?? 'All'] ?? 'outline'}
-                        className="text-[10px] py-0 whitespace-nowrap"
-                      >
-                        {band?.htBand || 'All'}
-                      </Badge>
-                    </TableCell>
-
-                    {/* HT_MIN_FT */}
-                    <TableCell className="border-r border-slate-100 text-center">
-                      <TextCell value={band?.htMinFt} className="tabular-nums" />
-                    </TableCell>
-
-                    {/* HT_MAX_FT */}
-                    <TableCell className="border-r border-slate-100 text-center">
-                      <TextCell
-                        value={band && band.htMaxFt < 99 ? band.htMaxFt : null}
-                        className="tabular-nums"
-                      />
-                    </TableCell>
-
-                    {/* UOM */}
-                    <TableCell className="border-r border-slate-100">
-                      <TextCell value={band?.uom} className="text-muted-foreground" />
-                    </TableCell>
-
-                    {/* RATE_PER_UOM */}
-                    <TableCell className="border-r border-slate-100">
-                      <RateCell value={band?.ratePerUom ?? 0} />
-                    </TableCell>
-
-                    {/* QTY1_FORMULA */}
-                    <TableCell className="border-r border-slate-100">
-                      <FormulaCell formula={row.qty1Formula} uom="" />
-                    </TableCell>
-
-                    {/* QTY1_UOM */}
-                    <TableCell className="border-r border-slate-100">
-                      <TextCell value={row.qty1Uom} className="text-muted-foreground" />
-                    </TableCell>
-
-                    {/* NOTES */}
-                    <TableCell className="border-r border-slate-100">
-                      <span className="text-xs truncate block text-muted-foreground italic" title={row.notes}>
-                        {row.notes || '—'}
-                      </span>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => setEditing(row)}
-                          title="Edit"
+                        <td
+                          className="w-8 pl-3 text-center"
+                          onClick={(e) => { e.stopPropagation(); toggleExpand(row.id); }}
                         >
-                          <Pencil className="h-3.5 w-3.5 text-slate-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => setDeleting(row)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                          <ChevronRight className={cn('h-3.5 w-3.5 text-slate-600 transition-transform', isExpanded && 'rotate-90')} />
+                        </td>
+                        <td className="px-3 py-2.5"><CodeChip value={row.parentCode} /></td>
+                        <td className="px-3 py-2.5 max-w-xs">
+                          <span className="text-xs text-slate-700 truncate block" title={row.description}>
+                            {row.description || '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge variant={SECTION_VARIANT[row.parentSection] ?? 'outline'} className="text-[10px] py-0 whitespace-nowrap">
+                            {row.parentSection || '—'}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="text-xs text-slate-500 tabular-nums">
+                            {activeBandCount < row.labourBands.length
+                              ? <>{activeBandCount}<span className="text-slate-300">/{row.labourBands.length}</span></>
+                              : row.labourBands.length
+                            }
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="text-xs text-slate-500">
+                            {allSameUom ? (firstBand?.uom || '—') : 'Mixed'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditing(row)} title="Edit parent">
+                              <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setDeleting(row)} title="Delete">
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <ChildBandsTable
+                          key={`${row.id}-children`}
+                          row={row}
+                          onToggleBand={(code, newActive) => handleToggleBand(row, code, newActive)}
+                          onAddBand={(form) => handleAddBand(row, form)}
+                        />
+                      )}
+                    </>
                   );
                 })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <LabourDetailSheet labour={selected} onClose={() => setSelected(null)} />
@@ -400,15 +606,15 @@ export function LabourDatabaseTab() {
         isOpen={!!editing}
         editItem={editing}
         onClose={() => setEditing(null)}
-        onSaved={() => { setEditing(null); load(search, category, parentSection, htBand); }}
+        onSaved={() => { setEditing(null); load(search, parentSection, htBand); }}
       />
 
       <ConfirmModal
         isOpen={!!deleting}
         onClose={() => setDeleting(null)}
         onConfirm={handleDelete}
-        title="Delete labour entry?"
-        message={`"${deleting?.labourBands[0]?.labourCode}" will be moved to trash and permanently deleted after 30 days.`}
+        title="Delete labour bunch?"
+        message={`"${deleting?.parentCode}" will be moved to trash and permanently deleted after 30 days.`}
         confirmText="Delete"
         variant="danger"
         isLoading={isDeleting}

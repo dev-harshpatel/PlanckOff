@@ -102,10 +102,14 @@ const COLUMNS: { label: string; minWidth: number }[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function MaterialDatabaseTab() {
+interface MaterialDatabaseTabProps {
+  isActive?: boolean;
+}
+
+export function MaterialDatabaseTab({ isActive = true }: MaterialDatabaseTabProps) {
   const [result, setResult] = useState<PaginatedResponse<MaterialDatabaseRow> | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [page, setPage] = useState(1);
@@ -115,11 +119,19 @@ export function MaterialDatabaseTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ready = true once the tab has been activated for the first time.
+  // Starts true if this is the initially active tab.
+  const [ready, setReady] = useState(isActive);
   useEffect(() => {
+    if (isActive && !ready) setReady(true);
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!ready) return;
     fetch('/api/material-database?meta=categories')
       .then((r) => r.json())
       .then((j) => { if (j.success) setCategories(j.data); });
-  }, []);
+  }, [ready]);
 
   const load = useCallback(
     (p: number, q: string, cat: string) => {
@@ -138,16 +150,22 @@ export function MaterialDatabaseTab() {
     [],
   );
 
+  // Search/filter changes — debounced, resets to page 1
   useEffect(() => {
+    if (!ready) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setPage(1);
       load(1, search, category);
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, category, load]);
+  }, [search, category, ready, load]);
 
+  // Pagination: only fires when user explicitly changes page (not on initial ready)
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (!ready) return;
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
     load(page, search, category);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);

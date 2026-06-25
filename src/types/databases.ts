@@ -14,8 +14,13 @@ export interface LabourBandEntry {
   htBand: string;        // Standard | High | Very High | Extra High | Medium | All
   htMinFt: number;
   htMaxFt: number;
+  description: string;   // per-band description (e.g. "Install Metal Studs (Walls up to 12ft)")
   uom: string;
   ratePerUom: number;
+  qty1Formula: string;   // per-band formula
+  qty1Uom: string;
+  notes: string;
+  isActive?: boolean;    // false = hidden from material DB side; defaults to true when absent
 }
 
 // ─── Material Database ────────────────────────────────────────────────────────
@@ -52,11 +57,12 @@ export interface MaterialDatabaseRow {
 
 export interface LabourDatabaseRow {
   id: string;
+  parentCode: string;              // e.g. LAB-FRM — matches material wall/ceiling/bulkhead labour codes
   parentSection: string;           // Walls | Ceiling | Bulkhead
-  description: string;
+  description: string;             // parent bunch description
   category: string;
-  labourBands: LabourBandEntry[];  // replaces: labourCode, code, htBand, htMinFt, htMaxFt, uom, ratePerUom
-  qty1Formula: string;
+  labourBands: LabourBandEntry[];  // all child bands; each band carries its own description/formula/notes
+  qty1Formula: string;             // deprecated — kept for backward compat; use band.qty1Formula
   qty1Uom: string;
   notes: string;
   deletedAt: string | null;
