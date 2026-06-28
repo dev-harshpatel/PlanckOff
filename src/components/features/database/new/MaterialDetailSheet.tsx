@@ -54,12 +54,11 @@ interface NewSizeForm {
   size: string;
   sizeNum: string;
   containerUnit: string;
-  sizeMm: string;
-  sizeImperial: string;
+  unitPrice: string;
 }
 
 const EMPTY_NEW_SIZE: NewSizeForm = {
-  size: '', sizeNum: '', containerUnit: '', sizeMm: '', sizeImperial: '',
+  size: '', sizeNum: '', containerUnit: '', unitPrice: '',
 };
 
 const HT_BANDS = ['All', 'Standard', 'Medium', 'High', 'Very High', 'Extra High'];
@@ -193,8 +192,9 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
         size: newSize.size.trim(),
         sizeNum: newSize.sizeNum !== '' ? Number(newSize.sizeNum) : 0,
         containerUnit: newSize.containerUnit.trim(),
-        sizeMm: newSize.sizeMm !== '' ? Number(newSize.sizeMm) : null,
-        sizeImperial: newSize.sizeImperial.trim() || null,
+        sizeMm: null,
+        sizeImperial: null,
+        unitPrice: newSize.unitPrice !== '' ? Number(newSize.unitPrice) : 0,
       };
 
       const res = await fetch(`/api/material-database/${material.id}`, {
@@ -452,8 +452,7 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                             <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Size</th>
                             <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Num</th>
                             <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Container</th>
-                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MM</th>
-                            <th className="text-left px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Imperial</th>
+                            <th className="text-right px-2.5 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Unit Price</th>
                             {isAdding && <th className="w-12" />}
                           </tr>
                         </thead>
@@ -463,8 +462,9 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                               <td className="px-2.5 py-1.5 font-medium text-foreground">{s.size || '—'}</td>
                               <td className="px-2.5 py-1.5 tabular-nums text-muted-foreground">{s.sizeNum || '—'}</td>
                               <td className="px-2.5 py-1.5 text-muted-foreground">{s.containerUnit || '—'}</td>
-                              <td className="px-2.5 py-1.5 tabular-nums text-muted-foreground">{s.sizeMm ?? '—'}</td>
-                              <td className="px-2.5 py-1.5 font-mono text-muted-foreground">{s.sizeImperial || '—'}</td>
+                              <td className="px-2.5 py-1.5 tabular-nums text-right text-muted-foreground">
+                                ${(s.unitPrice ?? 0).toFixed(2)}
+                              </td>
                               {isAdding && <td />}
                             </tr>
                           ))}
@@ -497,21 +497,18 @@ export function MaterialDetailSheet({ material, onClose, onUpdated }: MaterialDe
                                 />
                               </td>
                               <td className="px-2 py-1.5">
-                                <input
-                                  type="number"
-                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                                  value={newSize.sizeMm}
-                                  onChange={(e) => set('sizeMm', e.target.value)}
-                                  placeholder="—"
-                                />
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <input
-                                  className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                                  value={newSize.sizeImperial}
-                                  onChange={(e) => set('sizeImperial', e.target.value)}
-                                  placeholder='1/2"'
-                                />
+                                <div className="flex items-center gap-0.5">
+                                  <span className="text-xs text-slate-400 shrink-0">$</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    className="w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                                    value={newSize.unitPrice}
+                                    onChange={(e) => set('unitPrice', e.target.value)}
+                                    placeholder="0.00"
+                                  />
+                                </div>
                               </td>
                               <td className="px-1.5 py-1.5">
                                 <div className="flex items-center gap-0.5">

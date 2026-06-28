@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { WallAssembly } from '@/types';
 import type { MaterialCosting } from '@/types/assembly';
 import type { ProjectOverrideMap } from '@/types/core/projectOverrides';
+import type { MaterialDatabaseRow, LabourDatabaseRow } from '@/types/databases';
 
 export interface ProjectDataState {
   assemblies: WallAssembly[];
@@ -25,6 +26,10 @@ export interface ProjectDataState {
    * Phase 3 will remove this once all tabs read from projectCosts.lineItems.
    */
   setMaterialCostingData: Dispatch<SetStateAction<MaterialCosting[]>>;
+  /** Full material_database — fetched once on project open; used by assemblyRowResolver. */
+  materialDb: MaterialDatabaseRow[];
+  /** Full labour_database — fetched once on project open; used by assemblyRowResolver. */
+  labourDb: LabourDatabaseRow[];
 }
 
 /**
@@ -49,10 +54,30 @@ export function useProjectData(projectId: string | null): ProjectDataState {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
+  const [materialDb, setMaterialDb] = useState<MaterialDatabaseRow[]>([]);
+  const [labourDb, setLabourDb] = useState<LabourDatabaseRow[]>([]);
+  // Load both databases once per project page mount — they don't change per project
+  const dbsLoadedRef = useRef(false);
 
   /** Trigger a full data re-fetch — the only way to reload project data after a mutation. */
   const refresh = useCallback(() => {
     setRefreshCount((c) => c + 1);
+  }, []);
+
+  // Fetch material + labour databases once per page mount (global reference data)
+  useEffect(() => {
+    if (dbsLoadedRef.current) return;
+    dbsLoadedRef.current = true;
+
+    Promise.all([
+      fetch('/api/material-database?all=true', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/labour-database', { credentials: 'include' }).then(r => r.json()),
+    ]).then(([matJson, labJson]) => {
+      if (matJson.success) setMaterialDb(matJson.data ?? []);
+      if (labJson.success) setLabourDb(labJson.data ?? []);
+    }).catch(() => {
+      // Non-fatal — resolver will return null for unmatched rows
+    });
   }, []);
 
   useEffect(() => {
@@ -151,5 +176,7 @@ export function useProjectData(projectId: string | null): ProjectDataState {
     setOverrideMap,
     setAssemblies,
     setMaterialCostingData,
+    materialDb,
+    labourDb,
   };
 }

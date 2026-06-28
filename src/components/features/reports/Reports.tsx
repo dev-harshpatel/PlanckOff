@@ -47,7 +47,6 @@ interface ReportsProps {
     manualItems: CalculatedMaterial[];
     materialCostingData?: MaterialCosting[];
     onUnitCostChange?: (code: string, newCost: number, type: 'material' | 'labor', unit?: string) => void;
-    displayUnit: 'imperial' | 'metric';
     reportScopeId?: string | null;
     activeReportTab?: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor';
     setActiveReportTab?: (tab: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor') => void;
@@ -60,7 +59,6 @@ export const Reports: React.FC<ReportsProps> = ({
     manualItems,
     materialCostingData = [],
     onUnitCostChange,
-    displayUnit,
     reportScopeId,
     activeReportTab,
     setActiveReportTab,

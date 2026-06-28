@@ -43,6 +43,15 @@ export const Modal: React.FC<ModalProps> = ({
     return () => setMounted(false);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !mounted) return null;
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {

@@ -3,9 +3,12 @@
  *
  * Handles evaluation of material quantity formulas from the database.
  * Supports multi-word variable names like "sheet area", "bag size", "Ceiling Area".
+ * Also supports bracket-notation variables like [LEN], [LAYER], [WST_FR], [SIZE_NUM]
+ * used in MaterialDatabaseRow formulas — brackets are stripped by evaluateMath's sanitizer.
  */
 
 import { WallAssembly, AssemblyComponent, MaterialDefinition, TakeoffInstance } from '@/types';
+import type { MaterialDatabaseRow } from '@/types/databases';
 import { evaluateMath } from '@/services/gemini/client';
 import { getWasteFactor } from '@/constants';
 
@@ -103,8 +106,12 @@ export function buildFormulaVarMap(params: {
     oc: number;
     packageSize: number;
     areaCover: number;
+    /** sizeNum from MaterialDatabaseRow.sizes[0].sizeNum — resolves [SIZE_NUM] bracket notation */
+    sizeNum?: number;
+    /** Result of QTY1 evaluation — resolves QTY1 reference in QTY2 formulas */
+    qty1Result?: number;
 }): Record<string, number> {
-    const { length, height, ceilingArea, perimeter, wastage, layers, oc, packageSize, areaCover } = params;
+    const { length, height, ceilingArea, perimeter, wastage, layers, oc, packageSize, areaCover, sizeNum, qty1Result } = params;
     return {
         // Primary names used in DB formulas
         Length:      length,
@@ -125,6 +132,13 @@ export function buildFormulaVarMap(params: {
         A:    ceilingArea > 0 ? ceilingArea : length * height,
         CA:   ceilingArea,
         P:    perimeter,
+        // Bracket-notation aliases: evaluateMath strips [ ] so [LEN] becomes LEN etc.
+        LEN:      length,
+        LAYER:    layers,
+        WST_FR:   wastage,
+        SIZE_NUM: sizeNum ?? packageSize,
+        // QTY1 reference used in QTY2 formulas (e.g. "QTY1 / SIZE_NUM")
+        QTY1:     qty1Result ?? 0,
     };
 }
 
@@ -367,4 +381,101 @@ export function hasFormulaForContext(
         material?.formulaQty ||
         material?.formulaSecQty
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MaterialDatabaseRow-aware counterparts
+// These are used by assemblyRowResolver — they work with the NEW material_database
+// schema (MaterialDatabaseRow) instead of the legacy MaterialDefinition.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Check whether a MaterialDatabaseRow has any formula for the given context.
+ * Mirrors hasFormulaForContext but reads from MaterialDatabaseRow fields.
+ */
+export function hasFormulaForContextFromDb(
+    comp: AssemblyComponent,
+    matRow: MaterialDatabaseRow | undefined,
+    isCeiling: boolean,
+): boolean {
+    if (isCeiling) {
+        return !!(
+            comp.formulaCeilQtyOverride ||
+            comp.formulaCeilSecQtyOverride ||
+            matRow?.qty1FormulaCeiling ||
+            matRow?.qty2FormulaCeiling
+        );
+    }
+    return !!(
+        comp.formulaQtyOverride ||
+        comp.formulaSecQtyOverride ||
+        matRow?.qty1Formula ||
+        matRow?.qty2Formula
+    );
+}
+
+/**
+ * Compute formula-based quantities for a component using MaterialDatabaseRow.
+ *
+ * Key difference from computeFormulaQuantities:
+ *  - Reads formula strings from MaterialDatabaseRow (qty1Formula, qty2Formula, etc.)
+ *  - Uses sizes[0].sizeNum as the SIZE_NUM variable
+ *  - Evaluates QTY1 first, then adds it to varMap before evaluating QTY2
+ *    so formulas like "QTY1 / SIZE_NUM" work correctly
+ */
+export function computeFormulaQuantitiesFromDb(
+    comp: AssemblyComponent,
+    matRow: MaterialDatabaseRow | undefined,
+    assembly: WallAssembly,
+    instances: TakeoffInstance[],
+    extractedDimensions?: ExtractedDimensions,
+): FormulaQuantities {
+    const ctx = aggregateInstances(comp, assembly, instances);
+    const length      = comp.lengthOverride ?? extractedDimensions?.totalLength ?? ctx.totalLinearFeet;
+    const baseHeight  = ctx.avgHeight;
+    const ceilingArea = ctx.totalCeilingArea;
+    const perimeter   = ctx.totalPerimeter;
+    const calcHeight  = comp.overrideHeight ?? baseHeight;
+    const layers      = comp.overrideLayers ?? 1;
+
+    const wastePct = comp.wasteFactor ?? 5;
+    const wastage  = wastePct / 100;
+
+    const ocMatch = (comp.ocSpacing || comp.usage).match(/(\d+)/);
+    const oc = ocMatch ? parseInt(ocMatch[1]) : 16;
+
+    // SIZE_NUM comes from the first size entry's sizeNum
+    const sizeNum    = matRow?.sizes?.[0]?.sizeNum ?? 0;
+    const packageSize = sizeNum;
+    const areaCover   = 0; // not in MaterialDatabaseRow
+
+    // Build base varMap without QTY1 (added per-context after evaluating qty1)
+    const baseVarMap = buildFormulaVarMap({
+        length, height: calcHeight, ceilingArea, perimeter,
+        wastage, layers, oc, packageSize, areaCover, sizeNum,
+    });
+
+    // Resolve formula strings: component override wins over DB formula
+    const wallQty1Formula  = comp.formulaQtyOverride       ?? matRow?.qty1Formula       ?? '';
+    const wallQty2Formula  = comp.formulaSecQtyOverride    ?? matRow?.qty2Formula       ?? '';
+    const ceilQty1Formula  = comp.formulaCeilQtyOverride   ?? matRow?.qty1FormulaCeiling ?? '';
+    const ceilQty2Formula  = comp.formulaCeilSecQtyOverride ?? matRow?.qty2FormulaCeiling ?? '';
+
+    // Wall: evaluate QTY1 first, inject into varMap, then evaluate QTY2
+    const wallQty1   = evaluateMaterialFormula(wallQty1Formula, baseVarMap);
+    const wallVarMap = buildFormulaVarMap({ length, height: calcHeight, ceilingArea, perimeter, wastage, layers, oc, packageSize, areaCover, sizeNum, qty1Result: wallQty1 ?? 0 });
+    const wallQty2   = evaluateMaterialFormula(wallQty2Formula, wallVarMap);
+
+    // Ceiling: same two-step evaluation
+    const ceilQty1   = evaluateMaterialFormula(ceilQty1Formula, baseVarMap);
+    const ceilVarMap = buildFormulaVarMap({ length, height: calcHeight, ceilingArea, perimeter, wastage, layers, oc, packageSize, areaCover, sizeNum, qty1Result: ceilQty1 ?? 0 });
+    const ceilQty2   = evaluateMaterialFormula(ceilQty2Formula, ceilVarMap);
+
+    return {
+        qty:       wallQty1,
+        seQty:     wallQty2,
+        ceilQty:   ceilQty1,
+        ceilSeQty: ceilQty2,
+        varMap:    baseVarMap,
+    };
 }

@@ -425,12 +425,11 @@ interface SizeFormRow {
   size: string;
   sizeNum: string;
   containerUnit: string;
-  sizeMm: string;
-  sizeImperial: string;
+  unitPrice: string;
 }
 
 const EMPTY_SIZE_ROW: SizeFormRow = {
-  size: '', sizeNum: '', containerUnit: '', sizeMm: '', sizeImperial: '',
+  size: '', sizeNum: '', containerUnit: '', unitPrice: '',
 };
 
 interface MatForm {
@@ -483,8 +482,7 @@ function materialToForm(m: MaterialDatabaseRow): MatForm {
       size: s.size,
       sizeNum: s.sizeNum ? String(s.sizeNum) : '',
       containerUnit: s.containerUnit,
-      sizeMm: s.sizeMm != null ? String(s.sizeMm) : '',
-      sizeImperial: s.sizeImperial ?? '',
+      unitPrice: s.unitPrice != null ? String(s.unitPrice) : '',
     })),
     qty1Formula: m.qty1Formula,
     uom1: m.uom1,
@@ -568,8 +566,9 @@ function AddMaterialForm({
       size: s.size,
       sizeNum: s.sizeNum !== '' ? Number(s.sizeNum) : 0,
       containerUnit: s.containerUnit,
-      sizeMm: s.sizeMm !== '' ? Number(s.sizeMm) : null,
-      sizeImperial: s.sizeImperial || null,
+      sizeMm: null,
+      sizeImperial: null,
+      unitPrice: s.unitPrice !== '' ? Number(s.unitPrice) : 0,
     }));
 
     setSaving(true);
@@ -717,8 +716,7 @@ function AddMaterialForm({
                       <th className="text-left pb-1.5 pr-1.5 font-semibold text-slate-500 min-w-[70px]">Size</th>
                       <th className="text-left pb-1.5 pr-1.5 font-semibold text-slate-500 min-w-[60px]">Size Num</th>
                       <th className="text-left pb-1.5 pr-1.5 font-semibold text-slate-500 min-w-[80px]">Container Unit</th>
-                      <th className="text-left pb-1.5 pr-1.5 font-semibold text-slate-500 min-w-[60px]">Size MM</th>
-                      <th className="text-left pb-1.5 pr-1.5 font-semibold text-slate-500 min-w-[60px]">Imperial</th>
+                      <th className="text-right pb-1.5 pr-1.5 font-semibold text-slate-500 min-w-[80px]">Unit Price</th>
                       <th className="pb-1.5 w-6" />
                     </tr>
                   </thead>
@@ -751,21 +749,18 @@ function AddMaterialForm({
                           />
                         </td>
                         <td className="py-1 pr-1.5">
-                          <input
-                            type="number"
-                            className="w-full h-7 rounded border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                            value={row.sizeMm}
-                            onChange={(e) => updateSizeRow(idx, 'sizeMm', e.target.value)}
-                            placeholder="—"
-                          />
-                        </td>
-                        <td className="py-1 pr-1.5">
-                          <input
-                            className="w-full h-7 rounded border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
-                            value={row.sizeImperial}
-                            onChange={(e) => updateSizeRow(idx, 'sizeImperial', e.target.value)}
-                            placeholder='1/2"'
-                          />
+                          <div className="flex items-center gap-0.5">
+                            <span className="text-xs text-slate-400 shrink-0">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className="w-full h-7 rounded border border-slate-200 bg-white px-2 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                              value={row.unitPrice}
+                              onChange={(e) => updateSizeRow(idx, 'unitPrice', e.target.value)}
+                              placeholder="0.00"
+                            />
+                          </div>
                         </td>
                         <td className="py-1">
                           <button

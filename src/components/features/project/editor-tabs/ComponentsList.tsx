@@ -8,18 +8,12 @@ import { MaterialCosting } from '@/types/assembly';
 import type { OverrideableField } from '@/types/core/projectOverrides';
 import type { ProjectOverrideMap } from '@/types/core/projectOverrides';
 import {
-    computeFormulaQuantities,
-    hasFormulaForContext,
+    hasFormulaForContextFromDb,
     type ExtractedDimensions,
 } from '@/lib/utils/formulaEvaluator';
-import {
-    findExtractedDimsForComponent,
-    getMaterialByRowCode,
-    getIsLaborRow,
-    getQuantityForCost,
-    getRowTotalCost,
-    getUnitCostForRow,
-} from './assemblyComponentHelpers';
+import { resolveAssemblyRow } from '@/lib/utils/assemblyRowResolver';
+import { findExtractedDimsForComponent, getMaterialByRowCode } from './assemblyComponentHelpers';
+import { useProjectDataContext } from '@/context/ProjectDataContext';
 
 // ─── Exported type used by AssemblyEditorModal for the Local/Global dialog ───
 
@@ -65,14 +59,6 @@ interface ComponentsListProps {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const getUnitSuffix = (u: string) => {
-    if (!u) return '';
-    const lower = u.toLowerCase();
-    if (lower.includes('sf') || lower.includes('sq')) return 'SF';
-    if (lower.includes('lf') || lower.includes('ft') || lower.includes('pcs')) return 'LF';
-    return 'EA';
-};
 
 const fmtNum = (n: number) =>
     n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -169,14 +155,18 @@ export const ComponentsList = ({
 
     const isCeilingAssembly = assembly.assemblyType === 'Ceiling';
 
+    const { materialDb, labourDb } = useProjectDataContext();
+
     // ── Grand totals for footer ──
     const grandTotals = assembly.components
         .filter((c) => !c.muted)
         .reduce(
             (acc, c) => {
-                const t = getRowTotalCost(c, assembly, materials, takeoffInstances, materialCostingData, getRowDetails);
-                if (c.materialCode?.startsWith('LAB-')) acc.lab += t;
-                else acc.mat += t;
+                const mRow = materialDb.find(m => m.code === c.materialCode) ?? null;
+                const extDims = findExtractedDimsForComponent(c, materialCostingData);
+                const r = resolveAssemblyRow(c, mRow, labourDb, assembly, takeoffInstances, extDims);
+                acc.mat += r.totalMatCost;
+                acc.lab += r.totalLabCost;
                 return acc;
             },
             { mat: 0, lab: 0 },
@@ -224,10 +214,10 @@ export const ComponentsList = ({
                             <th colSpan={6} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-emerald-600">
                                 Quantities
                             </th>
-                            <th colSpan={4} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-amber-600">
+                            <th colSpan={2} className="text-center text-[9px] font-bold uppercase tracking-wider border-r border-slate-200 px-1 text-amber-600">
                                 Labour
                             </th>
-                            <th colSpan={3} className="text-center text-[9px] font-bold uppercase tracking-wider px-1 text-sky-600">
+                            <th colSpan={5} className="text-center text-[9px] font-bold uppercase tracking-wider px-1 text-sky-600">
                                 Costs
                             </th>
                             <th className="w-8 border-l border-slate-200 bg-slate-100" />
@@ -294,14 +284,14 @@ export const ComponentsList = ({
                             <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.labUom }}>
                                 Lab. UOM<Resizer col="labUom" />
                             </th>
+
+                            {/* Costs */}
                             <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.matUnitPrice }}>
                                 Mat. Unit $<Resizer col="matUnitPrice" />
                             </th>
                             <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.labUnitPrice }}>
                                 Lab. Unit $<Resizer col="labUnitPrice" />
                             </th>
-
-                            {/* Costs */}
                             <th className="relative border-r border-slate-200 text-center" style={{ width: colWidths.totalMat }}>
                                 Tot. Mat.<Resizer col="totalMat" />
                             </th>
@@ -319,33 +309,16 @@ export const ComponentsList = ({
 
                     <tbody className="divide-y divide-slate-100">
                         {assembly.components.map((comp) => {
-                            const details = getRowDetails(comp, assembly, takeoffInstances);
-                            const mat = getMaterialByRowCode(comp, materials);
+                            const matRow = materialDb.find(m => m.code === comp.materialCode) ?? null;
                             const extractedDims = findExtractedDimsForComponent(comp, materialCostingData);
-                            const fq = computeFormulaQuantities(comp, mat, assembly, takeoffInstances, extractedDims);
-                            const hasFormula = hasFormulaForContext(comp, mat, isCeilingAssembly);
+                            const resolved = resolveAssemblyRow(
+                                comp, matRow, labourDb, assembly, takeoffInstances, extractedDims,
+                            );
+                            const hasFormula = hasFormulaForContextFromDb(comp, matRow ?? undefined, isCeilingAssembly);
 
                             const isLaborRow = !!comp.materialCode?.startsWith('LAB-');
 
-                            // Debug source badges — not for production
-                            const isMatFromNewDb = !!materialCostingData?.materials_costing?.some(
-                                (item) => item.matched_materials.some((m) => m.code === comp.materialCode && m._fromNewDb),
-                            );
-                            const isLabFromNewDb = !!materialCostingData?.materials_costing?.some(
-                                (item) => item.matched_labor.some((l) => l.code === comp.materialCode && l._fromNewDb),
-                            );
-                            const isFromNewDb = isMatFromNewDb || isLabFromNewDb;
-                            const dbSourceLabel = isLaborRow && isLabFromNewDb ? 'LD' : !isLaborRow && isMatFromNewDb ? 'MD' : isFromNewDb ? 'AD' : null;
-
-                            // For material rows: find associated labor from the costing group
-                            const costingGroup = !isLaborRow && comp.materialCode
-                                ? materialCostingData?.materials_costing.find(
-                                    (item) => item.matched_materials.some((m) => m.code === comp.materialCode),
-                                )
-                                : undefined;
-                            const associatedLabor = costingGroup?.matched_labor[0];
-
-                            // ── Height ──
+                            // ── Height display ──
                             const heightVal =
                                 comp.overrideHeight != null
                                     ? `${comp.overrideHeight}'`
@@ -355,24 +328,7 @@ export const ComponentsList = ({
                                             ? `${assembly.defaultHeight}'`
                                             : '';
 
-                            // ── OC ──
-                            let ocVal = '';
-                            if (comp.ocSpacing) {
-                                ocVal = comp.ocSpacing;
-                            } else {
-                                const ocMatch = comp.usage.match(/Vertical @ (\d+)"? OC/);
-                                ocVal = ocMatch
-                                    ? `${ocMatch[1]}"`
-                                    : comp.usage.includes('16')
-                                        ? '16"'
-                                        : comp.usage.includes('24')
-                                            ? '24"'
-                                            : comp.usage.includes('12')
-                                                ? '12"'
-                                                : '';
-                            }
-
-                            // ── Layers ──
+                            // ── Layers display ──
                             const isGypsumComponent =
                                 comp.overrideLayers != null ||
                                 comp.usage.includes('Coverage') ||
@@ -386,65 +342,37 @@ export const ComponentsList = ({
                                     layersVal = '1';
                             }
 
-                            // ── Formula quantities ──
-                            const formulaQtyValue = isCeilingAssembly ? fq.ceilQty : fq.qty;
-                            const displayQty = (() => {
-                                if (!hasFormula) {
-                                    if (comp.usage === 'Fixed Qty') return comp.overrideQuantity ?? null;
-                                    return null;
-                                }
-                                return formulaQtyValue;
-                            })();
-                            const formulaSeQtyValue = isCeilingAssembly ? fq.ceilSeQty : fq.seQty;
-                            const displaySeQty = formulaSeQtyValue;
+                            // ── Quantities from resolver ──
+                            const displayQty = hasFormula
+                                ? resolved.qty1
+                                : comp.usage === 'Fixed Qty' ? (comp.overrideQuantity ?? null) : null;
+                            const displaySeQty = resolved.qty2;
 
-                            // ── Override indicators ──
-                            const matOverrides = mat?.code ? (overrideMap[mat.code] ?? {}) : {};
+                            // ── Override indicators (overrideMap is keyed by materialCode) ──
+                            const matOverrides = comp.materialCode ? (overrideMap[comp.materialCode] ?? {}) : {};
                             const hasFormulaOverride = isCeilingAssembly
                                 ? ('formulaCeilQty' in matOverrides || 'formulaCeilSecQty' in matOverrides)
                                 : ('formulaQty' in matOverrides || 'formulaSecQty' in matOverrides);
-                            const mouQtyField = isCeilingAssembly ? 'mouCeil' : 'mouWall';
+                            const mouQtyField  = isCeilingAssembly ? 'mouCeil'    : 'mouWall';
                             const mouSeQtyField = isCeilingAssembly ? 'mouCeilSec' : 'mouWallSec';
-                            const hasMouQtyOverride = mouQtyField in matOverrides;
+                            const hasMouQtyOverride  = mouQtyField  in matOverrides;
                             const hasMouSeQtyOverride = mouSeQtyField in matOverrides;
 
-                            // ── Unit cost ──
-                            const unitCostDisplay = (() => {
-                                const prodRate = mat?.productivity;
-                                const raw = comp.overrideMatCost ?? prodRate;
-                                if (raw == null) return undefined;
-                                const num = typeof raw === 'number' ? raw : Number(raw);
-                                return Number.isFinite(num) ? num : undefined;
-                            })();
-                            const unitCostPlaceholder = (() => {
-                                const prodRate = mat?.productivity;
-                                if (prodRate != null && typeof prodRate === 'number' && Number.isFinite(prodRate)) {
-                                    return prodRate.toFixed(2);
-                                }
-                                const up = details.unitPrice;
-                                if (up != null && typeof up === 'number' && Number.isFinite(up)) {
-                                    return up.toFixed(2);
-                                }
-                                return '-';
-                            })();
+                            // ── UOM display (override takes priority, else from resolver) ──
+                            const displayUom1 = (matOverrides[mouQtyField as OverrideableField] as string | undefined) ?? resolved.uom1;
+                            const displayUom2 = (matOverrides[mouSeQtyField as OverrideableField] as string | undefined) ?? resolved.uom2;
 
-                            const rowTotal = getRowTotalCost(
-                                comp, assembly, materials, takeoffInstances, materialCostingData, getRowDetails,
-                            );
+                            // ── Costs from resolver ──
+                            const matUnitPrice  = resolved.matUnitPrice;
+                            const labQtyVal     = resolved.labour?.labQty  ?? 0;
+                            const labUomVal     = resolved.labour?.labUom  ?? '';
+                            const labUnitCost   = resolved.labour?.labUnitRate ?? 0;
+                            const totalMatCost  = resolved.totalMatCost;
+                            const totalLabCost  = resolved.totalLabCost;
+                            const rowTotal      = resolved.totalCost;
 
-                            // ── Labour data ──
-                            const labUnitCost = isLaborRow
-                                ? (unitCostDisplay ?? 0)
-                                : (associatedLabor?.unit_cost ?? 0);
-                            const labQtyVal = isLaborRow
-                                ? (displayQty ?? 0)
-                                : (associatedLabor?.quantity ?? 0);
-                            const labUomVal = isLaborRow
-                                ? ((isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) ||
-                                    getUnitSuffix(comp.selectedUnit || details.unit))
-                                : (associatedLabor?.unit ?? '');
-                            const totalLabCost = labUnitCost * labQtyVal;
-                            const totalMatCost = isLaborRow ? 0 : rowTotal;
+                            // ── OC display (derived from resolved.oc) ──
+                            const ocVal = resolved.oc;
 
                             const handleSimpleFieldChange = <K extends keyof AssemblyComponent>(
                                 field: K,
@@ -458,9 +386,7 @@ export const ComponentsList = ({
                                 ? 'opacity-40 bg-slate-50/80 pointer-events-none'
                                 : isLaborRow
                                     ? 'bg-amber-50/20 hover:bg-amber-50/50'
-                                    : isFromNewDb
-                                        ? 'bg-emerald-50/40 hover:bg-emerald-50/70'
-                                        : 'hover:bg-slate-50/60';
+                                    : 'hover:bg-slate-50/60';
 
                             return (
                                 <tr key={comp.id} className={`transition-colors h-7 ${rowBg}`}>
@@ -493,15 +419,9 @@ export const ComponentsList = ({
                                             onClick={() => onOpenDetail(comp, false)}
                                         >
                                             <span className="truncate text-slate-700">{comp.materialName}</span>
-                                            {dbSourceLabel && (
-                                                <span className={`shrink-0 text-[8px] font-bold uppercase tracking-wide rounded px-1 py-0.5 leading-none ${
-                                                    dbSourceLabel === 'MD'
-                                                        ? 'text-emerald-700 bg-emerald-100 border border-emerald-300'
-                                                        : dbSourceLabel === 'LD'
-                                                            ? 'text-amber-700 bg-amber-100 border border-amber-300'
-                                                            : 'text-purple-700 bg-purple-100 border border-purple-300'
-                                                }`}>
-                                                    {dbSourceLabel}
+                                            {matRow && (
+                                                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide rounded px-1 py-0.5 leading-none text-emerald-700 bg-emerald-100 border border-emerald-300">
+                                                    MD
                                                 </span>
                                             )}
                                             <Settings2 className="w-3 h-3 text-slate-300 shrink-0 ml-auto opacity-0 group-hover/desc:opacity-100 transition-opacity" />
@@ -561,13 +481,9 @@ export const ComponentsList = ({
 
                                     {/* ── Labor Code ── */}
                                     <td className="border-r border-slate-200 text-center px-1">
-                                        {isLaborRow ? (
-                                            <span className="text-[10px] font-semibold text-amber-700 truncate block text-center">
-                                                {comp.materialCode}
-                                            </span>
-                                        ) : mat?.laborCostCode ? (
+                                        {resolved.labourCode ? (
                                             <span className="text-[10px] font-medium text-slate-600 truncate block text-center">
-                                                {mat.laborCostCode}
+                                                {resolved.labourCode}
                                             </span>
                                         ) : (
                                             <span className="text-slate-300">—</span>
@@ -614,7 +530,7 @@ export const ComponentsList = ({
                                                 {hasFormula && (
                                                     <FunctionSquare className="w-2.5 h-2.5 text-emerald-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 )}
-                                                {hasFormulaOverride && mat?.code && (
+                                                {hasFormulaOverride && comp.materialCode && (
                                                     <button
                                                         type="button"
                                                         className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-orange-400 hover:bg-orange-500"
@@ -622,7 +538,7 @@ export const ComponentsList = ({
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             onRevertFormulaOverrides(
-                                                                mat.code,
+                                                                comp.materialCode!,
                                                                 isCeilingAssembly
                                                                     ? ['formulaCeilQty', 'formulaCeilSecQty']
                                                                     : ['formulaQty', 'formulaSecQty'],
@@ -637,7 +553,7 @@ export const ComponentsList = ({
                                     {/* ── UOM1 ── */}
                                     <td
                                         className="border-r border-slate-200 text-center px-1 relative group/mou"
-                                        title={mat?.code ? 'Click to edit UOM' : undefined}
+                                        title={comp.materialCode ? 'Click to edit UOM' : undefined}
                                     >
                                         {displayQty != null || hasFormula ? (
                                             editingMouCell?.compId === comp.id && editingMouCell.type === 'qty' ? (
@@ -647,11 +563,10 @@ export const ComponentsList = ({
                                                     value={mouInputValue}
                                                     onChange={(e) => setMouInputValue(e.target.value)}
                                                     onBlur={() => {
-                                                        const original = (isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) || '';
-                                                        if (mouInputValue.trim() && mouInputValue.trim() !== original && mat?.code) {
+                                                        if (mouInputValue.trim() && mouInputValue.trim() !== displayUom1 && comp.materialCode) {
                                                             onMouSavePending({
-                                                                materialCode: mat.code,
-                                                                materialName: mat.description || mat.code,
+                                                                materialCode: comp.materialCode,
+                                                                materialName: comp.materialName || comp.materialCode,
                                                                 field: isCeilingAssembly ? 'mouCeil' : 'mouWall',
                                                                 fieldLabel: 'UOM1',
                                                                 newValue: mouInputValue.trim(),
@@ -668,18 +583,15 @@ export const ComponentsList = ({
                                                 <div
                                                     className="flex items-center justify-center gap-0.5 cursor-pointer hover:bg-slate-100 rounded px-0.5"
                                                     onClick={() => {
-                                                        if (!mat?.code) return;
-                                                        const val = (isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) ||
-                                                            getUnitSuffix(comp.selectedUnit || details.unit);
-                                                        setMouInputValue(val);
+                                                        if (!comp.materialCode) return;
+                                                        setMouInputValue(displayUom1);
                                                         setEditingMouCell({ compId: comp.id, type: 'qty' });
                                                     }}
                                                 >
                                                     <span className="text-[10px] font-medium text-slate-600">
-                                                        {(isCeilingAssembly ? mat?.mouCeil : mat?.mouWall) ||
-                                                            getUnitSuffix(comp.selectedUnit || details.unit)}
+                                                        {displayUom1 || '—'}
                                                     </span>
-                                                    {mat?.code && (
+                                                    {comp.materialCode && (
                                                         <Edit2 className="w-2 h-2 text-slate-300 opacity-0 group-hover/mou:opacity-100" />
                                                     )}
                                                     {hasMouQtyOverride && (
@@ -694,7 +606,11 @@ export const ComponentsList = ({
 
                                     {/* ── Size ── */}
                                     <td className="border-r border-slate-200 text-center px-1 text-[10px] text-slate-500">
-                                        {mat?.size || <span className="text-slate-300">—</span>}
+                                        {resolved.size != null ? (
+                                            <span className="tabular-nums">{resolved.size.toFixed(2)}</span>
+                                        ) : (
+                                            <span className="text-slate-300">—</span>
+                                        )}
                                     </td>
 
                                     {/* ── Qty 2 ── */}
@@ -722,7 +638,7 @@ export const ComponentsList = ({
                                     {/* ── UOM2 ── */}
                                     <td
                                         className="border-r border-slate-200 text-center px-1 relative group/mou2"
-                                        title={mat?.code ? 'Click to edit UOM2' : undefined}
+                                        title={comp.materialCode ? 'Click to edit UOM2' : undefined}
                                     >
                                         {displaySeQty != null ? (
                                             editingMouCell?.compId === comp.id && editingMouCell.type === 'seqty' ? (
@@ -732,11 +648,10 @@ export const ComponentsList = ({
                                                     value={mouInputValue}
                                                     onChange={(e) => setMouInputValue(e.target.value)}
                                                     onBlur={() => {
-                                                        const original = (isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || '';
-                                                        if (mouInputValue.trim() && mouInputValue.trim() !== original && mat?.code) {
+                                                        if (mouInputValue.trim() && mouInputValue.trim() !== displayUom2 && comp.materialCode) {
                                                             onMouSavePending({
-                                                                materialCode: mat.code,
-                                                                materialName: mat.description || mat.code,
+                                                                materialCode: comp.materialCode,
+                                                                materialName: comp.materialName || comp.materialCode,
                                                                 field: isCeilingAssembly ? 'mouCeilSec' : 'mouWallSec',
                                                                 fieldLabel: 'UOM2',
                                                                 newValue: mouInputValue.trim(),
@@ -753,22 +668,15 @@ export const ComponentsList = ({
                                                 <div
                                                     className="flex items-center justify-center gap-0.5 cursor-pointer hover:bg-slate-100 rounded px-0.5"
                                                     onClick={() => {
-                                                        if (!mat?.code) return;
-                                                        const altU = details.altUnits || {};
-                                                        const mouFallback = altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
-                                                        const val = (isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) || mouFallback;
-                                                        setMouInputValue(val);
+                                                        if (!comp.materialCode) return;
+                                                        setMouInputValue(displayUom2);
                                                         setEditingMouCell({ compId: comp.id, type: 'seqty' });
                                                     }}
                                                 >
                                                     <span className="text-[10px] font-medium text-slate-600">
-                                                        {(isCeilingAssembly ? mat?.mouCeilSec : mat?.mouWallSec) ||
-                                                            (() => {
-                                                                const altU = details.altUnits || {};
-                                                                return altU.sf ? 'SF' : altU.lf ? 'LF' : altU.m2 ? 'm²' : altU.m ? 'm' : '-';
-                                                            })()}
+                                                        {displayUom2 || '—'}
                                                     </span>
-                                                    {mat?.code && (
+                                                    {comp.materialCode && (
                                                         <Edit2 className="w-2 h-2 text-slate-300 opacity-0 group-hover/mou2:opacity-100" />
                                                     )}
                                                     {hasMouSeQtyOverride && (
@@ -803,30 +711,18 @@ export const ComponentsList = ({
 
                                     {/* ── Mat. Unit Price ── */}
                                     <td className="border-r border-slate-200 text-center p-0">
-                                        {isLaborRow ? (
-                                            <span className="block text-center text-slate-300 px-2">—</span>
-                                        ) : (
-                                            <NumberInput
-                                                cellMode
-                                                className="w-full h-full bg-transparent text-center outline-none font-medium text-[11px]"
-                                                value={unitCostDisplay}
-                                                onChange={(val) => onUpdateComp(assembly.id, comp.id, 'overrideMatCost', val)}
-                                                placeholder={unitCostPlaceholder}
-                                            />
-                                        )}
+                                        <NumberInput
+                                            cellMode
+                                            className="w-full h-full bg-transparent text-center outline-none font-medium text-[11px]"
+                                            value={comp.overrideMatCost}
+                                            onChange={(val) => onUpdateComp(assembly.id, comp.id, 'overrideMatCost', val)}
+                                            placeholder={matRow?.unitPrice != null ? matRow.unitPrice.toFixed(2) : '-'}
+                                        />
                                     </td>
 
                                     {/* ── Lab. Unit Price ── */}
                                     <td className="border-r border-slate-200 text-center p-0">
-                                        {isLaborRow ? (
-                                            <NumberInput
-                                                cellMode
-                                                className="w-full h-full bg-transparent text-center outline-none font-medium text-[11px] text-amber-700"
-                                                value={unitCostDisplay}
-                                                onChange={(val) => onUpdateComp(assembly.id, comp.id, 'overrideMatCost', val)}
-                                                placeholder={unitCostPlaceholder}
-                                            />
-                                        ) : labUnitCost > 0 ? (
+                                        {labUnitCost > 0 ? (
                                             <span className="block text-center tabular-nums font-medium text-amber-700 px-2">
                                                 {labUnitCost.toFixed(2)}
                                             </span>
@@ -926,6 +822,5 @@ export const ComponentsList = ({
     );
 };
 
-// Re-export helpers so AssemblyEditorModal can compute totals without
-// duplicating the logic.
-export { getMaterialByRowCode, getIsLaborRow, getRowTotalCost, getUnitCostForRow, getQuantityForCost };
+// Re-export helpers still used by AssemblyEditorModal
+export { getMaterialByRowCode };

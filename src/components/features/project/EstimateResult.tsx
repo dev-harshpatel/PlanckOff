@@ -34,7 +34,6 @@ interface EstimateResultProps {
   onAnalyze: (file: File) => void;
   isAnalyzing: boolean;
   viewMode?: "project" | "report";
-  displayUnit: "imperial" | "metric";
   activeReportTab?: "proposal" | "bidding" | "markups" | "materials" | "matlab" | "labor";
   setActiveReportTab?: (
     tab: "proposal" | "bidding" | "markups" | "materials" | "matlab" | "labor",
@@ -63,7 +62,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
   onAnalyze,
   isAnalyzing,
   viewMode = "project",
-  displayUnit,
   activeReportTab,
   setActiveReportTab,
   onCloseReport,
@@ -403,7 +401,6 @@ export const EstimateResult: React.FC<EstimateResultProps> = ({
         manualItems={manualItems}
         materialCostingData={materialCostingData}
         onUnitCostChange={onUnitCostChange}
-        displayUnit={displayUnit}
         reportScopeId={projectIdProp}
         finalOutputId={finalOutputId}
         activeReportTab={activeReportTab}

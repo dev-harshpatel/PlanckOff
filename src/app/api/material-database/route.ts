@@ -1,12 +1,19 @@
 import { NextRequest } from 'next/server';
 import { withAuth, withRoleAuth } from '@/lib/auth/api-helpers';
 import { successResponse, errorResponse } from '@/lib/api/response';
-import { getMaterialsPaginated, getMaterialCategories, getNextRowNumForCategory, insertMaterialRow, getMaterialsTrash } from '@/lib/db/materialDatabase';
+import { getMaterialsPaginated, getMaterialCategories, getNextRowNumForCategory, insertMaterialRow, getMaterialsTrash, getAllMaterialRows } from '@/lib/db/materialDatabase';
 import { computeKeywords } from '@/lib/utils/databaseImportParsers';
 import type { SizeEntry } from '@/types';
 
 export const GET = withAuth(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
+
+  // ?all=true — returns every non-deleted row without pagination (for resolver)
+  if (searchParams.get('all') === 'true') {
+    const { data, error } = await getAllMaterialRows();
+    if (error) return errorResponse(error.message, 500);
+    return successResponse(data);
+  }
 
   if (searchParams.get('trash') === 'true') {
     const { data, error } = await getMaterialsTrash();

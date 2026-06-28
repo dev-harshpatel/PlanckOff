@@ -90,17 +90,68 @@ interface ChildBandsTableProps {
   row: LabourDatabaseRow;
   onToggleBand: (bandLabourCode: string, newIsActive: boolean) => Promise<void>;
   onAddBand: (form: NewBandForm) => Promise<void>;
+  onEditBand: (originalLabourCode: string, form: NewBandForm) => Promise<void>;
+  onDeleteBand: (bandLabourCode: string) => Promise<void>;
 }
 
-function ChildBandsTable({ row, onToggleBand, onAddBand }: ChildBandsTableProps) {
+function ChildBandsTable({ row, onToggleBand, onAddBand, onEditBand, onDeleteBand }: ChildBandsTableProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newBand, setNewBand] = useState<NewBandForm>(emptyBandForm(row.parentCode));
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit state
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<NewBandForm>(emptyBandForm(row.parentCode));
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Delete confirm state
+  const [confirmDeleteCode, setConfirmDeleteCode] = useState<string | null>(null);
+  const [deletingCode, setDeletingCode] = useState<string | null>(null);
+
   function setBandField(field: keyof NewBandForm, value: string) {
     setNewBand((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function setEditField(field: keyof NewBandForm, value: string) {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function startEdit(band: LabourBandEntry) {
+    setEditingCode(band.labourCode);
+    setEditForm({
+      labourCode: band.labourCode,
+      htBand: band.htBand,
+      htMinFt: String(band.htMinFt),
+      htMaxFt: String(band.htMaxFt),
+      uom: band.uom,
+      ratePerUom: String(band.ratePerUom),
+      description: band.description || '',
+      notes: band.notes || '',
+    });
+    setError(null);
+    setIsAdding(false);
+    setConfirmDeleteCode(null);
+  }
+
+  function cancelEdit() {
+    setEditingCode(null);
+    setError(null);
+  }
+
+  async function handleEditSave() {
+    if (!editForm.labourCode.trim()) { setError('Child code is required'); return; }
+    setEditSaving(true);
+    setError(null);
+    try {
+      await onEditBand(editingCode!, editForm);
+      setEditingCode(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function handleToggle(labourCode: string, currentIsActive: boolean) {
@@ -124,7 +175,21 @@ function ChildBandsTable({ row, onToggleBand, onAddBand }: ChildBandsTableProps)
     }
   }
 
+  async function handleDeleteConfirm(labourCode: string) {
+    setDeletingCode(labourCode);
+    setError(null);
+    try {
+      await onDeleteBand(labourCode);
+      setConfirmDeleteCode(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete');
+    } finally {
+      setDeletingCode(null);
+    }
+  }
+
   const inputCls = 'w-full h-7 rounded border border-slate-200 bg-white px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500';
+  const canDelete = row.labourBands.length > 1;
 
   return (
     <tr>
@@ -141,13 +206,70 @@ function ChildBandsTable({ row, onToggleBand, onAddBand }: ChildBandsTableProps)
                 <th className="py-1.5 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-14">UOM</th>
                 <th className="py-1.5 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider w-24">Rate / UOM</th>
                 <th className="py-1.5 pl-2 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Description</th>
-                {isAdding && <th className="w-14" />}
+                <th className="py-1.5 w-16" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {row.labourBands.map((band, idx) => {
                 const active = band.isActive !== false;
                 const isToggling = toggling === band.labourCode;
+                const isEditing = editingCode === band.labourCode;
+                const isConfirmingDelete = confirmDeleteCode === band.labourCode;
+                const isDeletingThis = deletingCode === band.labourCode;
+
+                if (isEditing) {
+                  return (
+                    <tr key={idx} className="bg-blue-50/60">
+                      <td className="py-1.5 pl-2 w-7">
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          disabled
+                          className="h-3.5 w-3.5 rounded accent-emerald-600 opacity-50"
+                        />
+                      </td>
+                      <td className="py-1.5 pl-2">
+                        <input
+                          autoFocus
+                          className={cn(inputCls, 'font-mono')}
+                          value={editForm.labourCode}
+                          onChange={(e) => setEditField('labourCode', e.target.value)}
+                        />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <select className={inputCls} value={editForm.htBand} onChange={(e) => setEditField('htBand', e.target.value)}>
+                          {HT_BANDS.map((b) => <option key={b} value={b}>{b}</option>)}
+                        </select>
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <input type="number" className={cn(inputCls, 'text-center')} value={editForm.htMinFt} onChange={(e) => setEditField('htMinFt', e.target.value)} placeholder="0" />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <input type="number" className={cn(inputCls, 'text-center')} value={editForm.htMaxFt} onChange={(e) => setEditField('htMaxFt', e.target.value)} placeholder="99" />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <input className={inputCls} value={editForm.uom} onChange={(e) => setEditField('uom', e.target.value)} placeholder="SF" />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <input type="number" step="0.0001" className={cn(inputCls, 'text-right')} value={editForm.ratePerUom} onChange={(e) => setEditField('ratePerUom', e.target.value)} placeholder="0.00" />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <input className={inputCls} value={editForm.description} onChange={(e) => setEditField('description', e.target.value)} placeholder="Description…" />
+                      </td>
+                      <td className="py-1.5 pr-1">
+                        <div className="flex items-center gap-0.5 justify-end">
+                          <button type="button" onClick={handleEditSave} disabled={editSaving} title="Save changes" className="flex items-center justify-center w-6 h-6 rounded hover:bg-emerald-100 text-emerald-600 disabled:opacity-50">
+                            <Check size={13} />
+                          </button>
+                          <button type="button" onClick={cancelEdit} disabled={editSaving} title="Cancel" className="flex items-center justify-center w-6 h-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-50">
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+
                 return (
                   <tr
                     key={idx}
@@ -189,7 +311,50 @@ function ChildBandsTable({ row, onToggleBand, onAddBand }: ChildBandsTableProps)
                         <span className="ml-1.5 text-[10px] italic text-amber-600">({band.notes})</span>
                       )}
                     </td>
-                    {isAdding && <td />}
+                    <td className="py-1.5 pr-1">
+                      {isConfirmingDelete ? (
+                        <div className="flex items-center gap-0.5 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteConfirm(band.labourCode)}
+                            disabled={isDeletingThis}
+                            title="Confirm delete"
+                            className="flex items-center justify-center w-6 h-6 rounded bg-red-50 hover:bg-red-100 text-red-600 disabled:opacity-50"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteCode(null)}
+                            disabled={isDeletingThis}
+                            title="Cancel"
+                            className="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-50"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-0.5 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(band)}
+                            title="Edit band"
+                            className="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => canDelete ? setConfirmDeleteCode(band.labourCode) : undefined}
+                            disabled={!canDelete}
+                            title={canDelete ? 'Delete band' : 'Cannot delete the only band — delete the parent instead'}
+                            className="flex items-center justify-center w-6 h-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -302,7 +467,7 @@ function ChildBandsTable({ row, onToggleBand, onAddBand }: ChildBandsTableProps)
 
           {error && <p className="text-[11px] text-red-600 mt-1.5 ml-0.5">{error}</p>}
 
-          {!isAdding && (
+          {!isAdding && !editingCode && (
             <button
               type="button"
               onClick={() => { setNewBand(emptyBandForm(row.parentCode)); setError(null); setIsAdding(true); }}
@@ -428,6 +593,43 @@ export function LabourDatabaseTab({ isActive = true }: LabourDatabaseTabProps) {
       };
       const sorted = [...row.labourBands, band].sort((a, b) => a.htMinFt - b.htMinFt);
       await patchRow(row, sorted);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // ─── Edit an existing child band ───────────────────────────────────────────
+
+  const handleEditBand = useCallback(
+    async (row: LabourDatabaseRow, originalCode: string, form: NewBandForm) => {
+      const newBands = row.labourBands.map((b) =>
+        b.labourCode === originalCode
+          ? {
+              ...b,
+              labourCode: form.labourCode.trim(),
+              htBand: form.htBand,
+              htMinFt: Number(form.htMinFt) || 0,
+              htMaxFt: Number(form.htMaxFt) || 99,
+              uom: form.uom.trim(),
+              ratePerUom: Number(form.ratePerUom) || 0,
+              description: form.description.trim(),
+              notes: form.notes.trim(),
+            }
+          : b,
+      );
+      const sorted = [...newBands].sort((a, b) => a.htMinFt - b.htMinFt);
+      await patchRow(row, sorted);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // ─── Delete a single child band ────────────────────────────────────────────
+
+  const handleDeleteBand = useCallback(
+    async (row: LabourDatabaseRow, bandLabourCode: string) => {
+      const newBands = row.labourBands.filter((b) => b.labourCode !== bandLabourCode);
+      await patchRow(row, newBands);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -590,6 +792,8 @@ export function LabourDatabaseTab({ isActive = true }: LabourDatabaseTabProps) {
                           row={row}
                           onToggleBand={(code, newActive) => handleToggleBand(row, code, newActive)}
                           onAddBand={(form) => handleAddBand(row, form)}
+                          onEditBand={(originalCode, form) => handleEditBand(row, originalCode, form)}
+                          onDeleteBand={(code) => handleDeleteBand(row, code)}
                         />
                       )}
                     </>

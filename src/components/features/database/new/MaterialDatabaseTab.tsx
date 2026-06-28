@@ -59,9 +59,9 @@ function FormulaCell({ formula }: { formula: string }) {
 }
 
 function PriceCell({ value }: { value: number }) {
-  if (value === 0 || value == null) return <span className="text-muted-foreground text-xs">—</span>;
+  if (value == null) return <span className="text-muted-foreground text-xs">—</span>;
   return (
-    <span className="text-xs tabular-nums font-medium">
+    <span className={cn('text-xs tabular-nums font-medium', value === 0 && 'text-muted-foreground')}>
       <span className="text-muted-foreground text-[10px] mr-0.5">$</span>
       {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
@@ -88,6 +88,7 @@ const COLUMNS: { label: string; minWidth: number }[] = [
   { label: 'Section',          minWidth: 88  },
   { label: 'Sizes',            minWidth: 80  },
   { label: 'Unit Price',       minWidth: 88  },
+  { label: 'Container',        minWidth: 96  },
   { label: 'QTY1 Formula',     minWidth: 248 },
   { label: 'UOM1',             minWidth: 64  },
   { label: 'QTY2 Formula',     minWidth: 248 },
@@ -352,6 +353,16 @@ export function MaterialDatabaseTab({ isActive = true }: MaterialDatabaseTabProp
                     {/* Unit Price */}
                     <TableCell className="border-r border-slate-100">
                       <PriceCell value={row.unitPrice} />
+                    </TableCell>
+
+                    {/* Container */}
+                    <TableCell className="border-r border-slate-100">
+                      {(() => {
+                        const units = [...new Set(row.sizes.map((s) => s.containerUnit).filter(Boolean))];
+                        return units.length > 0
+                          ? <span className="text-xs text-slate-600">{units.join(', ')}</span>
+                          : <span className="text-muted-foreground text-xs">—</span>;
+                      })()}
                     </TableCell>
 
                     {/* QTY1 Formula (wall) */}

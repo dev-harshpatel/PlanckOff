@@ -6,6 +6,7 @@ export interface SizeEntry {
   containerUnit: string;
   sizeMm: number | null;
   sizeImperial: string | null;
+  unitPrice?: number;
 }
 
 export interface LabourBandEntry {

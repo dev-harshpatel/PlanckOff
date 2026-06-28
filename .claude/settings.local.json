@@ -33,7 +33,8 @@
       "Bash(npx tsx *)",
       "Skill(run)",
       "Bash(python3 -c ' *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(xargs cat)"
     ]
   }
 }

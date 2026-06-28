@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo, useCallback, type ReactNode } from 
 import type { WallAssembly } from '@/types';
 import type { MaterialCosting } from '@/types/assembly';
 import type { ProjectOverrideMap, OverrideableField } from '@/types/core/projectOverrides';
+import type { MaterialDatabaseRow, LabourDatabaseRow } from '@/types/databases';
 import { aggregateProjectCosts, type ProjectCosts } from '@/lib/utils/projectCosting';
 import { syncProjectOverrides } from '@/lib/utils/projectOverrideSync';
 import type { ProjectDataState } from '@/hooks/useProjectData';
@@ -33,6 +34,10 @@ export interface ProjectDataContextValue {
   rawTakeoffRows: unknown[];
   isLoading: boolean;
   error: string | null;
+  /** Full material_database — for assemblyRowResolver column data. */
+  materialDb: MaterialDatabaseRow[];
+  /** Full labour_database — for assemblyRowResolver column data. */
+  labourDb: LabourDatabaseRow[];
 }
 
 const ProjectDataContext = createContext<ProjectDataContextValue | null>(null);
@@ -98,6 +103,8 @@ export function ProjectDataProvider({ projectId, data, children }: ProjectDataPr
       rawTakeoffRows: data.rawTakeoffRows,
       isLoading: data.isLoading,
       error: data.error,
+      materialDb: data.materialDb,
+      labourDb: data.labourDb,
     }),
     [
       projectId,
@@ -110,6 +117,8 @@ export function ProjectDataProvider({ projectId, data, children }: ProjectDataPr
       data.isLoading,
       data.error,
       data.refresh,
+      data.materialDb,
+      data.labourDb,
       projectCosts,
       updateOverride,
     ],

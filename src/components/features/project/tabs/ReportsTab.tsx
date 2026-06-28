@@ -12,7 +12,6 @@ interface ReportsTabProps {
   manualItems: CalculatedMaterial[];
   materialCostingData: MaterialCosting[];
   onUnitCostChange?: (code: string, newCost: number, type: 'material' | 'labor', unit?: string) => void;
-  displayUnit: 'imperial' | 'metric';
   reportScopeId?: string | null;
   finalOutputId?: string | null;
   activeReportTab?: 'proposal' | 'bidding' | 'markups' | 'materials' | 'matlab' | 'labor';
@@ -29,7 +28,6 @@ export const ReportsTab = ({
   manualItems,
   materialCostingData,
   onUnitCostChange,
-  displayUnit,
   reportScopeId,
   finalOutputId,
   activeReportTab,
@@ -46,7 +44,6 @@ export const ReportsTab = ({
         manualItems={manualItems}
         materialCostingData={materialCostingData}
         onUnitCostChange={onUnitCostChange}
-        displayUnit={displayUnit}
         reportScopeId={reportScopeId ?? finalOutputId ?? null}
         activeReportTab={activeReportTab}
         setActiveReportTab={setActiveReportTab}

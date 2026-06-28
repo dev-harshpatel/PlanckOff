@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
-  ArrowLeftRight,
   Box,
   Briefcase,
   FileText,
@@ -69,9 +68,7 @@ function ProjectContent() {
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
-  const [displayUnit, setDisplayUnit] = useState<"imperial" | "metric">(
-    "imperial",
-  );
+
 
   const [activeProject, setActiveProject] = useState<ProjectSummary>({
     id: projectId || `new-${Date.now()}`,
@@ -368,20 +365,6 @@ function ProjectContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() =>
-                setDisplayUnit((u) =>
-                  u === "imperial" ? "metric" : "imperial",
-                )
-              }
-              className="text-xs font-medium px-3 py-1.5 rounded border transition-colors flex items-center gap-2 text-slate-600 hover:bg-slate-50 border-slate-200 bg-white shadow-sm"
-              title="Toggle measurement units for reports"
-            >
-              <ArrowLeftRight className="w-4 h-4" />
-              {displayUnit === "imperial" ? "Imperial" : "Metric"}
-            </button>
-
-            <div className="h-6 w-px bg-slate-200 mx-1" />
 
             <button
               onClick={() => {
@@ -502,7 +485,6 @@ function ProjectContent() {
           onAnalyze={handleAnalyze}
           isAnalyzing={state === AppState.ANALYZING}
           viewMode={showReport ? "report" : "project"}
-          displayUnit={displayUnit}
           activeReportTab={activeReportTab}
           setActiveReportTab={setActiveReportTab}
           onCloseReport={closeReport}
