@@ -34,7 +34,10 @@
       "Skill(run)",
       "Bash(python3 -c ' *)",
       "Bash(npm run *)",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(git worktree *)",
+      "Bash(git branch *)",
+      "Skill(claude-api)"
     ]
   }
 }

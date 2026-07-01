@@ -12,6 +12,7 @@ import {
     type ExtractedDimensions,
 } from '@/lib/utils/formulaEvaluator';
 import { resolveAssemblyRow } from '@/lib/utils/assemblyRowResolver';
+import type { MaterialDatabaseRow } from '@/types/databases';
 import { findExtractedDimsForComponent, getMaterialByRowCode } from './assemblyComponentHelpers';
 import { useProjectDataContext } from '@/context/ProjectDataContext';
 
@@ -162,7 +163,8 @@ export const ComponentsList = ({
         .filter((c) => !c.muted)
         .reduce(
             (acc, c) => {
-                const mRow = materialDb.find(m => m.code === c.materialCode) ?? null;
+                // JSON-embedded row is primary; live DB lookup is fallback for old data
+                const mRow = (c.embeddedMatRow as MaterialDatabaseRow | undefined) ?? materialDb.find(m => m.code === c.materialCode) ?? null;
                 const extDims = findExtractedDimsForComponent(c, materialCostingData);
                 const r = resolveAssemblyRow(c, mRow, labourDb, assembly, takeoffInstances, extDims);
                 acc.mat += r.totalMatCost;
@@ -309,7 +311,8 @@ export const ComponentsList = ({
 
                     <tbody className="divide-y divide-slate-100">
                         {assembly.components.map((comp) => {
-                            const matRow = materialDb.find(m => m.code === comp.materialCode) ?? null;
+                            // JSON-embedded row is primary; live DB lookup is fallback for old data
+                            const matRow = (comp.embeddedMatRow as import('@/types/databases').MaterialDatabaseRow | undefined) ?? materialDb.find(m => m.code === comp.materialCode) ?? null;
                             const extractedDims = findExtractedDimsForComponent(comp, materialCostingData);
                             const resolved = resolveAssemblyRow(
                                 comp, matRow, labourDb, assembly, takeoffInstances, extractedDims,

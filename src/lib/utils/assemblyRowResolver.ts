@@ -2,13 +2,13 @@
  * Assembly Row Resolver — single source of truth for every column value
  * in the ComponentsList assembly table.
  *
- * Column data comes from three sources:
- *   1. MaterialDatabaseRow  — section, code, formulas, unitPrice, UOMs
- *   2. LabourDatabaseRow    — labour code, band selection, labQty formula, rate
- *   3. AssemblyComponent    — description (AI-extracted), overrides, waste%
+ * Data priority order (JSON-first architecture):
+ *   1. comp.embeddedMatRow / comp.embeddedLabRow — embedded in final JSON at match time
+ *   2. matRow / labourDb — live DB lookup (fallback for old data without embedded rows)
+ *   3. AssemblyComponent overrides — user-set values (override_*, layers_override, etc.)
  *
- * Context (wall / ceiling / bulkhead) is determined by MatRow.parentSection —
- * set at AI-match time, never re-derived from assembly.assemblyType.
+ * Context (wall / ceiling / bulkhead) comes from assembly.assemblyType,
+ * which is set from the Excel takeoff category at parse time.
  *
  * Rule: NO component ever computes a column value; it always calls resolveAssemblyRow().
  */
@@ -27,10 +27,16 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Derive context from the matched material row's parentSection. */
-export function resolveAssemblyContext(matRow: MaterialDatabaseRow): AssemblyRowContext {
-    const s = matRow.parentSection;
-    const isCeiling = s === 'Ceiling';
-    const isBulkhead = s === 'Bulkhead';
+/**
+ * Derives assembly context from the WallAssembly assemblyType — same logic as
+ * getAssemblyContext() in resolveMatchedMaterial. Uses assembly category
+ * (Interior/Exterior Wall → wall, Ceiling → ceiling, Bulkhead → bulkhead)
+ * NOT matRow.parentSection (which stores material categories like "FRAMING").
+ */
+export function resolveAssemblyContext(assembly: WallAssembly): AssemblyRowContext {
+    const lower = (assembly.assemblyType ?? '').toLowerCase();
+    const isCeiling  = lower.includes('ceiling');
+    const isBulkhead = lower.includes('bulkhead');
     return { isCeiling, isBulkhead, isWall: !isCeiling && !isBulkhead };
 }
 
@@ -45,14 +51,27 @@ export function selectLabourCode(matRow: MaterialDatabaseRow, ctx: AssemblyRowCo
 // Labour lookup helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Find the LabourDatabaseRow for a given parent code (case-insensitive). */
+/**
+ * Find the LabourDatabaseRow for a given code (case-insensitive).
+ *
+ * Two-pass lookup because the material DB uses two naming conventions:
+ *   • Multi-band bunches: references the PARENT code (e.g. "LAB-HNG")
+ *   • Single-band bunches: references the BAND code  (e.g. "LAB-FUR-WALL")
+ *
+ * Pass 1: match r.parentCode === code  (multi-band case, most common)
+ * Pass 2: match any r.labourBands[*].labourCode === code (single-band case)
+ */
 export function findLabourRow(
     labourDb: LabourDatabaseRow[],
-    parentCode: string,
+    code: string,
 ): LabourDatabaseRow | null {
-    if (!parentCode) return null;
-    const lower = parentCode.toLowerCase();
-    return labourDb.find(r => r.parentCode.toLowerCase() === lower) ?? null;
+    if (!code) return null;
+    const lower = code.toLowerCase();
+    return (
+        labourDb.find(r => r.parentCode.toLowerCase() === lower) ??
+        labourDb.find(r => r.labourBands.some(b => b.labourCode.toLowerCase() === lower)) ??
+        null
+    );
 }
 
 /**
@@ -100,15 +119,18 @@ export function resolveAssemblyRow(
     extractedDims?: ExtractedDimensions,
 ): ResolvedAssemblyRow {
 
-    // ── Context from matched material row ──────────────────────────────────
-    const ctx = matRow
-        ? resolveAssemblyContext(matRow)
-        : { isCeiling: false, isBulkhead: false, isWall: true };
+    // ── Context from assembly type (Interior Wall / Ceiling / Bulkhead) ───────
+    const ctx = resolveAssemblyContext(assembly);
+
+    // ── Effective mat row: JSON-embedded (primary) or live DB lookup (fallback) ─
+    // Cast is safe: omitted fields (id, searchKeywords, deletedAt) are never read by the resolver.
+    const effectiveMatRow: MaterialDatabaseRow | null =
+        (comp.embeddedMatRow as MaterialDatabaseRow | undefined) ?? matRow;
 
     // ── Identification ──────────────────────────────────────────────────────
-    const section      = matRow?.section     ?? comp.sectionCode ?? '';
-    const materialCode = matRow?.code        ?? comp.materialCode ?? '';
-    const description  = comp.materialName   ?? matRow?.description ?? '';
+    const section      = effectiveMatRow?.section     ?? comp.sectionCode ?? '';
+    const materialCode = effectiveMatRow?.code        ?? comp.materialCode ?? '';
+    const description  = comp.materialName   ?? effectiveMatRow?.description ?? '';
 
     // ── OC (display) ────────────────────────────────────────────────────────
     const ocMatch = (comp.ocSpacing || comp.usage).match(/(\d+)/);
@@ -119,24 +141,28 @@ export function resolveAssemblyRow(
 
     // ── Quantities via formula evaluation ───────────────────────────────────
     const fq = computeFormulaQuantitiesFromDb(
-        comp, matRow ?? undefined, assembly, takeoffInstances, extractedDims,
+        comp, effectiveMatRow ?? undefined, assembly, takeoffInstances, extractedDims,
     );
 
     const qty1 = ctx.isCeiling ? fq.ceilQty  : fq.qty;
     const qty2 = ctx.isCeiling ? fq.ceilSeQty : fq.seQty;
-    const uom1 = ctx.isCeiling ? (matRow?.uom1Ceiling ?? '') : (matRow?.uom1 ?? '');
-    const uom2 = ctx.isCeiling ? (matRow?.uom2Ceiling ?? '') : (matRow?.uom2 ?? '');
+    const uom1 = ctx.isCeiling ? (effectiveMatRow?.uom1Ceiling ?? '') : (effectiveMatRow?.uom1 ?? '');
+    const uom2 = ctx.isCeiling ? (effectiveMatRow?.uom2Ceiling ?? '') : (effectiveMatRow?.uom2 ?? '');
 
     // Size = QTY1 / SIZE_NUM (first size entry's sizeNum)
-    const sizeNum = matRow?.sizes?.[0]?.sizeNum ?? 0;
+    const sizeNum = effectiveMatRow?.sizes?.[0]?.sizeNum ?? 0;
     const size    = qty1 != null && sizeNum > 0
         ? Math.round((qty1 / sizeNum) * 100) / 100
         : null;
 
     // ── Labour ──────────────────────────────────────────────────────────────
-    const labourCode = matRow ? selectLabourCode(matRow, ctx) : '';
+    // JSON-embedded labour row is primary; live labourDb lookup is fallback for old data.
+    const labourCode = effectiveMatRow ? selectLabourCode(effectiveMatRow, ctx) : '';
     const wallHeight = comp.overrideHeight ?? assembly.defaultHeight ?? 0;
-    const labourRow  = labourCode ? findLabourRow(labourDb, labourCode) : null;
+    // Cast is safe: omitted fields (id, deletedAt) are never read by the resolver.
+    const labourRow: LabourDatabaseRow | null =
+        (comp.embeddedLabRow as LabourDatabaseRow | undefined) ??
+        (labourCode ? findLabourRow(labourDb, labourCode) : null);
     const labourBand = labourRow ? selectLabourBand(labourRow, wallHeight) : null;
 
     let labour: ResolvedLabour | null = null;
@@ -159,8 +185,8 @@ export function resolveAssemblyRow(
     }
 
     // ── Costs ────────────────────────────────────────────────────────────────
-    // Mat. Unit $ overridden by comp.overrideMatCost if set, otherwise from DB
-    const matUnitPrice  = comp.overrideMatCost ?? matRow?.unitPrice ?? 0;
+    // Mat. Unit $ overridden by comp.overrideMatCost if set, otherwise from JSON/DB
+    const matUnitPrice  = comp.overrideMatCost ?? effectiveMatRow?.unitPrice ?? 0;
     const totalMatCost  = matUnitPrice * (qty2 ?? 0);
     const totalLabCost  = labour?.totalLabCost ?? 0;
     const totalCost     = totalMatCost + totalLabCost;

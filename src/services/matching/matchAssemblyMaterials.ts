@@ -22,8 +22,7 @@ import type {
 } from '@/types/databases';
 import type { NormalizedAssembly } from '@/lib/utils/materialNormalizer';
 import { normalizeExtractedAssembly } from '@/lib/utils/materialNormalizer';
-import { resolveMatchedMaterial } from './resolveMatchedMaterial';
-import { resolveMatchedLabour } from './resolveMatchedLabour';
+import { resolveMatchedMaterial, getAssemblyContext } from './resolveMatchedMaterial';
 
 // ─── Category map: which material_database category does each branch use? ─────
 
@@ -227,6 +226,8 @@ export function matchAssemblyMaterials(
   bunchBranches: AssemblyBunchBranch[],
 ): AssemblyMatchResult {
   const normalized = normalizeExtractedAssembly(assembly);
+  // Derive context from the Excel takeoff category (Interior Wall → wall, Ceiling → ceiling, etc.)
+  const assemblyContext = getAssemblyContext(assembly.assembly_type);
   const costingItems: MaterialsCostingItem[] = [];
   const debugItems: DebugMatchItem[] = [];
   const stats = { itemsTotal: 0, itemsMatched: 0, itemsUnmatched: 0 };
@@ -278,28 +279,18 @@ export function matchAssemblyMaterials(
 
       if (!resolved) {
         stats.itemsUnmatched++;
-        // Still include a costing item so the assembly record is complete
         costingItems.push({
           extracted_material: syntheticItem(bunchItem.itemCode, bunchItem.description || bunchItem.itemCode),
-          matched_materials: [],
-          matched_labor: [],
+          matched_material:  null,
         });
         continue;
       }
 
       stats.itemsMatched++;
 
-      // ── Resolve labour code based on location ────────────────────────────────
-      const labourCode = normalized.location === 'ceiling'
-        ? resolved.ceilingLabourCode
-        : normalized.location === 'bulkhead'
-        ? resolved.bulkheadLabourCode
-        : resolved.wallLabourCode;
-
       costingItems.push({
         extracted_material: syntheticItem(resolved.code, resolved.description),
-        matched_materials:  [resolveMatchedMaterial(resolved)],
-        matched_labor:       resolveMatchedLabour(labourCode, labourRows),
+        matched_material:  resolveMatchedMaterial(resolved, labourRows, assemblyContext),
       });
     }
   }

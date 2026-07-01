@@ -32,8 +32,8 @@ export const findExtractedDimsForComponent = (
     const code = comp.materialCode;
     if (!code) return undefined;
     const item = materialCostingData.materials_costing.find((mci) =>
-        mci.matched_materials.some((m) => m.code === code) ||
-        mci.matched_labor.some((l) => l.code === code),
+        mci.matched_material?.code === code ||
+        (mci.matched_labor ?? []).some((l) => l.code === code),
     );
     const totalLength = item?.extracted_material?.total_length;
     if (totalLength == null) return undefined;

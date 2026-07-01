@@ -182,7 +182,8 @@ export const applyOverridesToCostingData = (
 
         return {
           ...item,
-          matched_materials: item.matched_materials.map((mat) => {
+          matched_material: item.matched_material != null ? (() => {
+            const mat = item.matched_material!;
             const base = {
               ...mat,
               unit_cost: materialUnitCostOverrides.get(mat.code) ?? mat.unit_cost,
@@ -229,7 +230,7 @@ export const applyOverridesToCostingData = (
             }
 
             return base;
-          }),
+          })() : item.matched_material,
 
           matched_labor: (item.matched_labor ?? []).map((lab) => {
             const base = {

@@ -6,7 +6,6 @@
 import type {
   MaterialItem,
   MaterialsCostingItem,
-  MatchedMaterial,
 } from "@/types/assembly";
 import type { TakeoffRawRecord } from "@/services/takeoff/parseRawTakeoff";
 
@@ -147,12 +146,10 @@ const enrichMaterialsCosting = (
 
     return {
       extracted_material: enriched,
-      matched_materials: Array.isArray(item.matched_materials)
-        ? (item.matched_materials as MatchedMaterial[]).map((m) => ({ ...m }))
-        : [],
-      matched_labor: Array.isArray(item.matched_labor)
-        ? item.matched_labor.map((l) => ({ ...l }))
-        : [],
+      ...(item.matched_material !== undefined ? { matched_material: item.matched_material } : {}),
+      ...(Array.isArray(item.matched_labor) && item.matched_labor.length > 0
+        ? { matched_labor: item.matched_labor.map((l) => ({ ...l })) }
+        : {}),
     };
   });
 };

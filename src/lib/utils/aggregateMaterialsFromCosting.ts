@@ -79,9 +79,10 @@ export const aggregateMaterialsFromCosting = (
     const byMaterial: Record<string, number> = {};
 
     (assembly.materials_costing ?? []).forEach((costingItem) => {
-      const { extracted_material, matched_materials } = costingItem;
+      const { extracted_material, matched_material } = costingItem;
 
-      matched_materials.forEach((mat: MatchedMaterial) => {
+      const matList: MatchedMaterial[] = matched_material != null ? [matched_material] : [];
+      matList.forEach((mat: MatchedMaterial) => {
         const qty = getQuantity(extracted_material, mat);
         asmTotal += qty;
         byMaterial[mat.description] = (byMaterial[mat.description] ?? 0) + qty;

@@ -164,7 +164,9 @@ export function aggregateProjectCosts(
 
     for (const costingItem of assembly.materials_costing ?? []) {
       // ── Materials ──
-      for (const mat of costingItem.matched_materials ?? []) {
+      const matRows = costingItem.matched_material != null ? [costingItem.matched_material] : [];
+
+      for (const mat of matRows) {
         const quantity = mat.quantity ?? 0;
         // Apply productivity override if present; fall back to pipeline unit_cost; then 0
         const unitCost = overrideMap[mat.code]?.productivity ?? mat.unit_cost ?? 0;
@@ -187,26 +189,30 @@ export function aggregateProjectCosts(
       }
 
       // ── Labor ──
-      for (const lab of costingItem.matched_labor ?? []) {
-        const quantity = lab.quantity ?? 0;
-        // Apply hourlyRate override if present; fall back to pipeline unit_cost; then 0
-        const unitCost = overrideMap[lab.code]?.hourlyRate ?? lab.unit_cost ?? 0;
-        const totalCost = quantity * unitCost;
+      // New-arch omits matched_labor entirely; old DB data may still have it.
+      // Only process when matched_material is absent (old pipeline output).
+      if (costingItem.matched_material == null) {
+        for (const lab of costingItem.matched_labor ?? []) {
+          const quantity = lab.quantity ?? 0;
+          // Apply hourlyRate override if present; fall back to pipeline unit_cost; then 0
+          const unitCost = overrideMap[lab.code]?.hourlyRate ?? lab.unit_cost ?? 0;
+          const totalCost = quantity * unitCost;
 
-        lineItems.push({
-          code: lab.code,
-          description: lab.description,
-          quantity,
-          unit: lab.unit,
-          unitCost,
-          totalCost,
-          isLabor: true,
-          trade: getTradeFromDescription(lab.description, lab.section ?? ''),
-          area,
-          assemblyType,
-          assemblyId,
-          section: lab.section ?? '',
-        });
+          lineItems.push({
+            code: lab.code,
+            description: lab.description,
+            quantity,
+            unit: lab.unit,
+            unitCost,
+            totalCost,
+            isLabor: true,
+            trade: getTradeFromDescription(lab.description, lab.section ?? ''),
+            area,
+            assemblyType,
+            assemblyId,
+            section: lab.section ?? '',
+          });
+        }
       }
     }
   }

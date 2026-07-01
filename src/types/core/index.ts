@@ -1,6 +1,7 @@
 /**
  * Core application types (materials, assemblies, takeoffs, estimates)
  */
+import type { MaterialDatabaseRow, LabourDatabaseRow } from '@/types/databases';
 
 export interface MaterialDefinition {
   code: string;
@@ -117,6 +118,10 @@ export interface AssemblyComponent {
   formulaCeilQtyOverride?: string;
   formulaCeilSecQtyOverride?: string;
   lengthOverride?: number;
+  /** Full material DB row embedded from JSON — primary source for formulas/UOMs/sizes */
+  embeddedMatRow?: Omit<MaterialDatabaseRow, 'id' | 'deletedAt' | 'searchKeywords'>;
+  /** Full labour DB row embedded from JSON — primary source for labour band selection */
+  embeddedLabRow?: Omit<LabourDatabaseRow, 'id' | 'deletedAt'>;
 }
 
 export interface WallAssembly {

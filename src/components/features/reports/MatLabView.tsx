@@ -152,9 +152,10 @@ export const MatLabView = ({
       parsedLevels.forEach((level) => allLevelsSet.add(level));
 
       (assembly.materials_costing ?? []).forEach((costingItem) => {
-        const { extracted_material, matched_materials, matched_labor } = costingItem;
+        const { extracted_material, matched_material, matched_labor } = costingItem;
 
-        matched_materials.forEach((mat: MatchedMaterial) => {
+        const matList: MatchedMaterial[] = matched_material != null ? [matched_material] : [];
+        matList.forEach((mat: MatchedMaterial) => {
           const quantity =
             mat.quantity != null && typeof mat.quantity === 'number'
               ? mat.quantity
@@ -470,7 +471,7 @@ export const MatLabView = ({
     for (const assembly of materialCostingData) {
       const assemblyId = (assembly as { assembly_id?: string }).assembly_id ?? '?';
       for (const costingItem of assembly.materials_costing ?? []) {
-        if ((costingItem.matched_materials?.length ?? 0) === 0) {
+        if (costingItem.matched_material == null) {
           const rawText = costingItem.extracted_material?.raw_text ?? costingItem.extracted_material?.description ?? 'Unknown item';
           items.push({ assemblyId, rawText });
         }

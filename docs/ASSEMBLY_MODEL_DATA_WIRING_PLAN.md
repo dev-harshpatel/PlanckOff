@@ -21,9 +21,9 @@
 | **Section** | Material DB | `MaterialDatabaseRow.section` |
 | **Code** | Material DB | `MaterialDatabaseRow.code` |
 | **Item / Description** | AI pipeline extraction | `AssemblyComponent.materialName` (description from PDF match) |
-| **HEIGHT** | Assembly context | `comp.overrideHeight ?? assembly.defaultHeight` |
-| **OC** | Assembly context | `comp.ocSpacing` or parsed from `comp.usage` |
-| **LAYER** | Leave as is | (future scope) |
+| **HEIGHT** | ⚠️ TODO | Currently uses `comp.overrideHeight ?? assembly.defaultHeight` — needs proper data source decision |
+| **OC** | ⚠️ TODO | Currently parsed from `comp.ocSpacing` / `comp.usage` text — needs proper data source decision |
+| **LAYER** | ⚠️ TODO | Currently inferred from `comp.usage` text (e.g. "2 Layer", "Coverage") — needs proper data source decision |
 | **Labour Code** | Material DB → context-aware | See §3 below |
 | **Wst%** | Component (editable) | `comp.wasteFactor ?? 5` (default 5) |
 | **QTY1** | Material DB formulas + evaluator | Wall: `qty1Formula` / Ceiling: `qty1FormulaCeiling` |
@@ -262,3 +262,17 @@ This follows the same single-fetch pattern as `useMaterials()` in AppContext. If
 5. **Mat. Unit $ × QTY2 for Tot. Mat.** — Not QTY1. QTY2 is the count of pieces/units actually purchased.
 
 6. **Lab. Unit $ × Lab. Qty for Tot. Lab.** — Lab. Qty comes from evaluating the band's `qty1Formula`, not from QTY1 or QTY2.
+
+---
+
+## 12. ⚠️ Columns Still Left to Wire (TODO)
+
+These three columns are intentionally left incomplete. Current behaviour works but the correct permanent data source has not been decided yet.
+
+| Column | Current (temporary) behaviour | What needs to be decided |
+|--------|-------------------------------|--------------------------|
+| **Height** | `comp.overrideHeight ?? assembly.defaultHeight` | Should this come from the Material DB, the takeoff schedule, or remain a pure assembly-level field? |
+| **OC** | Parsed from `comp.usage` text (e.g. `"Vertical @ 16\" OC"`) | Should OC be a structured field on `AssemblyComponent` rather than parsed from a free-text string? |
+| **Layers** | Inferred from `comp.usage` text (e.g. `"2 Layer"`, `"Coverage"`) | Should layers come from the assembly bunch database BOM item, or remain a usage-text inference? |
+
+**Do not "fix" these by guessing** — discuss with Harsh/Dhruv before wiring. Once decided, add the data source to the truth table in §2 and wire it through `resolveAssemblyRow()` in `src/lib/utils/assemblyRowResolver.ts`.

@@ -124,7 +124,8 @@ export async function getAllMaterialRows(): Promise<{
     .select('*')
     .is('deleted_at', null)
     .order('parent_section', { ascending: true })
-    .order('row_num', { ascending: true });
+    .order('row_num', { ascending: true })
+    .limit(5000); // DB has 1,200+ rows; PostgREST default cap is 1,000 — must override
 
   if (error) return { data: null, error: { message: error.message } };
   return { data: (data ?? []).map(toMaterialDatabaseRow), error: null };

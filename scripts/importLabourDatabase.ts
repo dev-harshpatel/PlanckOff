@@ -54,15 +54,23 @@ async function run() {
   const records: Record<string, unknown>[] = JSON.parse(raw);
   console.log(`Loaded ${records.length} rows from ${INPUT_FILE}`);
 
-  const rows = records.map((r) => ({
-    parent_section: r.parent_section,
-    description:    r.description,
-    category:       r.category,
-    labour_bands:   r.labour_bands ?? [],
-    qty1_formula:   r.qty1_formula,
-    qty1_uom:       r.qty1_uom,
-    notes:          r.notes,
-  }));
+  const rows = records.map((r) => {
+    const bands = (r.labour_bands as Array<{ labourCode?: string }> | undefined) ?? [];
+    // parent_code comes directly from the JSON (already set by rebuildDatabaseJsons.ts
+    // from the bunch header line, e.g. "LAB-FRM" from "LAB-FRM — Install Framing...").
+    // findLabourRow() also supports band-code lookup as a fallback.
+    const parent_code = String(r.parent_code ?? '');
+    return {
+      parent_code,
+      parent_section: r.parent_section,
+      description:    r.description,
+      category:       r.category,
+      labour_bands:   bands,
+      qty1_formula:   r.qty1_formula,
+      qty1_uom:       r.qty1_uom,
+      notes:          r.notes,
+    };
+  });
 
   // No unique key to upsert on (category/description aren't constrained) —
   // clear the table and re-insert, same approach as importMaterialDatabase.ts.

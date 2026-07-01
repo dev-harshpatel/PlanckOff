@@ -86,7 +86,7 @@ export const mapJsonToWallAssemblies = (
 
     if (costing) {
       costing.materials_costing.forEach((item) => {
-        const { extracted_material, matched_materials, matched_labor } = item;
+        const { extracted_material, matched_material, matched_labor } = item;
 
         if (!extracted_material?.raw_text) return;
 
@@ -141,7 +141,9 @@ export const mapJsonToWallAssemblies = (
           (extracted_material as { height_ft?: number })?.height_ft ??
           (assembly as { height_ft?: number })?.height_ft;
 
-        (matched_materials ?? []).forEach((material, idx) => {
+        const materialsToMap = matched_material != null ? [matched_material] : [];
+
+        materialsToMap.forEach((material, idx) => {
           const category = inferCategoryFromMaterial(rawText, material.code);
           components.push({
             id: `${assembly.assembly_id}-mat-${idx}-${Date.now()}`,
@@ -158,36 +160,44 @@ export const mapJsonToWallAssemblies = (
               material.quantity != null && typeof material.quantity === "number"
                 ? material.quantity
                 : undefined,
+            // JSON-embedded rows — primary source for resolver; DB lookup is fallback
+            embeddedMatRow: material.material_row ?? undefined,
+            embeddedLabRow: material.labour_row ?? undefined,
           });
         });
 
-        (matched_labor ?? []).forEach((labor, idx) => {
-          const laborHeightFt = (labor as { height_ft?: number }).height_ft;
-          const displayHeight =
-            typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
-          const laborHeightCategory = (labor as { height_category?: string })
-            .height_category;
-          const laborMuted = (labor as { muted?: boolean }).muted ?? false;
-          const laborWaste =
-            (labor as { waste_percent?: number }).waste_percent != null
-              ? (labor as { waste_percent?: number }).waste_percent! / 100
-              : 0;
-          components.push({
-            id: `${assembly.assembly_id}-lab-${idx}-${Date.now()}`,
-            materialName: labor.description,
-            usage,
-            wasteFactor: laborWaste,
-            materialCost: labor.unit_cost,
-            overrideLayers: undefined,
-            overrideHeight:
-              typeof displayHeight === "number" ? displayHeight : undefined,
-            heightCategory: laborHeightCategory ?? undefined,
-            muted: laborMuted,
-            materialCode: labor.code,
-            sectionCode: labor.section ?? "",
-            ocSpacing: spacingDisplay || undefined,
+        // Labour rows: only create from matched_labor for OLD data (before new-architecture
+        // match step). New data has matched_labor: [] — labour is derived at render time
+        // by assemblyRowResolver using the material row's labour codes.
+        if (matched_material == null) {
+          (matched_labor ?? []).forEach((labor, idx) => {
+            const laborHeightFt = (labor as { height_ft?: number }).height_ft;
+            const displayHeight =
+              typeof laborHeightFt === "number" ? laborHeightFt : heightFt;
+            const laborHeightCategory = (labor as { height_category?: string })
+              .height_category;
+            const laborMuted = (labor as { muted?: boolean }).muted ?? false;
+            const laborWaste =
+              (labor as { waste_percent?: number }).waste_percent != null
+                ? (labor as { waste_percent?: number }).waste_percent! / 100
+                : 0;
+            components.push({
+              id: `${assembly.assembly_id}-lab-${idx}-${Date.now()}`,
+              materialName: labor.description,
+              usage,
+              wasteFactor: laborWaste,
+              materialCost: labor.unit_cost,
+              overrideLayers: undefined,
+              overrideHeight:
+                typeof displayHeight === "number" ? displayHeight : undefined,
+              heightCategory: laborHeightCategory ?? undefined,
+              muted: laborMuted,
+              materialCode: labor.code,
+              sectionCode: labor.section ?? "",
+              ocSpacing: spacingDisplay || undefined,
+            });
           });
-        });
+        }
       });
     }
 
@@ -234,7 +244,7 @@ export const mapFinalOutputToWallAssemblies = (
     let componentIdx = 0;
 
     (ext.materials_costing ?? []).forEach((item, groupIdx) => {
-      const { extracted_material, matched_materials, matched_labor } = item;
+      const { extracted_material, matched_material, matched_labor } = item;
       if (!extracted_material?.raw_text) return;
 
       const rawText = extracted_material.raw_text;
@@ -267,7 +277,9 @@ export const mapFinalOutputToWallAssemblies = (
         usage = `Coverage (${layers} Layers)`;
       }
 
-      (matched_materials ?? []).forEach((material) => {
+      const materialsToMap = matched_material != null ? [matched_material] : [];
+
+      materialsToMap.forEach((material) => {
         const category = inferCategoryFromMaterial(rawText, material.code);
         const savedUsage = material.usage_override ?? usage;
         const savedLayers = material.layers_override ?? layers ?? undefined;
@@ -296,31 +308,38 @@ export const mapFinalOutputToWallAssemblies = (
             material.quantity != null && typeof material.quantity === "number"
               ? material.quantity
               : undefined,
+          // JSON-embedded rows — primary source for resolver; DB lookup is fallback
+          embeddedMatRow: material.material_row ?? undefined,
+          embeddedLabRow: material.labour_row ?? undefined,
         });
       });
 
-      (matched_labor ?? []).forEach((labor) => {
-        const laborHeightCategory = (labor as { height_category?: string })
-          .height_category;
-        const laborMuted = (labor as { muted?: boolean }).muted ?? false;
-        const laborWaste =
-          labor.waste_percent != null ? labor.waste_percent / 100 : 0;
-        components.push({
-          id: `${compositeId}-lab-${componentIdx++}`,
-          materialName: labor.description,
-          usage,
-          wasteFactor: laborWaste,
-          materialCost: normalizeUnitCost(labor.unit_cost),
-          overrideMatCost: normalizeUnitCost(labor.unit_cost),
-          overrideLayers: undefined,
-          heightCategory: laborHeightCategory ?? undefined,
-          muted: laborMuted,
-          materialCode: labor.code,
-          sectionCode: labor.section ?? "",
-          ocSpacing: spacingDisplay || undefined,
-          groupId: groupIdx,
+      // Labour rows: only create from matched_labor for OLD data. New-architecture data has
+      // matched_labor: [] — labour is derived at render time by assemblyRowResolver.
+      if (matched_material == null) {
+        (matched_labor ?? []).forEach((labor) => {
+          const laborHeightCategory = (labor as { height_category?: string })
+            .height_category;
+          const laborMuted = (labor as { muted?: boolean }).muted ?? false;
+          const laborWaste =
+            labor.waste_percent != null ? labor.waste_percent / 100 : 0;
+          components.push({
+            id: `${compositeId}-lab-${componentIdx++}`,
+            materialName: labor.description,
+            usage,
+            wasteFactor: laborWaste,
+            materialCost: normalizeUnitCost(labor.unit_cost),
+            overrideMatCost: normalizeUnitCost(labor.unit_cost),
+            overrideLayers: undefined,
+            heightCategory: laborHeightCategory ?? undefined,
+            muted: laborMuted,
+            materialCode: labor.code,
+            sectionCode: labor.section ?? "",
+            ocSpacing: spacingDisplay || undefined,
+            groupId: groupIdx,
+          });
         });
-      });
+      }
     });
 
     const assemblyType = normalizeAssemblyType(

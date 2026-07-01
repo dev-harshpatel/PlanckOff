@@ -1,6 +1,7 @@
 /**
  * Assembly extraction and material matching data types
  */
+import type { MaterialDatabaseRow, LabourDatabaseRow } from '@/types/databases';
 
 export interface MaterialItem {
   raw_text: string;
@@ -75,6 +76,28 @@ export interface MatchedMaterial {
   length_ft_override?: number;
   /** True when this row was matched from material_database (new rule-based system) */
   _fromNewDb?: boolean;
+  // ─── New fields added in new-architecture match step ─────────────────────────
+  /** Assembly bunch code — from material_database.assemblyCode (e.g. "DW-BX58") */
+  assembly_code?: string;
+  /** "Walls" | "Ceiling" | "Bulkhead" — drives wall vs ceiling formula selection */
+  parent_section?: string;
+  /** Labour code for wall context — from material_database.wallLabourCode */
+  wall_labour_code?: string;
+  /** Labour code for ceiling context — from material_database.ceilingLabourCode */
+  ceiling_labour_code?: string;
+  /** Labour code for bulkhead context — from material_database.bulkheadLabourCode */
+  bulkhead_labour_code?: string;
+  /**
+   * Full material DB row embedded at match time. Primary source for formulas,
+   * UOMs, sizes, and labour codes — assemblyRowResolver reads this first.
+   * null = new-arch match but no embedding (shouldn't happen); undefined = old data.
+   */
+  material_row?: Omit<MaterialDatabaseRow, 'id' | 'deletedAt' | 'searchKeywords'> | null;
+  /**
+   * Full labour row for the selected assembly context (wall / ceiling / bulkhead).
+   * Embedded at match time so render needs no live labourDb lookup.
+   */
+  labour_row?: Omit<LabourDatabaseRow, 'id' | 'deletedAt'> | null;
 }
 
 export interface MatchedLabor {
@@ -100,8 +123,18 @@ export interface MatchedLabor {
 
 export interface MaterialsCostingItem {
   extracted_material: MaterialItem | null;
-  matched_materials: MatchedMaterial[];
-  matched_labor: MatchedLabor[];
+  /**
+   * New architecture (new-architecture match step): single matched material row.
+   * Populated by the rule-based matcher. Preferred over matched_materials[0].
+   * null = no match found for this extracted item.
+   */
+  matched_material?: MatchedMaterial | null;
+  /**
+   * Legacy labour rows. Old matcher wrote these; new matcher omits them.
+   * Labour is derived at render time by assemblyRowResolver from the matched
+   * material's labour codes. Kept optional for backward compat with old DB data.
+   */
+  matched_labor?: MatchedLabor[];
 }
 
 export interface MaterialCosting {

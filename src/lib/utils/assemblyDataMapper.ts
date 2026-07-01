@@ -26,7 +26,7 @@ export const mapAssemblyMaterialData = (
 
   // Iterate through each extracted material
   costing.materials_costing.forEach((item) => {
-    const { extracted_material, matched_materials, matched_labor } = item;
+    const { extracted_material, matched_material, matched_labor } = item;
     const rawText = extracted_material?.raw_text ?? "";
 
     // Get OC from steel_framing if available (assembly_extractions format)
@@ -58,7 +58,7 @@ export const mapAssemblyMaterialData = (
     const hgtStr = typeof heightFt === "number" ? `${heightFt}'` : "";
 
     // Add rows for matched materials
-    matched_materials.forEach((material) => {
+    (matched_material != null ? [matched_material] : []).forEach((material) => {
       rows.push({
         index: rowIndex++,
         assemblyCode: assemblyId,
@@ -72,7 +72,7 @@ export const mapAssemblyMaterialData = (
     });
 
     // Add rows for matched labor
-    matched_labor.forEach((labor) => {
+    (matched_labor ?? []).forEach((labor) => {
       rows.push({
         index: rowIndex++,
         assemblyCode: assemblyId,

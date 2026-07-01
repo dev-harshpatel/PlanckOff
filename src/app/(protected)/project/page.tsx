@@ -225,8 +225,8 @@ function ProjectContent() {
     isLabor: boolean;
     updater: {
       material: (
-        item: MaterialCosting["materials_costing"][number]["matched_materials"][number],
-      ) => MaterialCosting["materials_costing"][number]["matched_materials"][number];
+        item: NonNullable<MaterialCosting["materials_costing"][number]["matched_material"]>,
+      ) => NonNullable<MaterialCosting["materials_costing"][number]["matched_material"]>;
       labor: (
         item: NonNullable<MaterialCosting["materials_costing"][number]["matched_labor"]>[number],
       ) => NonNullable<MaterialCosting["materials_costing"][number]["matched_labor"]>[number];
@@ -236,11 +236,9 @@ function ProjectContent() {
       ...assembly,
       materials_costing: assembly.materials_costing.map((item) => ({
         ...item,
-        matched_materials: isLabor
-          ? item.matched_materials
-          : item.matched_materials.map((mat) =>
-              mat.code === code ? updater.material(mat) : mat,
-            ),
+        matched_material: !isLabor && item.matched_material?.code === code
+          ? updater.material(item.matched_material)
+          : item.matched_material,
         matched_labor: isLabor
           ? (item.matched_labor ?? []).map((lab) =>
               lab.code === code ? updater.labor(lab) : lab,
